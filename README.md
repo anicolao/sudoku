@@ -10,8 +10,12 @@ data and play history remain in this browser's `localStorage`. A service worker
 caches only the static application shell so a previously loaded app can be used
 offline.
 
-This repository is currently at the design milestone. It contains the product,
-technical, UX, and E2E contracts to review before implementation begins.
+The first implementation slice now provides the static Svelte application
+shell, bundled visual system and font, manifest and offline shell cache,
+repository verifier, unit test, deterministic Playwright scenario, macOS CI,
+and retained GitHub Pages previews. The puzzle generator and event store remain
+the next vertical slice; the visible generator action is deliberately disabled
+until they exist.
 
 ## Design documents
 
@@ -23,7 +27,7 @@ technical, UX, and E2E contracts to review before implementation begins.
 - [E2E_GUIDE.md](E2E_GUIDE.md) defines the executable browser-test and visual
   evidence contract.
 
-## Proposed foundation
+## Foundation
 
 - Svelte 5 and SvelteKit with TypeScript and `@sveltejs/adapter-static`.
 - A client-only SPA whose production output can be hosted on any static origin
@@ -67,10 +71,7 @@ The new design also tightens a few seams visible in those references:
 - corrupt or incompatible streams are quarantined instead of partially applied;
 - local-only means runtime network access is prohibited and tested.
 
-## Proposed development commands
-
-These commands are the intended scaffold contract; they do not exist until the
-first implementation slice lands.
+## Development commands
 
 ```sh
 npm install
@@ -81,10 +82,20 @@ npm run test:e2e
 npm run build
 ```
 
-`npm run verify:change` should run checks, unit tests, the full browser suite,
-the production build, base-path verification, and `git diff --check`.
+`npm run verify:change` runs checks, unit tests, the full browser suite, the
+production build, and whitespace checks.
 Screenshot changes should require the explicit
 `npm run test:e2e:update-snapshots` command and human review.
+
+Pull requests run Playwright Chromium on a pinned GitHub-hosted macOS runner.
+After verification, the same workflow publishes a retained preview to:
+
+```text
+https://anicolao.github.io/sudoku/pr<PR number>/
+```
+
+Pushes to `main` publish the production path at
+`https://anicolao.github.io/sudoku/`.
 
 ## Privacy and data ownership
 
