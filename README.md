@@ -20,7 +20,10 @@ enter and replace values, see peer and duplicate-conflict highlighting, inspect
 remaining number counts, and read a game log derived from the canonical stream.
 Erase, undo, and redo append compensating events instead of rewriting history;
 a new move after undo creates a visible branch and correctly retires redo. Pause
-and the remaining play controls arrive in the following reviewable slices.
+freezes active elapsed time, covers the puzzle and log, and survives full-page
+reload; resume continues from the stored event snapshot without counting the
+interruption. Hints and the remaining play controls arrive in the following
+reviewable slices.
 
 ## Design documents
 

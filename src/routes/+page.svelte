@@ -4,6 +4,7 @@
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import { describeMove, formatGameLog } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
+  import { elapsedAt, formatElapsed } from '$lib/domain/selectors';
   import type { AppProjection, Digit, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
   import { EventStore, type EventMetadata } from '$lib/storage/event-store';
@@ -32,6 +33,9 @@
   let selectedCell = $state<number | null>(null);
   let inputMode = $state<InputMode>('number');
   let announcement = $state('');
+  let timerNow = $state(
+    import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
+  );
 
   const currentGame = $derived(
     projection.activeGameId ? projection.games[projection.activeGameId] : undefined
@@ -54,9 +58,10 @@
       : undefined
   );
   const canErase = $derived(
-    !!currentGame && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
+    !!currentGame && !currentGame.paused && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
     (currentGame.values[selectedCell] !== null || currentGame.notes[selectedCell].length > 0)
   );
+  const elapsedLabel = $derived(currentGame ? formatElapsed(elapsedAt(currentGame, timerNow)) : '00:00');
 
   onMount(() => {
     try {
@@ -69,6 +74,10 @@
       persistenceStatus = 'memory-only';
     }
     projection = store.getProjection();
+    if (import.meta.env.VITE_E2E_MODE === '1') {
+      const latestTime = store.getDocument().events.at(-1)?.occurredAt;
+      if (latestTime && Date.parse(latestTime) > timerNow.getTime()) timerNow = new Date(latestTime);
+    }
 
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       document.documentElement.dataset.offlineReady = 'false';
@@ -76,17 +85,26 @@
         document.documentElement.dataset.offlineReady = 'true';
       });
     }
+
+    const updateE2EClock = (event: Event): void => {
+      timerNow = new Date(timerNow.getTime() + (event as CustomEvent<number>).detail);
+    };
+    if (import.meta.env.VITE_E2E_MODE === '1') {
+      window.addEventListener('sudoku:e2e-clock', updateE2EClock);
+      return () => window.removeEventListener('sudoku:e2e-clock', updateE2EClock);
+    }
+    const timer = window.setInterval(() => timerNow = new Date(), 250);
+    return () => window.clearInterval(timer);
   });
 
   function metadata(): EventMetadata {
     if (!store) throw new Error('Puzzle storage is not ready');
     const sequence = store.getDocument().nextSequence;
+    const occurredAt = import.meta.env.VITE_E2E_MODE === '1' ? timerNow : new Date();
     return {
       id: import.meta.env.VITE_E2E_MODE === '1' ? `event-${sequence}` : crypto.randomUUID(),
-      occurredAt: import.meta.env.VITE_E2E_MODE === '1'
-        ? new Date(Date.UTC(2026, 7, 16, 12, 0, sequence - 1))
-        : new Date(),
-      elapsedMs: 0
+      occurredAt,
+      elapsedMs: currentGame ? elapsedAt(currentGame, occurredAt) : 0
     };
   }
 
@@ -106,6 +124,7 @@
   }
 
   function selectCell(cell: number): void {
+    if (currentGame?.paused) return;
     selectedCell = cell;
     const row = Math.floor(cell / 9) + 1;
     const column = (cell % 9) + 1;
@@ -113,7 +132,7 @@
   }
 
   function enterDigit(value: Digit): void {
-    if (!store || !currentGame || selectedCell === null) return;
+    if (!store || !currentGame || currentGame.paused || selectedCell === null) return;
     if (currentGame.puzzle.givens[selectedCell] !== '.') return;
     if (inputMode === 'notes') {
       const enabled = !currentGame.notes[selectedCell].includes(value);
@@ -143,15 +162,27 @@
   }
 
   function undo(): void {
-    if (!store || !currentGame?.undoTargetId) return;
+    if (!store || !currentGame?.undoTargetId || currentGame.paused) return;
     projection = store.undo(currentGame.id, currentGame.undoTargetId, metadata());
     announcement = 'Undid last move';
   }
 
   function redo(): void {
-    if (!store || !currentGame?.redoTargetId) return;
+    if (!store || !currentGame?.redoTargetId || currentGame.paused) return;
     projection = store.redo(currentGame.id, currentGame.redoTargetId, metadata());
     announcement = 'Redid last move';
+  }
+
+  function togglePause(): void {
+    if (!store || !currentGame) return;
+    if (currentGame.paused) {
+      projection = store.resume(currentGame.id, metadata());
+      announcement = 'Puzzle resumed';
+    } else {
+      projection = store.pause(currentGame.id, metadata());
+      selectedCell = null;
+      announcement = 'Puzzle paused';
+    }
   }
 </script>
 
@@ -170,37 +201,47 @@
     {#if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
         <div class="puzzle-heading">
-          <div><p class="eyebrow">Easy puzzle</p><h1 id="puzzle-title">Ready when you are.</h1></div>
-          <div class="puzzle-facts" aria-label="Puzzle validation"><span>Unique solution</span><span>{currentGame.puzzle.hardestTechnique.replaceAll('-', ' ')}</span></div>
+          <div><p class="eyebrow">Easy puzzle</p><h1 id="puzzle-title">{currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
+          <div class="session-status">
+            <span class="timer" aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
+            <button type="button" class="pause-action" onclick={togglePause}>{currentGame.paused ? 'Resume' : 'Pause'}</button>
+          </div>
         </div>
 
         <div class="game-workspace">
           <div class="board-column">
-            <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} />
+            {#if currentGame.paused}
+              <div class="paused-cover" role="status" aria-label="Puzzle paused">
+                <span aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small>Your active time is frozen.</small>
+              </div>
+            {:else}
+              <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} />
+            {/if}
+            <span class="board-validation">Unique solution</span>
             <p class="board-caption">Generated and validated here · {currentGame.puzzle.id.replace('easy-v1-', '#')}</p>
           </div>
 
           <aside class="play-controls" aria-label="Puzzle controls">
             <div class="mode-switch" aria-label="Input mode">
-              <button type="button" class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => inputMode = 'number'}>Number</button>
-              <button type="button" class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => inputMode = 'notes'}>Notes</button>
+              <button type="button" disabled={currentGame.paused} class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => inputMode = 'number'}>Number</button>
+              <button type="button" disabled={currentGame.paused} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => inputMode = 'notes'}>Notes</button>
             </div>
             <div class="number-pad" aria-label="Number pad">
               {#each [1,2,3,4,5,6,7,8,9] as value}
-                <button type="button" onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
+                <button type="button" disabled={currentGame.paused} onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
                   <strong>{value}</strong><small>{remaining(value as Digit)}</small>
                 </button>
               {/each}
             </div>
             <div class="utility-actions">
-              <button type="button" onclick={undo} disabled={!undoMove} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
-              <button type="button" onclick={redo} disabled={!redoMove} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
+              <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
+              <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
               <button type="button" disabled>Hint</button>
             </div>
-            <section class="game-log" aria-labelledby="game-log-title">
+            <section class="game-log" aria-labelledby="game-log-title" class:covered={currentGame.paused}>
               <div class="log-heading"><h2 id="game-log-title">Game log</h2><span>{gameLog.length} {gameLog.length === 1 ? 'event' : 'events'}</span></div>
-              <ol>{#each gameLog as entry}<li data-event-type={entry.type}><span>{entry.text}</span></li>{/each}</ol>
+              {#if currentGame.paused}<p class="log-paused">Resume to inspect the game log.</p>{:else}<ol>{#each gameLog as entry}<li data-event-type={entry.type}><span>{entry.text}</span></li>{/each}</ol>{/if}
             </section>
           </aside>
         </div>

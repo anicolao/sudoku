@@ -96,7 +96,10 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         notes: Array.from({ length: 81 }, () => []),
         conflicts: [],
         undoTargetId: null,
-        redoTargetId: null
+        redoTargetId: null,
+        paused: false,
+        elapsedMs: 0,
+        resumedAt: event.occurredAt
       };
       state.activeGameId = event.gameId;
       activeStacks.set(event.gameId, []);
@@ -116,6 +119,8 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       redo.splice(0);
       continue;
     }
+
+    if (event.type === 'game/paused' || event.type === 'game/resumed') continue;
 
     if (event.type === 'move/undone') {
       if (active.at(-1) !== event.payload.targetEventId) {
@@ -139,7 +144,30 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
 
   for (const game of Object.values(state.games)) {
     for (const event of valid) {
-      if (event.gameId === game.id && isReversible(event) && !inactive.has(event.id)) {
+      if (event.gameId !== game.id || event.type === 'game/started') continue;
+      if (event.type === 'game/paused') {
+        if (game.paused || event.elapsedMs < game.elapsedMs) state.diagnostics.push('invalid-pause');
+        else {
+          game.elapsedMs = event.elapsedMs;
+          game.resumedAt = null;
+          game.paused = true;
+        }
+        continue;
+      }
+      if (event.type === 'game/resumed') {
+        if (!game.paused || event.elapsedMs < game.elapsedMs) state.diagnostics.push('invalid-resume');
+        else {
+          game.elapsedMs = event.elapsedMs;
+          game.resumedAt = event.occurredAt;
+          game.paused = false;
+        }
+        continue;
+      }
+      if (!game.paused && event.elapsedMs >= game.elapsedMs) {
+        game.elapsedMs = event.elapsedMs;
+        game.resumedAt = event.occurredAt;
+      }
+      if (isReversible(event) && !inactive.has(event.id)) {
         applyMove(game, event, state.diagnostics);
       }
     }

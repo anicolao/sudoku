@@ -68,12 +68,24 @@ export interface MoveRedoneEvent extends EventEnvelope {
   payload: { targetEventId: string };
 }
 
+export interface GamePausedEvent extends EventEnvelope {
+  type: 'game/paused';
+  payload: Record<string, never>;
+}
+
+export interface GameResumedEvent extends EventEnvelope {
+  type: 'game/resumed';
+  payload: Record<string, never>;
+}
+
 export type ReversibleEvent = ValueEnteredEvent | NoteToggledEvent | CellClearedEvent;
 export type SudokuEvent =
   | GameStartedEvent
   | ReversibleEvent
   | MoveUndoneEvent
-  | MoveRedoneEvent;
+  | MoveRedoneEvent
+  | GamePausedEvent
+  | GameResumedEvent;
 
 export interface GameProjection {
   id: string;
@@ -85,6 +97,9 @@ export interface GameProjection {
   conflicts: number[];
   undoTargetId: string | null;
   redoTargetId: string | null;
+  paused: boolean;
+  elapsedMs: number;
+  resumedAt: string | null;
 }
 
 export interface AppProjection {
