@@ -20,9 +20,13 @@ export class TestStepHelper {
   private description = '';
 
   constructor(
-    private readonly page: Page,
+    private page: Page,
     private readonly testInfo: TestInfo
   ) {}
+
+  usePage(page: Page): void {
+    this.page = page;
+  }
 
   setMetadata(title: string, description: string): void {
     this.title = title;
