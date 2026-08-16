@@ -12,7 +12,8 @@ export const emptyProjection = (): AppProjection => ({ activeGameId: null, games
 const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/value-entered' ||
   event.type === 'cell/note-toggled' ||
-  event.type === 'cell/cleared';
+  event.type === 'cell/cleared' ||
+  event.type === 'hint/revealed';
 
 function isEditable(game: GameProjection, cell: number): boolean {
   return Number.isInteger(cell) && cell >= 0 && cell < 81 && game.puzzle.givens[cell] === '.';
@@ -51,6 +52,16 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
         }
       }
     }
+    return;
+  }
+  if (event.type === 'hint/revealed') {
+    if (event.payload.value !== Number(game.puzzle.solution[event.payload.cell])) {
+      diagnostics.push('invalid-hint-value');
+      return;
+    }
+    game.values[event.payload.cell] = event.payload.value;
+    game.notes[event.payload.cell] = [];
+    game.hintedCells.push(event.payload.cell);
     return;
   }
   if (event.type === 'cell/cleared') {
@@ -99,7 +110,12 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         redoTargetId: null,
         paused: false,
         elapsedMs: 0,
-        resumedAt: event.occurredAt
+        resumedAt: event.occurredAt,
+        status: 'active',
+        hints: 0,
+        mistakes: 0,
+        hintedCells: [],
+        completedAt: null
       };
       state.activeGameId = event.gameId;
       activeStacks.set(event.gameId, []);
@@ -121,6 +137,12 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     }
 
     if (event.type === 'game/paused' || event.type === 'game/resumed') continue;
+    if (event.type === 'game/restarted') {
+      active.splice(0);
+      redo.splice(0);
+      continue;
+    }
+    if (event.type === 'game/abandoned') continue;
 
     if (event.type === 'move/undone') {
       if (active.at(-1) !== event.payload.targetEventId) {
@@ -163,12 +185,42 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         }
         continue;
       }
+      if (event.type === 'game/restarted') {
+        game.values.fill(null);
+        game.notes = Array.from({ length: 81 }, () => []);
+        game.conflicts = [];
+        game.hintedCells = [];
+        game.hints = 0;
+        game.mistakes = 0;
+        game.status = 'active';
+        game.completedAt = null;
+        continue;
+      }
+      if (event.type === 'game/abandoned') {
+        game.status = 'abandoned';
+        game.paused = true;
+        game.resumedAt = null;
+        continue;
+      }
       if (!game.paused && event.elapsedMs >= game.elapsedMs) {
         game.elapsedMs = event.elapsedMs;
         game.resumedAt = event.occurredAt;
       }
-      if (isReversible(event) && !inactive.has(event.id)) {
+      if (event.type === 'hint/revealed') game.hints += 1;
+      if (event.type === 'cell/value-entered' && game.settings.checkMistakes && event.payload.value !== Number(game.puzzle.solution[event.payload.cell])) {
+        game.mistakes += 1;
+      }
+      if (isReversible(event) && !inactive.has(event.id) && game.status === 'active') {
         applyMove(game, event, state.diagnostics);
+        const board = [...game.puzzle.givens].map((given, cell) =>
+          given === '.' ? game.values[cell] : Number(given)
+        ).join('');
+        if (board === game.puzzle.solution) {
+          game.status = 'complete';
+          game.completedAt = event.occurredAt;
+          game.elapsedMs = event.elapsedMs;
+          game.resumedAt = null;
+        }
       }
     }
     game.conflicts = deriveConflicts(game);

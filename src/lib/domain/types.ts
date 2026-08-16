@@ -58,6 +58,11 @@ export interface CellClearedEvent extends EventEnvelope {
   payload: { cell: number };
 }
 
+export interface HintRevealedEvent extends EventEnvelope {
+  type: 'hint/revealed';
+  payload: { cell: number; value: Digit };
+}
+
 export interface MoveUndoneEvent extends EventEnvelope {
   type: 'move/undone';
   payload: { targetEventId: string };
@@ -78,14 +83,30 @@ export interface GameResumedEvent extends EventEnvelope {
   payload: Record<string, never>;
 }
 
-export type ReversibleEvent = ValueEnteredEvent | NoteToggledEvent | CellClearedEvent;
+export interface GameRestartedEvent extends EventEnvelope {
+  type: 'game/restarted';
+  payload: Record<string, never>;
+}
+
+export interface GameAbandonedEvent extends EventEnvelope {
+  type: 'game/abandoned';
+  payload: Record<string, never>;
+}
+
+export type ReversibleEvent =
+  | ValueEnteredEvent
+  | NoteToggledEvent
+  | CellClearedEvent
+  | HintRevealedEvent;
 export type SudokuEvent =
   | GameStartedEvent
   | ReversibleEvent
   | MoveUndoneEvent
   | MoveRedoneEvent
   | GamePausedEvent
-  | GameResumedEvent;
+  | GameResumedEvent
+  | GameRestartedEvent
+  | GameAbandonedEvent;
 
 export interface GameProjection {
   id: string;
@@ -100,6 +121,11 @@ export interface GameProjection {
   paused: boolean;
   elapsedMs: number;
   resumedAt: string | null;
+  status: 'active' | 'complete' | 'abandoned';
+  hints: number;
+  mistakes: number;
+  hintedCells: number[];
+  completedAt: string | null;
 }
 
 export interface AppProjection {
