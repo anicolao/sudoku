@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f7f5ef" />
     <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; connect-src 'self'; manifest-src 'self'"
+    />
+    <meta
       name="description"
       content="A calm, local-only Sudoku puzzle app that works offline."
     />
@@ -14,10 +18,10 @@
     <link rel="manifest" href="/sudoku/pr3/manifest.webmanifest" />
     <link rel="icon" href="/sudoku/pr3/icon.svg" />
     <link rel="apple-touch-icon" href="/sudoku/pr3/icon.svg" />
-    <link href="/sudoku/pr3/_app/immutable/entry/start.Dv9DFxcJ.js" rel="modulepreload">
-		<link href="/sudoku/pr3/_app/immutable/chunks/C2KrKHIh.js" rel="modulepreload">
+    <link href="/sudoku/pr3/_app/immutable/entry/start.9RW-t11m.js" rel="modulepreload">
+		<link href="/sudoku/pr3/_app/immutable/chunks/7tfHUoCk.js" rel="modulepreload">
 		<link href="/sudoku/pr3/_app/immutable/chunks/C4dF4QNh.js" rel="modulepreload">
-		<link href="/sudoku/pr3/_app/immutable/entry/app.BVOQ3Be0.js" rel="modulepreload">
+		<link href="/sudoku/pr3/_app/immutable/entry/app.Mp61xVyC.js" rel="modulepreload">
 		<link href="/sudoku/pr3/_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
 		<link href="/sudoku/pr3/_app/immutable/nodes/0.DXjlzPFL.js" rel="modulepreload">
 		
@@ -27,7 +31,7 @@
     <div style="display: contents">
 			<script>
 				{
-					__sveltekit_1vmprto = {
+					__sveltekit_170w3kr = {
 						base: "/sudoku/pr3",
 						assets: "/sudoku/pr3"
 					};
@@ -35,8 +39,8 @@
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/sudoku/pr3/_app/immutable/entry/start.Dv9DFxcJ.js"),
-						import("/sudoku/pr3/_app/immutable/entry/app.BVOQ3Be0.js")
+						import("/sudoku/pr3/_app/immutable/entry/start.9RW-t11m.js"),
+						import("/sudoku/pr3/_app/immutable/entry/app.Mp61xVyC.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});
