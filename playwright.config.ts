@@ -32,22 +32,22 @@ export default defineConfig({
   projects: [
     {
       name: 'phone',
-      testIgnore: '**/002-installed-offline/*.spec.ts',
+      testIgnore: '**/012-installed-offline/*.spec.ts',
       use: { viewport: { width: 393, height: 852 } }
     },
     {
       name: 'tablet',
-      testIgnore: '**/002-installed-offline/*.spec.ts',
+      testIgnore: '**/012-installed-offline/*.spec.ts',
       use: { viewport: { width: 820, height: 1180 } }
     },
     {
       name: 'desktop',
-      testIgnore: '**/002-installed-offline/*.spec.ts',
+      testIgnore: '**/012-installed-offline/*.spec.ts',
       use: { viewport: { width: 1280, height: 1000 } }
     },
     {
       name: 'offline',
-      testMatch: '**/002-installed-offline/*.spec.ts',
+      testMatch: '**/012-installed-offline/*.spec.ts',
       use: {
         viewport: { width: 393, height: 852 },
         serviceWorkers: 'allow'

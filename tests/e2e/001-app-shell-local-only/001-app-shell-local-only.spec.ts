@@ -5,7 +5,7 @@ test('the local-only application shell renders deterministically', async ({ page
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Application shell and local-only boundary',
-    'The static Sudoku client presents the first vertical slice without claiming the generator exists yet.'
+    'The static Sudoku client is ready to generate a validated puzzle without an account or remote service.'
   );
 
   const requests: Array<{ method: string; url: string }> = [];
@@ -31,10 +31,10 @@ test('the local-only application shell renders deterministically', async ({ page
         }
       },
       {
-        spec: 'The future generator action is present but honestly unavailable',
+        spec: 'The local Easy puzzle generator is available',
         check: async () => {
-          await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeDisabled();
-          await expect(page.getByText('The generator arrives in the next vertical slice.')).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeEnabled();
+          await expect(page.getByText('The puzzle and its solution never leave this browser.')).toBeVisible();
         }
       },
       {
