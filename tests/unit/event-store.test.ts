@@ -17,7 +17,10 @@ describe('event store', () => {
     const storage = new MemoryStorage();
     const puzzle = generateEasyPuzzle('store-seed').puzzle;
     const store = new EventStore(storage);
-    const projection = store.startGame(puzzle, new Date('2026-08-16T12:00:00.000Z'), 'event-1');
+    const projection = store.startGame(puzzle, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'),
+      id: 'event-1'
+    });
     expect(projection.activeGameId).toBe(`game-${puzzle.id}-1`);
     expect(JSON.parse(storage.getItem(EVENT_STORE_KEY) ?? '')).toMatchObject({
       storageVersion: 1,

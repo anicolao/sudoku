@@ -17,27 +17,52 @@ export interface PuzzleDefinition {
   hardestTechnique: SolveTechnique;
 }
 
-export interface GameStartedEvent {
+export interface GameSettings {
+  checkMistakes: boolean;
+  autoRemoveNotes: boolean;
+  showTimer: boolean;
+  numberFirst: boolean;
+}
+
+interface EventEnvelope {
   id: string;
   sequence: number;
   gameId: string;
-  type: 'game/started';
-  payload: {
-    gameId: string;
-    puzzle: PuzzleDefinition;
-  };
   occurredAt: string;
   elapsedMs: number;
   schemaVersion: 1;
   reducerVersion: 1;
 }
 
-export type SudokuEvent = GameStartedEvent;
+export interface GameStartedEvent extends EventEnvelope {
+  type: 'game/started';
+  payload: {
+    gameId: string;
+    puzzle: PuzzleDefinition;
+    settings: GameSettings;
+  };
+}
+
+export interface ValueEnteredEvent extends EventEnvelope {
+  type: 'cell/value-entered';
+  payload: { cell: number; value: Digit };
+}
+
+export interface NoteToggledEvent extends EventEnvelope {
+  type: 'cell/note-toggled';
+  payload: { cell: number; value: Digit; enabled: boolean };
+}
+
+export type SudokuEvent = GameStartedEvent | ValueEnteredEvent | NoteToggledEvent;
 
 export interface GameProjection {
   id: string;
   puzzle: PuzzleDefinition;
+  settings: GameSettings;
   startedAt: string;
+  values: Array<Digit | null>;
+  notes: Digit[][];
+  conflicts: number[];
 }
 
 export interface AppProjection {
