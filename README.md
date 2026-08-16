@@ -10,12 +10,12 @@ data and play history remain in this browser's `localStorage`. A service worker
 caches only the static application shell so a previously loaded app can be used
 offline.
 
-The first implementation slice now provides the static Svelte application
-shell, bundled visual system and font, manifest and offline shell cache,
-repository verifier, unit test, deterministic Playwright scenario, macOS CI,
-and retained GitHub Pages previews. The puzzle generator and event store remain
-the next vertical slice; the visible generator action is deliberately disabled
-until they exist.
+The scaffold and first MVP vertical slice are implemented. The application can
+generate deterministic Easy puzzles in a Web Worker, independently prove a
+unique solution, reject puzzles beyond the allowed logical techniques, commit
+the complete puzzle definition as a `game/started` event, reconstruct it by
+replay, and render its givens as an accessible 9×9 grid. Values, notes, and the
+remaining play controls arrive in the following reviewable slices.
 
 ## Design documents
 

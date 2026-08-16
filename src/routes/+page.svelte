@@ -1,33 +1,47 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { buildLabel } from '$lib/app-meta';
+  import SudokuBoard from '$lib/components/SudokuBoard.svelte';
+  import type { AppProjection } from '$lib/domain/types';
+  import { generateInWorker } from '$lib/generator/generation-service';
+  import { emptyProjection } from '$lib/domain/reducer';
+  import { EventStore } from '$lib/storage/event-store';
 
   type PersistenceStatus = 'checking' | 'local' | 'memory-only';
+  type GenerationStatus = 'idle' | 'generating' | 'failed';
 
-  const previewRows = [
-    ['5', '', '', '', '7', '', '', '', '2'],
-    ['', '7', '', '1', '', '5', '', '4', ''],
-    ['1', '', '8', '', '4', '', '5', '', '7'],
-    ['', '5', '', '7', '', '1', '', '', '3'],
-    ['4', '', '6', '', '5', '', '7', '', '1'],
-    ['7', '', '', '9', '', '4', '', '5', ''],
-    ['9', '', '1', '', '3', '', '2', '', '8'],
-    ['', '8', '', '2', '', '1', '', '5', ''],
-    ['3', '', '5', '', '8', '', '6', '', '9']
-  ];
+  class MemoryStorage implements Storage {
+    private values = new Map<string, string>();
+    get length() { return this.values.size; }
+    clear() { this.values.clear(); }
+    getItem(key: string) { return this.values.get(key) ?? null; }
+    key(index: number) { return [...this.values.keys()][index] ?? null; }
+    removeItem(key: string) { this.values.delete(key); }
+    setItem(key: string, value: string) { this.values.set(key, value); }
+  }
 
   const version = import.meta.env.VITE_APP_VERSION;
   const revision = import.meta.env.VITE_GIT_HASH;
   let persistenceStatus = $state<PersistenceStatus>('checking');
+  let generationStatus = $state<GenerationStatus>('idle');
+  let generationError = $state('');
+  let store = $state<EventStore>();
+  let projection = $state<AppProjection>(emptyProjection());
+  const currentGame = $derived(
+    projection.activeGameId ? projection.games[projection.activeGameId] : undefined
+  );
 
   onMount(() => {
     try {
       localStorage.setItem('sudoku.storage-check', '1');
       localStorage.removeItem('sudoku.storage-check');
+      store = new EventStore(localStorage);
       persistenceStatus = 'local';
     } catch {
+      store = new EventStore(new MemoryStorage());
       persistenceStatus = 'memory-only';
     }
+    projection = store.getProjection();
 
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       document.documentElement.dataset.offlineReady = 'false';
@@ -36,6 +50,27 @@
       });
     }
   });
+
+  async function generatePuzzle(): Promise<void> {
+    generationStatus = 'generating';
+    generationError = '';
+    try {
+      const seed = import.meta.env.VITE_E2E_MODE === '1'
+        ? 'walkthrough-seed'
+        : crypto.randomUUID();
+      const { puzzle } = await generateInWorker(seed);
+      const eventId = import.meta.env.VITE_E2E_MODE === '1' ? 'event-1' : crypto.randomUUID();
+      if (!store) throw new Error('Puzzle storage is not ready');
+      const occurredAt = import.meta.env.VITE_E2E_MODE === '1'
+        ? new Date('2026-08-16T12:00:00.000Z')
+        : new Date();
+      projection = store.startGame(puzzle, occurredAt, eventId);
+      generationStatus = 'idle';
+    } catch (error) {
+      generationError = error instanceof Error ? error.message : 'Could not generate a puzzle yet';
+      generationStatus = 'failed';
+    }
+  }
 </script>
 
 <svelte:head>
@@ -44,8 +79,8 @@
 
 <div
   class="app-shell"
+  class:playing={currentGame}
   data-e2e-layout
-  data-e2e-viewport
   data-app-ready={persistenceStatus !== 'checking'}
   data-persistence-status={persistenceStatus}
 >
@@ -63,50 +98,63 @@
   </header>
 
   <main>
-    <section class="hero-card" aria-labelledby="welcome-title" data-e2e-no-clip>
-      <div class="puzzle-preview" aria-hidden="true">
-        {#each previewRows as row}
-          <div class="preview-row">
-            {#each row as value}<span>{value}</span>{/each}
+    {#if currentGame}
+      <section class="play-view" aria-labelledby="puzzle-title" data-e2e-no-clip>
+        <div class="puzzle-heading">
+          <div>
+            <p class="eyebrow">Easy puzzle</p>
+            <h1 id="puzzle-title">Ready when you are.</h1>
           </div>
-        {/each}
-      </div>
-
-      <div class="welcome-copy">
-        <p class="eyebrow">Easy puzzles · generated here</p>
-        <h1 id="welcome-title">A quiet place to solve.</h1>
-        <p class="introduction">
-          Sudoku will create and validate each puzzle entirely on this device. No account,
-          tracking, or connection required.
+          <div class="puzzle-facts" aria-label="Puzzle validation">
+            <span>Unique solution</span>
+            <span>{currentGame.puzzle.hardestTechnique.replaceAll('-', ' ')}</span>
+          </div>
+        </div>
+        <SudokuBoard givens={currentGame.puzzle.givens} />
+        <p class="board-caption">
+          Generated and validated here · {currentGame.puzzle.id.replace('easy-v1-', '#')}
         </p>
+      </section>
+    {:else}
+      <section class="hero-card" aria-labelledby="welcome-title" data-e2e-no-clip>
+        <div class="puzzle-preview" aria-hidden="true">
+          {#each Array(81) as _, cell}<span>{cell % 10 === 0 ? ((cell % 9) + 1) : ''}</span>{/each}
+        </div>
 
-        <ul class="proof-list" aria-label="Puzzle promises">
-          <li><span aria-hidden="true">✓</span> Unique solution</li>
-          <li><span aria-hidden="true">✓</span> No guessing required</li>
-          <li><span aria-hidden="true">✓</span> Ready for offline play</li>
-        </ul>
+        <div class="welcome-copy">
+          <p class="eyebrow">Easy puzzles · generated here</p>
+          <h1 id="welcome-title">A quiet place to solve.</h1>
+          <p class="introduction">
+            Sudoku creates and validates each puzzle entirely on this device. No account,
+            tracking, or connection required.
+          </p>
 
-        <button class="primary-action" type="button" disabled>
-          Generate Easy puzzle
-        </button>
-        <p class="coming-soon">The generator arrives in the next vertical slice.</p>
-      </div>
-    </section>
+          <ul class="proof-list" aria-label="Puzzle promises">
+            <li><span aria-hidden="true">✓</span> Unique solution</li>
+            <li><span aria-hidden="true">✓</span> No guessing required</li>
+            <li><span aria-hidden="true">✓</span> Ready for offline play</li>
+          </ul>
+
+          {#if generationStatus === 'generating'}
+            <button class="primary-action" type="button" disabled aria-busy="true">
+              Generating and validating…
+            </button>
+          {:else}
+            <button class="primary-action" type="button" onclick={generatePuzzle}>
+              {generationStatus === 'failed' ? 'Retry' : 'Generate Easy puzzle'}
+            </button>
+          {/if}
+          {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
+          <p class="local-note">The puzzle and its solution never leave this browser.</p>
+        </div>
+      </section>
+    {/if}
   </main>
 
   <nav class="primary-nav" aria-label="Primary navigation">
-    <button type="button" aria-current="page">
-      <span class="nav-icon grid-icon" aria-hidden="true"></span>
-      Play
-    </button>
-    <button type="button" disabled>
-      <span class="nav-icon list-icon" aria-hidden="true"></span>
-      Puzzles
-    </button>
-    <button type="button" disabled>
-      <span class="nav-icon history-icon" aria-hidden="true"></span>
-      History
-    </button>
+    <button type="button" aria-current="page"><span aria-hidden="true">▦</span>Play</button>
+    <button type="button" disabled><span aria-hidden="true">☷</span>Puzzles</button>
+    <button type="button" disabled><span aria-hidden="true">◷</span>History</button>
   </nav>
 
   <footer>
