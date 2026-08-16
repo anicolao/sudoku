@@ -24,14 +24,19 @@ export interface GameSettings {
   numberFirst: boolean;
 }
 
-interface EventEnvelope {
+interface EventEnvelope<GameId extends string | null = string> {
   id: string;
   sequence: number;
-  gameId: string;
+  gameId: GameId;
   occurredAt: string;
   elapsedMs: number;
   schemaVersion: 1;
   reducerVersion: 1;
+}
+
+export interface SettingsChangedEvent extends EventEnvelope<null> {
+  type: 'settings/changed';
+  payload: Partial<GameSettings>;
 }
 
 export interface GameStartedEvent extends EventEnvelope {
@@ -99,6 +104,7 @@ export type ReversibleEvent =
   | CellClearedEvent
   | HintRevealedEvent;
 export type SudokuEvent =
+  | SettingsChangedEvent
   | GameStartedEvent
   | ReversibleEvent
   | MoveUndoneEvent
@@ -116,6 +122,7 @@ export interface GameProjection {
   values: Array<Digit | null>;
   notes: Digit[][];
   conflicts: number[];
+  mistakeCells: number[];
   undoTargetId: string | null;
   redoTargetId: string | null;
   paused: boolean;
@@ -129,6 +136,7 @@ export interface GameProjection {
 }
 
 export interface AppProjection {
+  settings: GameSettings;
   activeGameId: string | null;
   games: Record<string, GameProjection>;
   diagnostics: string[];

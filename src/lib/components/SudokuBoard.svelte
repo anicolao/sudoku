@@ -31,6 +31,7 @@
       notes.length ? `notes ${notes.join(' ')}` : '',
       game.hintedCells.includes(cell) ? 'revealed by hint' : '',
       game.conflicts.includes(cell) ? 'conflict' : '',
+      game.mistakeCells.includes(cell) ? 'mistake' : '',
       selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
   }
@@ -50,6 +51,7 @@
       class:peer={isPeer}
       class:matching={matches}
       class:conflict={game.conflicts.includes(cell)}
+      class:mistake={game.mistakeCells.includes(cell)}
       class:hinted={game.hintedCells.includes(cell)}
       role="gridcell"
       aria-label={label(cell)}
@@ -67,6 +69,7 @@
         </span>
       {/if}
       {#if game.conflicts.includes(cell)}<span class="conflict-mark" aria-hidden="true">!</span>{/if}
+      {#if game.mistakeCells.includes(cell) && !game.conflicts.includes(cell)}<span class="mistake-mark" aria-hidden="true">×</span>{/if}
       {#if game.hintedCells.includes(cell)}<span class="hint-mark" aria-hidden="true">◆</span>{/if}
     </button>
   {/each}

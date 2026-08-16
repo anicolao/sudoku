@@ -7,7 +7,16 @@ import type {
   SudokuEvent
 } from './types';
 
-export const emptyProjection = (): AppProjection => ({ activeGameId: null, games: {}, diagnostics: [] });
+export const DEFAULT_SETTINGS = {
+  checkMistakes: false,
+  autoRemoveNotes: true,
+  showTimer: true,
+  numberFirst: true
+} as const;
+
+export const emptyProjection = (): AppProjection => ({
+  settings: { ...DEFAULT_SETTINGS }, activeGameId: null, games: {}, diagnostics: []
+});
 
 const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/value-entered' ||
@@ -97,6 +106,16 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     expectedSequence += 1;
     valid.push(event);
 
+    if (event.type === 'settings/changed') {
+      const changes = event.payload;
+      if (Object.values(changes).some((value) => typeof value !== 'boolean')) {
+        state.diagnostics.push('invalid-settings');
+      } else {
+        state.settings = { ...state.settings, ...changes };
+      }
+      continue;
+    }
+
     if (event.type === 'game/started') {
       state.games[event.gameId] = {
         id: event.gameId,
@@ -106,6 +125,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         values: Array<Digit | null>(81).fill(null),
         notes: Array.from({ length: 81 }, () => []),
         conflicts: [],
+        mistakeCells: [],
         undoTargetId: null,
         redoTargetId: null,
         paused: false,
@@ -123,9 +143,9 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       continue;
     }
 
-    const active = activeStacks.get(event.gameId);
-    const redo = redoStacks.get(event.gameId);
-    if (!state.games[event.gameId] || !active || !redo) {
+    const active = event.gameId ? activeStacks.get(event.gameId) : undefined;
+    const redo = event.gameId ? redoStacks.get(event.gameId) : undefined;
+    if (!event.gameId || !state.games[event.gameId] || !active || !redo) {
       state.diagnostics.push('event-before-game');
       continue;
     }
@@ -224,6 +244,9 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       }
     }
     game.conflicts = deriveConflicts(game);
+    game.mistakeCells = game.settings.checkMistakes
+      ? game.values.flatMap((value, cell) => value !== null && value !== Number(game.puzzle.solution[cell]) ? [cell] : [])
+      : [];
     game.undoTargetId = activeStacks.get(game.id)?.at(-1) ?? null;
     game.redoTargetId = redoStacks.get(game.id)?.at(-1) ?? null;
   }

@@ -31,12 +31,12 @@ export class TestStepHelper {
 
   async step(
     id: string,
-    options: { description: string; verifications: Verification[] }
+    options: { description: string; verifications: Verification[]; persistenceStatus?: 'local' | 'memory-only' }
   ): Promise<void> {
     for (const verification of options.verifications) await verification.check();
 
     await expect(this.page.locator('[data-app-ready="true"]')).toBeVisible();
-    await expect(this.page.locator('[data-persistence-status="local"]')).toBeVisible();
+    await expect(this.page.locator(`[data-persistence-status="${options.persistenceStatus ?? 'local'}"]`)).toBeVisible();
     await this.page.mouse.move(0, 0);
     await this.page.evaluate(async () => {
       await document.fonts.ready;

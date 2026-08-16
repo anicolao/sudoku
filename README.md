@@ -25,8 +25,13 @@ reload; resume continues from the stored event snapshot without counting the
 interruption. Hints are cancellable, deterministic facts; completion
 is derived from the solved board; completed and abandoned attempts appear in
 local History; Restart retains the event log; and Start over creates a distinct
-game ID over the same committed puzzle. Storage recovery and settings are the
-next vertical slice.
+game ID over the same committed puzzle. App-level preference events are replayed
+and snapshotted into new games; optional mistake checking and timer visibility
+work from that snapshot. Malformed history is quarantined, V0 stores migrate
+atomically, failed persistence continues visibly in memory, Clear all physically
+removes every local Sudoku record, and a later browser tab becomes a live
+read-only projection instead of a competing writer. Keyboard and expanded
+responsive accessibility are the next vertical slice.
 
 ## Design documents
 
