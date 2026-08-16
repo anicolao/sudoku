@@ -18,7 +18,9 @@ replay, and render its givens as an accessible 9×9 grid. Players can now select
 cells, switch explicitly between Number and Notes modes, toggle pencil marks,
 enter and replace values, see peer and duplicate-conflict highlighting, inspect
 remaining number counts, and read a game log derived from the canonical stream.
-Undo and the remaining play controls arrive in the following reviewable slices.
+Erase, undo, and redo append compensating events instead of rewriting history;
+a new move after undo creates a visible branch and correctly retires redo. Pause
+and the remaining play controls arrive in the following reviewable slices.
 
 ## Design documents
 
