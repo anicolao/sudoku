@@ -14,8 +14,11 @@ The scaffold and first MVP vertical slice are implemented. The application can
 generate deterministic Easy puzzles in a Web Worker, independently prove a
 unique solution, reject puzzles beyond the allowed logical techniques, commit
 the complete puzzle definition as a `game/started` event, reconstruct it by
-replay, and render its givens as an accessible 9×9 grid. Values, notes, and the
-remaining play controls arrive in the following reviewable slices.
+replay, and render its givens as an accessible 9×9 grid. Players can now select
+cells, switch explicitly between Number and Notes modes, toggle pencil marks,
+enter and replace values, see peer and duplicate-conflict highlighting, inspect
+remaining number counts, and read a game log derived from the canonical stream.
+Undo and the remaining play controls arrive in the following reviewable slices.
 
 ## Design documents
 

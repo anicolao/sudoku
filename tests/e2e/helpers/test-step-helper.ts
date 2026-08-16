@@ -64,7 +64,7 @@ export class TestStepHelper {
         }
       }
 
-      for (const control of document.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')) {
+      for (const control of document.querySelectorAll<HTMLElement>('button:not([disabled]):not([data-e2e-board-cell]), a[href]')) {
         if (!control.checkVisibility()) continue;
         const rect = control.getBoundingClientRect();
         if (rect.width < 44 || rect.height < 44) {

@@ -1,12 +1,21 @@
 import { replay } from '$lib/domain/reducer';
 import type {
   AppProjection,
-  GameStartedEvent,
+  Digit,
+  GameSettings,
   PuzzleDefinition,
-  StoredEventDocumentV1
+  StoredEventDocumentV1,
+  SudokuEvent
 } from '$lib/domain/types';
 
 export const EVENT_STORE_KEY = 'sudoku.event-store.v1';
+
+const DEFAULT_SETTINGS: GameSettings = {
+  checkMistakes: false,
+  autoRemoveNotes: true,
+  showTimer: true,
+  numberFirst: true
+};
 
 const emptyDocument = (): StoredEventDocumentV1 => ({ storageVersion: 1, nextSequence: 1, events: [] });
 
@@ -20,6 +29,12 @@ function readDocument(storage: Storage): StoredEventDocumentV1 {
   return parsed;
 }
 
+export interface EventMetadata {
+  id: string;
+  occurredAt: Date;
+  elapsedMs?: number;
+}
+
 export class EventStore {
   private document: StoredEventDocumentV1;
   private projection: AppProjection;
@@ -29,30 +44,17 @@ export class EventStore {
     this.projection = replay(this.document.events);
   }
 
-  getProjection(): AppProjection {
-    return structuredClone(this.projection);
-  }
+  getProjection(): AppProjection { return structuredClone(this.projection); }
+  getDocument(): StoredEventDocumentV1 { return structuredClone(this.document); }
 
-  getDocument(): StoredEventDocumentV1 {
-    return structuredClone(this.document);
-  }
-
-  startGame(puzzle: PuzzleDefinition, now: Date, id: string): AppProjection {
+  private append(
+    metadata: EventMetadata,
+    create: (sequence: number) => SudokuEvent
+  ): AppProjection {
     const latest = readDocument(this.storage);
-    const gameId = `game-${puzzle.id}-${latest.nextSequence}`;
-    const event: GameStartedEvent = {
-      id,
-      sequence: latest.nextSequence,
-      gameId,
-      type: 'game/started',
-      payload: { gameId, puzzle },
-      occurredAt: now.toISOString(),
-      elapsedMs: 0,
-      schemaVersion: 1,
-      reducerVersion: 1
-    };
+    const event = create(latest.nextSequence);
     const next: StoredEventDocumentV1 = {
-      ...latest,
+      storageVersion: 1,
       nextSequence: latest.nextSequence + 1,
       events: [...latest.events, event]
     };
@@ -60,5 +62,56 @@ export class EventStore {
     this.document = next;
     this.projection = replay(next.events);
     return this.getProjection();
+  }
+
+  startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => {
+      const gameId = `game-${puzzle.id}-${sequence}`;
+      return {
+        id: metadata.id,
+        sequence,
+        gameId,
+        type: 'game/started',
+        payload: { gameId, puzzle, settings: DEFAULT_SETTINGS },
+        occurredAt: metadata.occurredAt.toISOString(),
+        elapsedMs: metadata.elapsedMs ?? 0,
+        schemaVersion: 1,
+        reducerVersion: 1
+      };
+    });
+  }
+
+  enterValue(gameId: string, cell: number, value: Digit, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'cell/value-entered',
+      payload: { cell, value },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
+  toggleNote(
+    gameId: string,
+    cell: number,
+    value: Digit,
+    enabled: boolean,
+    metadata: EventMetadata
+  ): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'cell/note-toggled',
+      payload: { cell, value, enabled },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
   }
 }

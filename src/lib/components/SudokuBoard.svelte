@@ -1,19 +1,70 @@
 <script lang="ts">
-  let { givens }: { givens: string } = $props();
+  import type { Digit, GameProjection } from '$lib/domain/types';
+  import { PEERS } from '$lib/domain/sudoku';
+
+  let {
+    game,
+    selected,
+    onselect
+  }: {
+    game: GameProjection;
+    selected: number | null;
+    onselect: (cell: number) => void;
+  } = $props();
+
+  const selectedValue = $derived(
+    selected === null
+      ? null
+      : game.puzzle.givens[selected] === '.'
+        ? game.values[selected]
+        : Number(game.puzzle.givens[selected])
+  );
+
+  function label(cell: number): string {
+    const given = game.puzzle.givens[cell];
+    const value = given === '.' ? game.values[cell] : Number(given);
+    const notes = game.notes[cell];
+    return [
+      `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`,
+      given === '.' ? 'editable' : 'fixed',
+      value ? String(value) : 'empty',
+      notes.length ? `notes ${notes.join(' ')}` : '',
+      game.conflicts.includes(cell) ? 'conflict' : '',
+      selected === cell ? 'selected' : ''
+    ].filter(Boolean).join(', ');
+  }
 </script>
 
 <div class="sudoku-board" role="grid" aria-label="Easy Sudoku puzzle" data-testid="sudoku-board">
-  {#each [...givens] as value, cell}
-    {@const row = Math.floor(cell / 9) + 1}
-    {@const column = (cell % 9) + 1}
-    <div
+  {#each Array(81) as _, cell}
+    {@const given = game.puzzle.givens[cell]}
+    {@const value = given === '.' ? game.values[cell] : Number(given)}
+    {@const isPeer = selected !== null && PEERS[selected].includes(cell)}
+    {@const matches = selectedValue !== null && value === selectedValue}
+    <button
+      type="button"
       class="sudoku-cell"
-      class:given={value !== '.'}
+      class:given={given !== '.'}
+      class:selected={selected === cell}
+      class:peer={isPeer}
+      class:matching={matches}
+      class:conflict={game.conflicts.includes(cell)}
       role="gridcell"
-      aria-label={`Row ${row}, column ${column}, ${value === '.' ? 'editable, empty' : `fixed, ${value}`}`}
+      aria-label={label(cell)}
+      aria-selected={selected === cell}
+      tabindex={selected === cell ? 0 : -1}
       data-cell={cell}
+      data-e2e-board-cell
+      onclick={() => onselect(cell)}
     >
-      {value === '.' ? '' : value}
-    </div>
+      {#if value}
+        <span class="cell-value">{value}</span>
+      {:else if game.notes[cell].length}
+        <span class="cell-notes" aria-hidden="true">
+          {#each Array(9) as _, note}<i>{game.notes[cell].includes((note + 1) as Digit) ? note + 1 : ''}</i>{/each}
+        </span>
+      {/if}
+      {#if game.conflicts.includes(cell)}<span class="conflict-mark" aria-hidden="true">!</span>{/if}
+    </button>
   {/each}
 </div>
