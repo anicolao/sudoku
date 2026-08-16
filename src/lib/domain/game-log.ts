@@ -1,4 +1,4 @@
-import type { GameProjection, ReversibleEvent, SudokuEvent } from './types';
+import type { GameProjection, ReversibleEvent, SettingsChangedEvent, SudokuEvent } from './types';
 
 const cellName = (cell: number): string => `r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`;
 
@@ -17,7 +17,7 @@ export function describeMove(event: ReversibleEvent): string {
 
 export function formatGameLog(events: readonly SudokuEvent[], gameId: string, game?: GameProjection): GameLogEntry[] {
   const entries: GameLogEntry[] = events
-    .filter((event) => event.gameId === gameId)
+    .filter((event): event is Exclude<SudokuEvent, SettingsChangedEvent> => event.gameId === gameId)
     .map((event) => {
       if (event.type === 'game/started') {
         return { id: event.id, type: event.type, text: 'Started Easy puzzle' };

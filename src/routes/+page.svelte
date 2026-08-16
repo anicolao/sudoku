@@ -5,24 +5,14 @@
   import { describeMove, formatGameLog } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
   import { elapsedAt, formatElapsed } from '$lib/domain/selectors';
-  import type { AppProjection, Digit, ReversibleEvent } from '$lib/domain/types';
+  import type { AppProjection, Digit, GameSettings, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
-  import { EventStore, type EventMetadata } from '$lib/storage/event-store';
+  import { EVENT_STORE_KEY, EventStore, loadEventStore, type EventMetadata } from '$lib/storage/event-store';
 
   type PersistenceStatus = 'checking' | 'local' | 'memory-only';
   type GenerationStatus = 'idle' | 'generating' | 'failed';
   type InputMode = 'number' | 'notes';
-  type View = 'play' | 'puzzles' | 'history';
-
-  class MemoryStorage implements Storage {
-    private values = new Map<string, string>();
-    get length() { return this.values.size; }
-    clear() { this.values.clear(); }
-    getItem(key: string) { return this.values.get(key) ?? null; }
-    key(index: number) { return [...this.values.keys()][index] ?? null; }
-    removeItem(key: string) { this.values.delete(key); }
-    setItem(key: string, value: string) { this.values.set(key, value); }
-  }
+  type View = 'play' | 'puzzles' | 'history' | 'settings';
 
   const version = import.meta.env.VITE_APP_VERSION;
   const revision = import.meta.env.VITE_GIT_HASH;
@@ -37,6 +27,9 @@
   let view = $state<View>('play');
   let reviewedGameId = $state<string | null>(null);
   let hintDialogOpen = $state(false);
+  let clearDialogOpen = $state(false);
+  let storageWarning = $state('');
+  let secondaryTab = $state(false);
   let timerNow = $state(
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
@@ -46,7 +39,7 @@
   );
   const currentGame = $derived(reviewedGameId ? projection.games[reviewedGameId] : activeGame);
   const isReadOnly = $derived(
-    !currentGame || currentGame.status !== 'active' || reviewedGameId !== null
+    !currentGame || currentGame.status !== 'active' || reviewedGameId !== null || secondaryTab
   );
   const gameLog = $derived(
     store && currentGame ? formatGameLog(store.getDocument().events, currentGame.id, currentGame) : []
@@ -72,15 +65,10 @@
   const elapsedLabel = $derived(currentGame ? formatElapsed(elapsedAt(currentGame, timerNow)) : '00:00');
 
   onMount(() => {
-    try {
-      localStorage.setItem('sudoku.storage-check', '1');
-      localStorage.removeItem('sudoku.storage-check');
-      store = new EventStore(localStorage);
-      persistenceStatus = 'local';
-    } catch {
-      store = new EventStore(new MemoryStorage());
-      persistenceStatus = 'memory-only';
-    }
+    const loaded = loadEventStore(localStorage, timerNow);
+    store = loaded.store;
+    storageWarning = loaded.warning;
+    persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
     projection = store.getProjection();
     if (import.meta.env.VITE_E2E_MODE === '1') {
       const latestTime = store.getDocument().events.at(-1)?.occurredAt;
@@ -94,16 +82,50 @@
       });
     }
 
+    const cleanup: Array<() => void> = [];
     const updateE2EClock = (event: Event): void => {
       timerNow = new Date(timerNow.getTime() + (event as CustomEvent<number>).detail);
     };
     if (import.meta.env.VITE_E2E_MODE === '1') {
       window.addEventListener('sudoku:e2e-clock', updateE2EClock);
-      return () => window.removeEventListener('sudoku:e2e-clock', updateE2EClock);
+      cleanup.push(() => window.removeEventListener('sudoku:e2e-clock', updateE2EClock));
+    } else {
+      const timer = window.setInterval(() => timerNow = new Date(), 250);
+      cleanup.push(() => window.clearInterval(timer));
     }
-    const timer = window.setInterval(() => timerNow = new Date(), 250);
-    return () => window.clearInterval(timer);
+
+    const refreshFromStorage = (event: StorageEvent): void => {
+      if (event.key === EVENT_STORE_KEY && store) projection = store.reload();
+    };
+    window.addEventListener('storage', refreshFromStorage);
+    cleanup.push(() => window.removeEventListener('storage', refreshFromStorage));
+
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('sudoku.active-tab.v1');
+      const instanceId = import.meta.env.VITE_E2E_MODE === '1'
+        ? `${performance.timeOrigin}-${Math.random()}`
+        : crypto.randomUUID();
+      channel.onmessage = (message: MessageEvent<{ type: string; sender: string }>) => {
+        if (message.data.sender === instanceId) return;
+        if (message.data.type === 'hello' && !secondaryTab) {
+          channel.postMessage({ type: 'active', sender: instanceId });
+        } else if (message.data.type === 'active') {
+          secondaryTab = true;
+          announcement = 'Another tab is active. This tab is read only.';
+        }
+      };
+      channel.postMessage({ type: 'hello', sender: instanceId });
+      cleanup.push(() => channel.close());
+    }
+
+    return () => cleanup.forEach((dispose) => dispose());
   });
+
+  function syncStoreStatus(): void {
+    if (!store) return;
+    persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
+    storageWarning = store.getWarning();
+  }
 
   function metadata(trackElapsed = true): EventMetadata {
     if (!store) throw new Error('Puzzle storage is not ready');
@@ -124,6 +146,7 @@
       const { puzzle } = await generateInWorker(seed);
       if (!store) throw new Error('Puzzle storage is not ready');
       projection = store.startGame(puzzle, metadata(false));
+      syncStoreStatus();
       reviewedGameId = null;
       view = 'play';
       generationStatus = 'idle';
@@ -155,6 +178,7 @@
         ? `Entered ${value}, conflict`
         : `Entered ${value}`;
     }
+    syncStoreStatus();
   }
 
   function remaining(value: Digit): number {
@@ -237,6 +261,24 @@
     if (next !== 'play') reviewedGameId = null;
   }
 
+  function changeSetting(key: keyof GameSettings): void {
+    if (!store || secondaryTab) return;
+    projection = store.changeSettings({ [key]: !projection.settings[key] }, metadata(false));
+    syncStoreStatus();
+    announcement = 'Setting saved on this device';
+  }
+
+  function clearAllData(): void {
+    if (!store) return;
+    projection = store.clearAll();
+    reviewedGameId = null;
+    selectedCell = null;
+    clearDialogOpen = false;
+    view = 'play';
+    storageWarning = '';
+    announcement = 'All local Sudoku data cleared';
+  }
+
   function reviewGame(gameId: string): void {
     reviewedGameId = gameId;
     selectedCell = null;
@@ -255,8 +297,26 @@
     <div class="device-status" role="status"><span class:warning={persistenceStatus === 'memory-only'} aria-hidden="true"></span>{persistenceStatus === 'memory-only' ? 'Memory only' : 'On this device'}</div>
   </header>
 
+  {#if storageWarning || secondaryTab}
+    <div class="app-warning" role="status">
+      <strong>{secondaryTab ? 'Read-only tab' : 'Storage notice'}</strong>
+      <span>{secondaryTab ? 'Another Sudoku tab was opened first. Continue there to make changes.' : storageWarning}</span>
+    </div>
+  {/if}
+
   <main>
-    {#if view === 'history'}
+    {#if view === 'settings'}
+      <section class="library-view settings-view" aria-labelledby="settings-title">
+        <div class="library-heading"><p class="eyebrow">On this device</p><h1 id="settings-title">Settings</h1><p>Preferences apply to new puzzles and stay in this browser.</p></div>
+        <div class="settings-list">
+          <button type="button" role="switch" aria-checked={projection.settings.checkMistakes} onclick={() => changeSetting('checkMistakes')} disabled={secondaryTab}><span><strong>Check mistakes</strong><small>Mark entries that do not match the solution.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.autoRemoveNotes} onclick={() => changeSetting('autoRemoveNotes')} disabled={secondaryTab}><span><strong>Remove matching notes</strong><small>Clear a digit from peers after placing it.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.showTimer} onclick={() => changeSetting('showTimer')} disabled={secondaryTab}><span><strong>Show timer</strong><small>Display active solving time while you play.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.numberFirst} onclick={() => changeSetting('numberFirst')} disabled={secondaryTab}><span><strong>Number-first input</strong><small>Allow choosing a number before choosing its cell.</small></span><i aria-hidden="true"></i></button>
+        </div>
+        <section class="privacy-card" aria-labelledby="local-data-title"><div><h2 id="local-data-title">Local Sudoku data</h2><p>Delete every puzzle, event, preference, and recovery copy from this browser. This cannot be undone.</p></div><button type="button" onclick={() => clearDialogOpen = true} disabled={secondaryTab}>Clear all local Sudoku data</button></section>
+      </section>
+    {:else if view === 'history'}
       <section class="library-view" aria-labelledby="history-title">
         <div class="library-heading"><p class="eyebrow">On this device</p><h1 id="history-title">History</h1><p>Every attempt is reconstructed from its local event stream.</p></div>
         {#if Object.keys(projection.games).length === 0}
@@ -276,14 +336,14 @@
     {:else if view === 'puzzles'}
       <section class="library-view" aria-labelledby="puzzles-title">
         <div class="library-heading"><p class="eyebrow">Generated here</p><h1 id="puzzles-title">Puzzles</h1><p>Easy puzzles are generated and validated entirely on this device.</p></div>
-        {#if !activeGame || activeGame.status !== 'active'}<button class="primary-action compact" type="button" onclick={generatePuzzle}>Generate Easy puzzle</button>{:else}<div class="empty-library"><strong>One puzzle is in progress</strong><span>Finish or abandon it before generating another.</span><button type="button" onclick={() => showView('play')}>Return to puzzle</button></div>{/if}
+        {#if !activeGame || activeGame.status !== 'active'}<button class="primary-action compact" type="button" onclick={generatePuzzle} disabled={secondaryTab}>Generate Easy puzzle</button>{:else}<div class="empty-library"><strong>One puzzle is in progress</strong><span>Finish or abandon it before generating another.</span><button type="button" onclick={() => showView('play')}>Return to puzzle</button></div>{/if}
       </section>
     {:else if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
         <div class="puzzle-heading">
           <div><p class="eyebrow">Easy puzzle</p><h1 id="puzzle-title">{currentGame.status === 'complete' ? 'Puzzle complete' : currentGame.status === 'abandoned' ? 'Past attempt' : currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
           <div class="session-status">
-            <span class="timer" aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
+            {#if currentGame.settings.showTimer}<span class="timer" aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>{/if}
             {#if currentGame.status === 'active' && !reviewedGameId}<button type="button" class="pause-action" onclick={togglePause}>{currentGame.paused ? 'Resume' : 'Pause'}</button>{/if}
           </div>
         </div>
@@ -340,7 +400,7 @@
           {#if generationStatus === 'generating'}
             <button class="primary-action" type="button" disabled aria-busy="true">Generating and validating…</button>
           {:else}
-            <button class="primary-action" type="button" onclick={generatePuzzle}>{generationStatus === 'failed' ? 'Retry' : 'Generate Easy puzzle'}</button>
+            <button class="primary-action" type="button" onclick={generatePuzzle} disabled={secondaryTab}>{generationStatus === 'failed' ? 'Retry' : 'Generate Easy puzzle'}</button>
           {/if}
           {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
           <p class="local-note">The puzzle and its solution never leave this browser.</p>
@@ -357,7 +417,15 @@
     </div>
   {/if}
 
+  {#if clearDialogOpen}
+    <div class="dialog-backdrop" role="presentation">
+      <div class="confirm-dialog danger-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-title">
+        <p class="dialog-symbol" aria-hidden="true">!</p><h2 id="clear-title">Clear all local data?</h2><p>Every puzzle, move, preference, and recovery copy will be permanently deleted.</p><div><button type="button" onclick={() => clearDialogOpen = false}>Cancel</button><button type="button" class="danger" onclick={clearAllData}>Clear everything</button></div>
+      </div>
+    </div>
+  {/if}
+
   <p class="sr-live" aria-live="polite">{announcement}</p>
-  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button></nav>
+  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
   <footer><span data-testid="build-marker">{buildLabel(version, revision)}</span><span>Private by design</span></footer>
 </div>
