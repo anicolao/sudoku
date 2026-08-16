@@ -22,6 +22,7 @@
   let store = $state<EventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
+  let selectedDigit = $state<Digit | null>(null);
   let inputMode = $state<InputMode>('number');
   let announcement = $state('');
   let view = $state<View>('play');
@@ -162,22 +163,35 @@
     const row = Math.floor(cell / 9) + 1;
     const column = (cell % 9) + 1;
     announcement = `Selected row ${row}, column ${column}`;
+    if (selectedDigit && currentGame?.settings.numberFirst && currentGame.puzzle.givens[cell] === '.') {
+      enterDigit(selectedDigit, cell);
+    }
   }
 
-  function enterDigit(value: Digit): void {
-    if (!store || !currentGame || isReadOnly || currentGame.paused || selectedCell === null) return;
-    if (currentGame.puzzle.givens[selectedCell] !== '.') return;
+  function enterDigit(value: Digit, cellOverride: number | null = null): void {
+    if (!store || !currentGame || isReadOnly || currentGame.paused) return;
+    const cell = cellOverride ?? selectedCell;
+    if (cell === null) {
+      if (currentGame.settings.numberFirst) {
+        selectedDigit = value;
+        announcement = `Selected number ${value}`;
+      }
+      return;
+    }
+    selectedCell = cell;
+    if (currentGame.puzzle.givens[cell] !== '.') return;
     if (inputMode === 'notes') {
-      const enabled = !currentGame.notes[selectedCell].includes(value);
-      projection = store.toggleNote(currentGame.id, selectedCell, value, enabled, metadata());
+      const enabled = !currentGame.notes[cell].includes(value);
+      projection = store.toggleNote(currentGame.id, cell, value, enabled, metadata());
       announcement = `${enabled ? 'Added' : 'Removed'} note ${value}`;
     } else {
-      const next = store.enterValue(currentGame.id, selectedCell, value, metadata());
+      const next = store.enterValue(currentGame.id, cell, value, metadata());
       projection = next;
-      announcement = next.games[currentGame.id].conflicts.includes(selectedCell)
+      announcement = next.games[currentGame.id].conflicts.includes(cell)
         ? `Entered ${value}, conflict`
         : `Entered ${value}`;
     }
+    if (selectedDigit === value) selectedDigit = null;
     syncStoreStatus();
   }
 
@@ -193,6 +207,26 @@
     if (!store || !currentGame || selectedCell === null || !canErase) return;
     projection = store.clearCell(currentGame.id, selectedCell, metadata());
     announcement = `Erased row ${Math.floor(selectedCell / 9) + 1}, column ${(selectedCell % 9) + 1}`;
+  }
+
+  function eraseCellAt(cell: number): void {
+    selectedCell = cell;
+    if (!store || !currentGame || isReadOnly || currentGame.paused || currentGame.puzzle.givens[cell] !== '.') return;
+    if (currentGame.values[cell] === null && currentGame.notes[cell].length === 0) return;
+    projection = store.clearCell(currentGame.id, cell, metadata());
+    announcement = `Erased row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
+  }
+
+  function toggleNotesMode(): void {
+    if (isReadOnly || currentGame?.paused) return;
+    inputMode = inputMode === 'number' ? 'notes' : 'number';
+    announcement = `${inputMode === 'notes' ? 'Notes' : 'Number'} mode`;
+  }
+
+  function handleGlobalKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape') return;
+    if (hintDialogOpen) hintDialogOpen = false;
+    else if (clearDialogOpen) clearDialogOpen = false;
   }
 
   function undo(): void {
@@ -286,6 +320,8 @@
   }
 </script>
 
+<svelte:window onkeydown={handleGlobalKeydown} />
+
 <svelte:head><title>Sudoku — Local puzzle play</title></svelte:head>
 
 <div class="app-shell" class:playing={currentGame} data-e2e-layout data-app-ready={persistenceStatus !== 'checking'} data-persistence-status={persistenceStatus}>
@@ -355,7 +391,7 @@
                 <span aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small>Your active time is frozen.</small>
               </div>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} />
+              <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
             <p class="board-caption">Generated and validated here · {currentGame.puzzle.id.replace('easy-v1-', '#')}</p>
@@ -368,7 +404,7 @@
             </div>
             <div class="number-pad" aria-label="Number pad">
               {#each [1,2,3,4,5,6,7,8,9] as value}
-                <button type="button" disabled={currentGame.paused || isReadOnly} onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
+                <button type="button" disabled={currentGame.paused || isReadOnly} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
                   <strong>{value}</strong><small>{remaining(value as Digit)}</small>
                 </button>
               {/each}

@@ -52,6 +52,21 @@ export default defineConfig({
         viewport: { width: 393, height: 852 },
         serviceWorkers: 'allow'
       }
+    },
+    {
+      name: 'phone-narrow',
+      testMatch: '**/011-responsive-keyboard-accessibility/*.spec.ts',
+      use: { viewport: { width: 320, height: 640 } }
+    },
+    {
+      name: 'phone-landscape',
+      testMatch: '**/011-responsive-keyboard-accessibility/*.spec.ts',
+      use: { viewport: { width: 852, height: 393 } }
+    },
+    {
+      name: 'zoom-200',
+      testMatch: '**/011-responsive-keyboard-accessibility/*.spec.ts',
+      use: { viewport: { width: 320, height: 450 } }
     }
   ],
   webServer: {
