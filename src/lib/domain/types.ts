@@ -53,7 +53,27 @@ export interface NoteToggledEvent extends EventEnvelope {
   payload: { cell: number; value: Digit; enabled: boolean };
 }
 
-export type SudokuEvent = GameStartedEvent | ValueEnteredEvent | NoteToggledEvent;
+export interface CellClearedEvent extends EventEnvelope {
+  type: 'cell/cleared';
+  payload: { cell: number };
+}
+
+export interface MoveUndoneEvent extends EventEnvelope {
+  type: 'move/undone';
+  payload: { targetEventId: string };
+}
+
+export interface MoveRedoneEvent extends EventEnvelope {
+  type: 'move/redone';
+  payload: { targetEventId: string };
+}
+
+export type ReversibleEvent = ValueEnteredEvent | NoteToggledEvent | CellClearedEvent;
+export type SudokuEvent =
+  | GameStartedEvent
+  | ReversibleEvent
+  | MoveUndoneEvent
+  | MoveRedoneEvent;
 
 export interface GameProjection {
   id: string;
@@ -63,6 +83,8 @@ export interface GameProjection {
   values: Array<Digit | null>;
   notes: Digit[][];
   conflicts: number[];
+  undoTargetId: string | null;
+  redoTargetId: string | null;
 }
 
 export interface AppProjection {

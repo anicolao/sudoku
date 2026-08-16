@@ -2,9 +2,9 @@
   import { onMount } from 'svelte';
   import { buildLabel } from '$lib/app-meta';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
-  import { formatGameLog } from '$lib/domain/game-log';
+  import { describeMove, formatGameLog } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
-  import type { AppProjection, Digit } from '$lib/domain/types';
+  import type { AppProjection, Digit, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
   import { EventStore, type EventMetadata } from '$lib/storage/event-store';
 
@@ -38,6 +38,24 @@
   );
   const gameLog = $derived(
     store && currentGame ? formatGameLog(store.getDocument().events, currentGame.id) : []
+  );
+  const events = $derived.by(() => {
+    void projection;
+    return store ? store.getDocument().events : [];
+  });
+  const undoMove = $derived(
+    currentGame?.undoTargetId
+      ? events.find((event) => event.id === currentGame.undoTargetId) as ReversibleEvent | undefined
+      : undefined
+  );
+  const redoMove = $derived(
+    currentGame?.redoTargetId
+      ? events.find((event) => event.id === currentGame.redoTargetId) as ReversibleEvent | undefined
+      : undefined
+  );
+  const canErase = $derived(
+    !!currentGame && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
+    (currentGame.values[selectedCell] !== null || currentGame.notes[selectedCell].length > 0)
   );
 
   onMount(() => {
@@ -117,6 +135,24 @@
     );
     return 9 - board.filter((entry) => entry === value).length;
   }
+
+  function eraseCell(): void {
+    if (!store || !currentGame || selectedCell === null || !canErase) return;
+    projection = store.clearCell(currentGame.id, selectedCell, metadata());
+    announcement = `Erased row ${Math.floor(selectedCell / 9) + 1}, column ${(selectedCell % 9) + 1}`;
+  }
+
+  function undo(): void {
+    if (!store || !currentGame?.undoTargetId) return;
+    projection = store.undo(currentGame.id, currentGame.undoTargetId, metadata());
+    announcement = 'Undid last move';
+  }
+
+  function redo(): void {
+    if (!store || !currentGame?.redoTargetId) return;
+    projection = store.redo(currentGame.id, currentGame.redoTargetId, metadata());
+    announcement = 'Redid last move';
+  }
 </script>
 
 <svelte:head><title>Sudoku — Local puzzle play</title></svelte:head>
@@ -157,7 +193,10 @@
               {/each}
             </div>
             <div class="utility-actions">
-              <button type="button" disabled>Undo</button><button type="button" disabled>Redo</button><button type="button" disabled>Erase</button><button type="button" disabled>Hint</button>
+              <button type="button" onclick={undo} disabled={!undoMove} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
+              <button type="button" onclick={redo} disabled={!redoMove} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
+              <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
+              <button type="button" disabled>Hint</button>
             </div>
             <section class="game-log" aria-labelledby="game-log-title">
               <div class="log-heading"><h2 id="game-log-title">Game log</h2><span>{gameLog.length} {gameLog.length === 1 ? 'event' : 'events'}</span></div>

@@ -62,4 +62,28 @@ describe('event replay for values and notes', () => {
     expect(state.games['game-1'].values[0]).toBeNull();
     expect(state.diagnostics).toContain('illegal-cell-edit');
   });
+
+  it('derives undo, redo, and a new branch without deleting history', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+        }
+      },
+      { ...envelope(2), type: 'cell/value-entered', payload: { cell: 1, value: 2 } },
+      { ...envelope(3), type: 'cell/cleared', payload: { cell: 1 } },
+      { ...envelope(4), type: 'move/undone', payload: { targetEventId: 'event-3' } },
+      { ...envelope(5), type: 'move/redone', payload: { targetEventId: 'event-3' } },
+      { ...envelope(6), type: 'move/undone', payload: { targetEventId: 'event-3' } },
+      { ...envelope(7), type: 'cell/value-entered', payload: { cell: 2, value: 3 } }
+    ];
+    const state = replay(events);
+    expect(state.games['game-1'].values.slice(0, 3)).toEqual([null, 2, 3]);
+    expect(state.games['game-1'].undoTargetId).toBe('event-7');
+    expect(state.games['game-1'].redoTargetId).toBeNull();
+    expect(state.diagnostics).toEqual([]);
+    expect(events).toHaveLength(7);
+  });
 });

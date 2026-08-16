@@ -114,4 +114,46 @@ export class EventStore {
       reducerVersion: 1
     }));
   }
+
+  clearCell(gameId: string, cell: number, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'cell/cleared',
+      payload: { cell },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
+  undo(gameId: string, targetEventId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'move/undone',
+      payload: { targetEventId },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
+  redo(gameId: string, targetEventId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'move/redone',
+      payload: { targetEventId },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
 }
