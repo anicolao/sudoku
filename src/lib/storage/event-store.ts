@@ -156,4 +156,20 @@ export class EventStore {
       reducerVersion: 1
     }));
   }
+
+  pause(gameId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id, sequence, gameId, type: 'game/paused', payload: {},
+      occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1, reducerVersion: 1
+    }));
+  }
+
+  resume(gameId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id, sequence, gameId, type: 'game/resumed', payload: {},
+      occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1, reducerVersion: 1
+    }));
+  }
 }

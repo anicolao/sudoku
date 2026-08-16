@@ -58,8 +58,15 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .puzzle-heading { width: 100%; display: flex; align-items: end; justify-content: space-between; gap: 18px; }
 .puzzle-heading h1 { font-size: clamp(1.75rem, 4vw, 2.6rem); }
 .puzzle-facts { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.session-status { display: flex; align-items: center; gap: 8px; }
+.timer { min-width: 62px; color: #343840; font-size: 1.12rem; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; }
+.pause-action { min-width: 76px; min-height: 44px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fffdf8; font-weight: 700; cursor: pointer; }
 .game-workspace { min-width: 0; display: grid; grid-template-columns: minmax(0, 600px) minmax(250px, 290px); gap: 24px; align-items: start; }
 .board-column { min-width: 0; display: grid; gap: 10px; justify-items: center; }
+.paused-cover { width: min(100%, 600px); aspect-ratio: 1; display: grid; place-content: center; justify-items: center; gap: 8px; border: 3px solid #343840; color: #565a62; background: repeating-linear-gradient(135deg, #f3f2ed, #f3f2ed 12px, #eeede8 12px, #eeede8 24px); text-align: center; }
+.paused-cover span { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #4654a3; background: #e1e4f7; font-size: 1.4rem; font-weight: 700; }
+.paused-cover strong { color: #20242b; font-size: 1.35rem; }
+.paused-cover small { font-size: .9rem; }
 .sudoku-board { width: min(100%, 600px); aspect-ratio: 1; display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid #343840; background: #fff; }
 .sudoku-cell { position: relative; min-width: 0; padding: 0; display: grid; place-items: center; border: 0; border-right: 1px solid #c8c7c2; border-bottom: 1px solid #c8c7c2; border-radius: 0; color: #4654a3; background: #fff; font-size: clamp(1.25rem, 5vw, 2.15rem); font-variant-numeric: tabular-nums; cursor: pointer; }
 .sudoku-cell.given { color: #20242b; font-weight: 700; background: #fffdf8; }
@@ -76,11 +83,13 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .cell-notes i { display: grid; place-items: center; font-style: normal; }
 .conflict-mark { position: absolute; top: 2px; right: 3px; font-size: .68rem; font-weight: 700; }
 .board-caption { margin: 0; color: #62656b; font-size: .84rem; text-align: center; }
+.board-validation { display: inline-flex; align-items: center; min-height: 28px; margin-bottom: -6px; padding: 4px 9px; border: 1px solid #d8daf0; border-radius: 999px; color: #3f477d; background: #f0f1fa; font-size: .76rem; font-weight: 700; }
 .play-controls { min-width: 0; display: grid; gap: 12px; }
 .mode-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid #c8c7c2; border-radius: 10px; background: #efeee9; }
 .mode-switch button { min-height: 44px; border: 0; border-radius: 7px; color: #62656b; background: transparent; font-weight: 700; cursor: pointer; }
 .mode-switch button.active { color: #4654a3; background: #fffdf8; box-shadow: 0 1px 3px #0002; }
 .mode-switch button:last-child.active { color: #8a5818; box-shadow: inset 0 0 0 2px #b7791f; }
+.mode-switch button:disabled, .number-pad button:disabled { cursor: not-allowed; opacity: .55; }
 .number-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .number-pad button { min-width: 44px; min-height: 52px; display: grid; place-items: center; padding: 3px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; cursor: pointer; }
 .number-pad strong { font-size: 1.35rem; line-height: 1; }
@@ -95,6 +104,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .game-log ol { max-height: 164px; margin: 9px 0 0; padding: 0; overflow: auto; list-style: none; }
 .game-log li { padding: 5px 0; border-top: 1px solid #eceae4; color: #565a62; font-size: .8rem; }
 .game-log li:first-child { color: #20242b; font-weight: 700; }
+.game-log.covered { color: #777a80; background: #f1f0ec; }
+.log-paused { margin: 16px 0 6px; color: #777a80; font-size: .82rem; text-align: center; }
 .sr-live { position: fixed; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 .primary-nav { min-height: 66px; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #dedcd4; background: #fffdf8; }

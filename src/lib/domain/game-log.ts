@@ -21,6 +21,8 @@ export function formatGameLog(events: readonly SudokuEvent[], gameId: string): G
       if (event.type === 'game/started') {
         return { id: event.id, type: event.type, text: 'Started Easy puzzle' };
       }
+      if (event.type === 'game/paused') return { id: event.id, type: event.type, text: 'Paused puzzle' };
+      if (event.type === 'game/resumed') return { id: event.id, type: event.type, text: 'Resumed puzzle' };
       if (event.type === 'move/undone' || event.type === 'move/redone') {
         const target = events.find((candidate) => candidate.id === event.payload.targetEventId);
         const targetText = target && (target.type === 'cell/value-entered' || target.type === 'cell/note-toggled' || target.type === 'cell/cleared')

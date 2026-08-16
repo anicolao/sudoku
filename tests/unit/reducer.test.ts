@@ -86,4 +86,24 @@ describe('event replay for values and notes', () => {
     expect(state.diagnostics).toEqual([]);
     expect(events).toHaveLength(7);
   });
+
+  it('freezes elapsed time while paused and resumes from the event snapshot', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+        }
+      },
+      { ...envelope(2), elapsedMs: 65_000, type: 'game/paused', payload: {} },
+      { ...envelope(3), elapsedMs: 65_000, type: 'game/resumed', payload: {} },
+      { ...envelope(4), elapsedMs: 95_000, type: 'game/paused', payload: {} }
+    ];
+    const game = replay(events).games['game-1'];
+    expect(game.paused).toBe(true);
+    expect(game.elapsedMs).toBe(95_000);
+    expect(game.resumedAt).toBeNull();
+    expect(replay(events).games['game-1']).toEqual(game);
+  });
 });
