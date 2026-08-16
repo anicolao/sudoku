@@ -30,8 +30,13 @@ and snapshotted into new games; optional mistake checking and timer visibility
 work from that snapshot. Malformed history is quarantined, V0 stores migrate
 atomically, failed persistence continues visibly in memory, Clear all physically
 removes every local Sudoku record, and a later browser tab becomes a live
-read-only projection instead of a competing writer. Keyboard and expanded
-responsive accessibility are the next vertical slice.
+read-only projection instead of a competing writer. The board now uses semantic
+row/gridcell structure and roving focus; number-first input and Arrow, Home, End,
+digit, Notes, Delete, undo, redo, and Escape keyboard commands are covered by
+the same flip-book test at phone, 320 px, landscape, 200%-equivalent reflow,
+tablet, and desktop sizes. The playable view passes the automated WCAG A/AA
+axe scan. Privacy enforcement and the complete installed-offline journey are
+the final vertical slice.
 
 ## Design documents
 
