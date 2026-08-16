@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f5ef" />
+    <meta
+      name="description"
+      content="A calm, local-only Sudoku puzzle app that works offline."
+    />
+    <meta name="application-name" content="Sudoku" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sudoku" />
+    <link rel="manifest" href="/sudoku/manifest.webmanifest" />
+    <link rel="icon" href="/sudoku/icon.svg" />
+    <link rel="apple-touch-icon" href="/sudoku/icon.svg" />
+    <link href="/sudoku/_app/immutable/entry/start.DJHjT5ZG.js" rel="modulepreload">
+		<link href="/sudoku/_app/immutable/chunks/sbIvXm2y.js" rel="modulepreload">
+		<link href="/sudoku/_app/immutable/chunks/C9Coh6gd.js" rel="modulepreload">
+		<link href="/sudoku/_app/immutable/entry/app.C5-JI4AX.js" rel="modulepreload">
+		<link href="/sudoku/_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="/sudoku/_app/immutable/nodes/0.BhpD-HUH.js" rel="modulepreload">
+		
+		<link href="/sudoku/_app/immutable/assets/0.lXWcd1um.css" rel="stylesheet">
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">
+			<script>
+				{
+					__sveltekit_1hm566x = {
+						base: "/sudoku",
+						assets: "/sudoku"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/sudoku/_app/immutable/entry/start.DJHjT5ZG.js"),
+						import("/sudoku/_app/immutable/entry/app.C5-JI4AX.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+
+					if ('serviceWorker' in navigator) {
+						const script_url = '/sudoku/service-worker.js';
+						const policy = globalThis?.window?.trustedTypes?.createPolicy(
+							'sveltekit-trusted-url',
+							{ createScriptURL(url) { return url; } }
+						);
+						const sanitised = policy?.createScriptURL(script_url) ?? script_url;
+						addEventListener('load', function () {
+							navigator.serviceWorker.register(sanitised);
+						});
+					}
+				}
+			</script>
+		</div>
+  </body>
+</html>
