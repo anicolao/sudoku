@@ -65,14 +65,15 @@ export class EventStore {
   }
 
   startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): AppProjection {
+    const storedPuzzle: PuzzleDefinition = { ...puzzle };
     return this.append(metadata, (sequence) => {
-      const gameId = `game-${puzzle.id}-${sequence}`;
+      const gameId = `game-${storedPuzzle.id}-${sequence}`;
       return {
         id: metadata.id,
         sequence,
         gameId,
         type: 'game/started',
-        payload: { gameId, puzzle, settings: DEFAULT_SETTINGS },
+        payload: { gameId, puzzle: storedPuzzle, settings: DEFAULT_SETTINGS },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: metadata.elapsedMs ?? 0,
         schemaVersion: 1,
@@ -168,6 +169,30 @@ export class EventStore {
   resume(gameId: string, metadata: EventMetadata): AppProjection {
     return this.append(metadata, (sequence) => ({
       id: metadata.id, sequence, gameId, type: 'game/resumed', payload: {},
+      occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1, reducerVersion: 1
+    }));
+  }
+
+  revealHint(gameId: string, cell: number, value: Digit, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id, sequence, gameId, type: 'hint/revealed', payload: { cell, value },
+      occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1, reducerVersion: 1
+    }));
+  }
+
+  restart(gameId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id, sequence, gameId, type: 'game/restarted', payload: {},
+      occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1, reducerVersion: 1
+    }));
+  }
+
+  abandon(gameId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id, sequence, gameId, type: 'game/abandoned', payload: {},
       occurredAt: metadata.occurredAt.toISOString(), elapsedMs: metadata.elapsedMs ?? 0,
       schemaVersion: 1, reducerVersion: 1
     }));

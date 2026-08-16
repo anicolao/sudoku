@@ -22,8 +22,11 @@ Erase, undo, and redo append compensating events instead of rewriting history;
 a new move after undo creates a visible branch and correctly retires redo. Pause
 freezes active elapsed time, covers the puzzle and log, and survives full-page
 reload; resume continues from the stored event snapshot without counting the
-interruption. Hints and the remaining play controls arrive in the following
-reviewable slices.
+interruption. Hints are cancellable, deterministic facts; completion
+is derived from the solved board; completed and abandoned attempts appear in
+local History; Restart retains the event log; and Start over creates a distinct
+game ID over the same committed puzzle. Storage recovery and settings are the
+next vertical slice.
 
 ## Design documents
 
