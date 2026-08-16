@@ -326,9 +326,10 @@ projection.
 | 012 | Installed offline use | production shell installed online, browser restart offline, resume/solve/history/reload |
 | 013 | Second-tab protection | later tab is read-only, first writer remains intact, storage event refreshes projection |
 
-Phone runs every ordinary scenario. Tablet and desktop run scenarios 002, 003,
-and 011. The complete viewport matrix runs 011. Offline has its own service
-worker-enabled project and does not run with the development server.
+Phone, tablet, and desktop run every ordinary scenario. The accessibility
+journey additionally runs at 320 px, phone landscape, and a 200%-equivalent
+reflow viewport. Offline has its own service-worker-enabled project against the
+production preview build.
 
 Scenario 002 also covers cancel and bounded failure: cancelling worker
 generation appends nothing, and exhausting the attempt budget shows Retry
@@ -405,16 +406,16 @@ cache traffic with application traffic.
 
 Offline proof uses the production build and `serviceWorkers: 'allow'`:
 
-1. launch a persistent context online against loopback preview;
+1. launch a fresh context online against loopback preview;
 2. load the app and wait for explicit `data-offline-ready="true"` after the
    service worker is active and the versioned shell cache is complete;
-3. start a puzzle, enter values/notes, pause, and close every page/context;
+3. start a puzzle, enter a value, pause, and close the page;
 4. set the context offline and reopen the installed URL;
 5. assert exact replay, resume, complete the puzzle, and open History;
-6. close and reopen offline again and prove the completed history remains;
+6. reload offline again and prove the completed board and History remain;
 7. inspect Cache Storage to ensure it contains application assets but not the
    `sudoku.event-store.v1` contents;
-8. return online and verify an app-shell update does not alter the event store.
+8. return the test context online during cleanup.
 
 This scenario is serial, has a documented project-level timeout if production
 browser restart needs more than the shared limit, and still uses observable

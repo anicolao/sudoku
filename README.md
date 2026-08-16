@@ -1,7 +1,7 @@
 # Sudoku
 
 Sudoku is a calm, local-only puzzle app for phone, tablet, and desktop. It is
-planned as an installable Svelte SPA with an immutable event log: every entered
+an installable Svelte SPA with an immutable event log: every entered
 number, note, undo, hint, pause, and completed puzzle is recorded as an event,
 and the visible game is rebuilt by replaying those events.
 
@@ -10,7 +10,7 @@ data and play history remain in this browser's `localStorage`. A service worker
 caches only the static application shell so a previously loaded app can be used
 offline.
 
-The scaffold and first MVP vertical slice are implemented. The application can
+The MVP is implemented. The application can
 generate deterministic Easy puzzles in a Web Worker, independently prove a
 unique solution, reject puzzles beyond the allowed logical techniques, commit
 the complete puzzle definition as a `game/started` event, reconstruct it by
@@ -35,8 +35,10 @@ row/gridcell structure and roving focus; number-first input and Arrow, Home, End
 digit, Notes, Delete, undo, redo, and Escape keyboard commands are covered by
 the same flip-book test at phone, 320 px, landscape, 200%-equivalent reflow,
 tablet, and desktop sizes. The playable view passes the automated WCAG A/AA
-axe scan. Privacy enforcement and the complete installed-offline journey are
-the final vertical slice.
+axe scan. A strict content-security policy and browser instrumentation enforce
+the same-origin GET-only runtime boundary. The production service worker is
+proven to resume, finish, review, and reload a real puzzle offline while its
+cache contains no event-store data.
 
 ## Design documents
 
@@ -100,6 +102,8 @@ npm run dev
 npm run check
 npm run test:unit
 npm run test:e2e
+npm run test:e2e:privacy
+npm run test:e2e:offline
 npm run build
 ```
 
@@ -125,7 +129,7 @@ application assets. Local history is not a backup: clearing site data, browser
 eviction, private-browsing teardown, or loss of the device removes it. User data
 is not included in the service-worker cache.
 
-The settings screen will provide **Clear all local Sudoku data**, with a precise
+The settings screen provides **Clear all local Sudoku data**, with a precise
 confirmation. This is the one intentional exception to logical append-only
 history: a privacy deletion physically removes the event store.
 

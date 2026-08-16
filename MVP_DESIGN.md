@@ -403,6 +403,10 @@ Unit and property tests cover:
 
 ## 10. Vertical implementation slices
 
+All MVP slices below are implemented on the MVP implementation branch with a
+semantic browser journey, zero-diff screenshots, and a generated walkthrough in
+the same commit as each vertical feature.
+
 Every slice contains the user-facing behaviour, event/reducer change, unit
 tests, E2E tracer, screenshots, generated walkthrough, and documentation update
 needed to review it coherently.
