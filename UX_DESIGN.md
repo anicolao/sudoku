@@ -156,6 +156,9 @@ cells, mutate notes elsewhere, or claim to teach a technique in MVP.
 Pause freezes the active elapsed time and replaces the board values with a
 neutral cover saying “Puzzle paused.” It leaves puzzle metadata and Resume
 available, while hiding the position visually and from the accessibility tree.
+The entire covered board is a labelled Resume control, so a tap anywhere in the
+puzzle area continues play; the compact header Resume button remains available
+as a second option and keyboard target.
 The game log is also unavailable until play resumes so it cannot reveal the
 covered position. Closing the app while active is treated as an interruption,
 not an automatic pause; elapsed time continues. Closing while paused preserves
@@ -210,8 +213,9 @@ instead of hiding their stable positions.
 
 ### Paused
 
-Hide board content and disable inputs. Keep Resume as the only primary action.
-The log may be inspected without resuming.
+Hide board content and disable inputs. Keep both the full-board resume target
+and compact header Resume action available. Keep the log covered until play
+resumes.
 
 ### Conflict or mistake
 

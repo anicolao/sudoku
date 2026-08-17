@@ -62,6 +62,7 @@ test('pause freezes active time and reload reconstructs the exact game', async (
       { spec: 'The board and game log contents are replaced by neutral covers', check: async () => {
         await expect(page.getByRole('grid')).toHaveCount(0);
         await expect(page.getByRole('status', { name: 'Puzzle paused' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Continue paused puzzle' })).toBeEnabled();
         await expect(page.getByText('Resume to inspect the game log.')).toBeVisible();
       } },
       { spec: 'game/paused records exactly 65 seconds', check: async () => {
@@ -82,9 +83,9 @@ test('pause freezes active time and reload reconstructs the exact game', async (
     ]
   });
 
-  await page.getByRole('button', { name: 'Resume' }).click();
+  await page.getByRole('button', { name: 'Continue paused puzzle' }).click();
   await steps.step('puzzle-resumed', {
-    description: 'The player resumes and the exact board returns',
+    description: 'The player taps the covered puzzle and the exact board returns',
     verifications: [
       { spec: 'The previously entered value is reconstructed and editable controls return', check: async () => {
         await expect(page.getByRole('grid')).toBeVisible();
@@ -119,6 +120,20 @@ test('pause freezes active time and reload reconstructs the exact game', async (
         const before = JSON.stringify(await stream());
         await expect(page.getByRole('button', { name: 'Resume' })).toBeEnabled();
         expect(JSON.stringify(await stream())).toBe(before);
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await steps.step('header-resume-option', {
+    description: 'The player can still use the header Resume button',
+    verifications: [
+      { spec: 'The existing compact Resume action restores the board too', check: async () => {
+        await expect(page.getByRole('grid')).toBeVisible();
+        await expect(page.getByLabel('Elapsed time 01:35')).toBeVisible();
+      } },
+      { spec: 'The alternative action appends the same canonical game/resumed event', check: async () => {
+        expect((await stream()).at(-1)).toMatchObject({ type: 'game/resumed', elapsedMs: 95_000 });
       } }
     ]
   });

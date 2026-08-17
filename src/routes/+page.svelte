@@ -618,9 +618,9 @@
         <div class="game-workspace">
           <div class="board-column">
             {#if currentGame.paused && currentGame.status === 'active'}
-              <div class="paused-cover" role="status" aria-label="Puzzle paused">
-                <span aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small>Your active time is frozen.</small>
-              </div>
+              <button type="button" class="paused-cover" aria-label="Continue paused puzzle" onclick={togglePause} disabled={isReadOnly}>
+                <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
+              </button>
             {:else}
               <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
