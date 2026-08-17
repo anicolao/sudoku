@@ -372,9 +372,9 @@ review a puzzle. It does not mean a first-ever offline visit can load the app.
 - Visible focus, selected outline/icon, text, and ARIA state supplement colour.
 - Live announcements are concise: value entered, conflict, undo/redo, pause,
   hint, and completion. Peer highlighting itself is not announced repeatedly.
-- The app supports 200% zoom and 320 CSS px width without horizontal document
-  scrolling. Vertical reflow is allowed at zoom; the base 393×852 play screen
-  targets no document scrolling.
+- The app supports 200% zoom and 320 CSS px width with no horizontal, vertical,
+  document, or nested scrolling. Compact layouts keep required puzzle controls
+  visible, reduce secondary chrome, and paginate unbounded history.
 - Motion is optional, reduced-motion is honoured, and completion never depends
   on animation or sound.
 

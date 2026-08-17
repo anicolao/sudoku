@@ -219,7 +219,10 @@ The helper must:
    explicitly requested state such as `memory-only`);
 3. await local fonts and images and verify no unfinished CSS transitions;
 4. move the pointer outside meaningful UI and hide the caret;
-5. run the layout checks appropriate to the tagged region;
+5. prove the document is at scroll position zero, the document needs no
+   horizontal or vertical scrolling, every visible element remains inside the
+   viewport without clipped overflow, and every visible non-board target is at
+   least 44×44 CSS px;
 6. call `expect(page).toHaveScreenshot(filename)` with no tolerance override;
 7. record description, relative image path, and checks for documentation.
 
@@ -252,26 +255,23 @@ a failed partial run cannot overwrite a reviewed walkthrough.
 
 ## 6. Layout assertions
 
-Layout checks are executable requirements, not generic measurements applied to
-every page.
+Layout checks are executable requirements applied before every documented
+screenshot.
 
-- `html` must never overflow horizontally by more than one CSS pixel.
-- Elements under `[data-e2e-viewport]` must fit the viewport at the base
-  reference size. The active play screen uses this marker; scrollable History
-  lists do not.
-- Elements under `[data-e2e-no-clip]` must have `scrollWidth <= clientWidth + 1`
-  and `scrollHeight <= clientHeight + 1`.
-- Visible enabled controls must not unintentionally overlap. Explicit board-cell
-  borders and composite-grid geometry are excluded by selector, not by broad
-  class-name exceptions.
+- The page must remain at `scrollX = 0` and `scrollY = 0`.
+- The scrolling element must fit the viewport in both axes, with only a one CSS
+  pixel rounding allowance.
+- Every visible element must remain within the viewport.
+- Any element whose overflow clips or scrolls must have
+  `scrollWidth <= clientWidth + 1` and `scrollHeight <= clientHeight + 1`.
+- Unbounded collections use fixed-size pagination or a compact latest-item
+  projection; nested scrolling regions are not allowed.
 - Every visible non-board interactive target is at least 44×44 CSS px.
-- The selected/focused board cell intersects the viewport.
-- At 200% zoom, horizontal overflow remains forbidden but vertical reflow is
-  allowed; do not incorrectly require the entire app to fit one screen.
+- The same rules apply at 200% zoom and in landscape; compact layouts may remove
+  secondary chrome, but they keep the board and required actions available.
 
-The helper returns precise element labels and rectangles on failure. Avoid a
-blanket “no vertical scroll anywhere” rule, which conflicts with legitimate
-reflow and history content.
+The helper returns precise element labels, rectangles, and scroll dimensions on
+failure.
 
 ## 7. Event-stream and game-log oracles
 
@@ -298,7 +298,7 @@ missing, extra, or reordered actions reviewable.
 `GameLogOracle` advances one expected entry after each meaningful action. For
 every page/viewport under test it asserts:
 
-- visible log count;
+- canonical log count and the compact newest visible entry;
 - newest entry's `data-event-type`;
 - exact formatted text;
 - expanded accessible text for compact cell notation;

@@ -90,6 +90,8 @@ The new design also tightens a few seams visible in those references:
 - screenshot tolerance is configured once at zero pixels and never overridden
   by helpers;
 - generated E2E documentation is written only by an explicit update command;
+- every documented state fits its viewport without clipped elements, document
+  scrolling, or nested scrolling regions;
 - all randomness, clocks, IDs, locale, and puzzle fixtures are injectable;
 - corrupt or incompatible streams are quarantined instead of partially applied;
 - local-only means runtime network access is prohibited and tested.

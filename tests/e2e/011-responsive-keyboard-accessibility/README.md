@@ -2,9 +2,17 @@
 
 The same semantic grid reflows from a 320 px viewport through landscape, tablet, and desktop. Every keyboard command produces an observable state, and automated accessibility checks run against the playable board.
 
+## The local welcome state fits the current viewport before play begins
+
+![The local welcome state fits the current viewport before play begins](./screenshots/000-responsive-welcome-phone-macos.png)
+
+**Verifications:**
+
+- [x] Puzzle generation is available without scrolling
+
 ## The player generates a board in the current form factor
 
-![The player generates a board in the current form factor](./screenshots/000-responsive-board-generated-phone-macos.png)
+![The player generates a board in the current form factor](./screenshots/001-responsive-board-generated-phone-macos.png)
 
 **Verifications:**
 
@@ -13,7 +21,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## The player chooses a number before choosing a cell
 
-![The player chooses a number before choosing a cell](./screenshots/001-number-chosen-first-phone-macos.png)
+![The player chooses a number before choosing a cell](./screenshots/002-number-chosen-first-phone-macos.png)
 
 **Verifications:**
 
@@ -21,7 +29,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Choosing an editable cell commits the previously selected number
 
-![Choosing an editable cell commits the previously selected number](./screenshots/002-number-first-value-placed-phone-macos.png)
+![Choosing an editable cell commits the previously selected number](./screenshots/003-number-first-value-placed-phone-macos.png)
 
 **Verifications:**
 
@@ -29,7 +37,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## The player focuses a new cell before navigating the composite grid
 
-![The player focuses a new cell before navigating the composite grid](./screenshots/003-keyboard-cell-focused-phone-macos.png)
+![The player focuses a new cell before navigating the composite grid](./screenshots/004-keyboard-cell-focused-phone-macos.png)
 
 **Verifications:**
 
@@ -37,7 +45,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Arrow Right moves focus and selection one column
 
-![Arrow Right moves focus and selection one column](./screenshots/004-arrow-right-navigation-phone-macos.png)
+![Arrow Right moves focus and selection one column](./screenshots/005-arrow-right-navigation-phone-macos.png)
 
 **Verifications:**
 
@@ -45,7 +53,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Home moves to the first cell in the current row
 
-![Home moves to the first cell in the current row](./screenshots/005-home-navigation-phone-macos.png)
+![Home moves to the first cell in the current row](./screenshots/006-home-navigation-phone-macos.png)
 
 **Verifications:**
 
@@ -53,7 +61,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## End moves to the last cell in the current row
 
-![End moves to the last cell in the current row](./screenshots/006-end-navigation-phone-macos.png)
+![End moves to the last cell in the current row](./screenshots/007-end-navigation-phone-macos.png)
 
 **Verifications:**
 
@@ -61,7 +69,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## The player focuses an empty editable cell for a keyboard note
 
-![The player focuses an empty editable cell for a keyboard note](./screenshots/007-note-cell-focused-phone-macos.png)
+![The player focuses an empty editable cell for a keyboard note](./screenshots/008-note-cell-focused-phone-macos.png)
 
 **Verifications:**
 
@@ -69,7 +77,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## N toggles Notes mode without leaving the grid
 
-![N toggles Notes mode without leaving the grid](./screenshots/008-notes-mode-keyboard-toggle-phone-macos.png)
+![N toggles Notes mode without leaving the grid](./screenshots/009-notes-mode-keyboard-toggle-phone-macos.png)
 
 **Verifications:**
 
@@ -77,7 +85,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## A digit key adds a pencil note in Notes mode
 
-![A digit key adds a pencil note in Notes mode](./screenshots/009-note-entered-by-keyboard-phone-macos.png)
+![A digit key adds a pencil note in Notes mode](./screenshots/010-note-entered-by-keyboard-phone-macos.png)
 
 **Verifications:**
 
@@ -85,7 +93,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Delete erases the focused cell
 
-![Delete erases the focused cell](./screenshots/010-note-erased-by-keyboard-phone-macos.png)
+![Delete erases the focused cell](./screenshots/011-note-erased-by-keyboard-phone-macos.png)
 
 **Verifications:**
 
@@ -93,7 +101,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Z undoes the erase without rewriting history
 
-![Z undoes the erase without rewriting history](./screenshots/011-erase-undone-by-keyboard-phone-macos.png)
+![Z undoes the erase without rewriting history](./screenshots/012-erase-undone-by-keyboard-phone-macos.png)
 
 **Verifications:**
 
@@ -101,7 +109,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Shift+Z redoes the erase
 
-![Shift+Z redoes the erase](./screenshots/012-erase-redone-by-keyboard-phone-macos.png)
+![Shift+Z redoes the erase](./screenshots/013-erase-redone-by-keyboard-phone-macos.png)
 
 **Verifications:**
 
@@ -109,7 +117,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## The player opens a transient dialog
 
-![The player opens a transient dialog](./screenshots/013-hint-dialog-opened-for-escape-phone-macos.png)
+![The player opens a transient dialog](./screenshots/014-hint-dialog-opened-for-escape-phone-macos.png)
 
 **Verifications:**
 
@@ -117,8 +125,32 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 ## Escape closes the topmost transient dialog
 
-![Escape closes the topmost transient dialog](./screenshots/014-escape-closes-dialog-phone-macos.png)
+![Escape closes the topmost transient dialog](./screenshots/015-escape-closes-dialog-phone-macos.png)
 
 **Verifications:**
 
 - [x] The dialog closes without appending an event
+
+## The player opens the puzzle library in the same fixed viewport
+
+![The player opens the puzzle library in the same fixed viewport](./screenshots/016-responsive-puzzles-view-phone-macos.png)
+
+**Verifications:**
+
+- [x] The active-puzzle notice and return action remain available
+
+## The player opens history without entering a scrolling region
+
+![The player opens history without entering a scrolling region](./screenshots/017-responsive-history-view-phone-macos.png)
+
+**Verifications:**
+
+- [x] The current attempt is represented by one fixed-size card
+
+## The player opens all local settings without scrolling
+
+![The player opens all local settings without scrolling](./screenshots/018-responsive-settings-view-phone-macos.png)
+
+**Verifications:**
+
+- [x] All four preference switches and the local-data action remain available

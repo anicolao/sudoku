@@ -45,22 +45,35 @@ export class TestStepHelper {
     await this.page.evaluate(async () => {
       await document.fonts.ready;
       const root = document.documentElement;
-      if (root.scrollWidth > window.innerWidth + 1) {
-        throw new Error(`page is ${root.scrollWidth}px wide inside ${window.innerWidth}px`);
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const scrollingElement = document.scrollingElement ?? root;
+      if (window.scrollX !== 0 || window.scrollY !== 0) {
+        throw new Error(`page is scrolled to ${window.scrollX},${window.scrollY}`);
+      }
+      if (
+        scrollingElement.scrollWidth > viewport.width + 1 ||
+        scrollingElement.scrollHeight > viewport.height + 1
+      ) {
+        throw new Error(
+          `page requires scrolling: ${scrollingElement.scrollWidth}×${scrollingElement.scrollHeight} ` +
+          `inside ${viewport.width}×${viewport.height}`
+        );
       }
 
-      for (const element of document.querySelectorAll<HTMLElement>('[data-e2e-viewport]')) {
+      for (const element of document.querySelectorAll<HTMLElement>('body *')) {
+        if (element.matches('.sr-live, .sr-live *') || !element.checkVisibility()) continue;
         const rect = element.getBoundingClientRect();
-        if (rect.left < -1 || rect.right > window.innerWidth + 1 || rect.top < -1 || rect.bottom > window.innerHeight + 1) {
+        if (rect.width === 0 && rect.height === 0) continue;
+        if (rect.left < -1 || rect.right > viewport.width + 1 || rect.top < -1 || rect.bottom > viewport.height + 1) {
           throw new Error(
-            `${element.tagName.toLowerCase()} escapes the viewport at ` +
+            `${element.tagName.toLowerCase()} escapes or is clipped by the viewport at ` +
             `${rect.left},${rect.top}–${rect.right},${rect.bottom}`
           );
         }
-      }
-
-      for (const element of document.querySelectorAll<HTMLElement>('[data-e2e-no-clip]')) {
-        if (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1) {
+        const style = getComputedStyle(element);
+        const clipsWidth = element.scrollWidth > element.clientWidth + 1 && style.overflowX !== 'visible';
+        const clipsHeight = element.scrollHeight > element.clientHeight + 1 && style.overflowY !== 'visible';
+        if (element.clientWidth > 0 && element.clientHeight > 0 && (clipsWidth || clipsHeight)) {
           throw new Error(
             `${element.tagName.toLowerCase()} clips ${element.scrollWidth}×${element.scrollHeight} ` +
             `inside ${element.clientWidth}×${element.clientHeight}`

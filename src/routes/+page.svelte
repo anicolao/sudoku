@@ -29,6 +29,7 @@
   let reviewedGameId = $state<string | null>(null);
   let hintDialogOpen = $state(false);
   let clearDialogOpen = $state(false);
+  let historyPage = $state(0);
   let storageWarning = $state('');
   let secondaryTab = $state(false);
   let timerNow = $state(
@@ -45,6 +46,7 @@
   const gameLog = $derived(
     store && currentGame ? formatGameLog(store.getDocument().events, currentGame.id, currentGame) : []
   );
+  const historyGames = $derived(Object.values(projection.games).reverse());
   const events = $derived.by(() => {
     void projection;
     return store ? store.getDocument().events : [];
@@ -292,6 +294,7 @@
 
   function showView(next: View): void {
     view = next;
+    if (next === 'history') historyPage = 0;
     if (next !== 'play') reviewedGameId = null;
   }
 
@@ -355,11 +358,11 @@
     {:else if view === 'history'}
       <section class="library-view" aria-labelledby="history-title">
         <div class="library-heading"><p class="eyebrow">On this device</p><h1 id="history-title">History</h1><p>Every attempt is reconstructed from its local event stream.</p></div>
-        {#if Object.keys(projection.games).length === 0}
+        {#if historyGames.length === 0}
           <div class="empty-library"><strong>No puzzles yet</strong><span>Your completed and abandoned games will appear here.</span></div>
         {:else}
           <div class="history-list">
-            {#each Object.values(projection.games).reverse() as game}
+            {#each historyGames.slice(historyPage, historyPage + 1) as game}
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.id.replace('easy-v1-', 'Easy #')}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
@@ -367,6 +370,13 @@
               </article>
             {/each}
           </div>
+          {#if historyGames.length > 1}
+            <nav class="history-pages" aria-label="History pages">
+              <button type="button" onclick={() => historyPage -= 1} disabled={historyPage === 0}>Newer</button>
+              <span>Attempt {historyPage + 1} of {historyGames.length}</span>
+              <button type="button" onclick={() => historyPage += 1} disabled={historyPage === historyGames.length - 1}>Older</button>
+            </nav>
+          {/if}
         {/if}
       </section>
     {:else if view === 'puzzles'}
