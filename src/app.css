@@ -100,8 +100,9 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .pause-action { min-width: 76px; min-height: 44px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fffdf8; font-weight: 700; cursor: pointer; }
 .game-workspace { min-width: 0; display: grid; grid-template-columns: minmax(0, 600px) minmax(250px, 290px); gap: 24px; align-items: start; }
 .board-column { min-width: 0; display: grid; gap: 10px; justify-items: center; }
-.paused-cover { width: min(100%, 600px); aspect-ratio: 1; display: grid; place-content: center; justify-items: center; gap: 8px; border: 3px solid #343840; color: #565a62; background: repeating-linear-gradient(135deg, #f3f2ed, #f3f2ed 12px, #eeede8 12px, #eeede8 24px); text-align: center; }
-.paused-cover span { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #4654a3; background: #e1e4f7; font-size: 1.4rem; font-weight: 700; }
+.paused-cover { width: min(100%, 600px); aspect-ratio: 1; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 0; border: 3px solid #343840; color: #565a62; background: repeating-linear-gradient(135deg, #f3f2ed, #f3f2ed 12px, #eeede8 12px, #eeede8 24px); font: inherit; text-align: center; cursor: pointer; }
+.paused-cover:disabled { cursor: not-allowed; }
+.paused-cover .pause-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #4654a3; background: #e1e4f7; font-size: 1.4rem; font-weight: 700; }
 .paused-cover strong { color: #20242b; font-size: 1.35rem; }
 .paused-cover small { font-size: .9rem; }
 .sudoku-board { width: min(100%, 600px); height: auto; aspect-ratio: 1; align-self: start; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); border: 3px solid #343840; background: #fff; }

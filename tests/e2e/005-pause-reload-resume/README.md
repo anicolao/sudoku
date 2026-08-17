@@ -45,9 +45,9 @@ Active time comes from event snapshots. Pausing covers the puzzle, reload replay
 - [x] The paused cover and 01:05 timer survive a full reload
 - [x] Reload does not append or rewrite an event
 
-## The player resumes and the exact board returns
+## The player taps the covered puzzle and the exact board returns
 
-![The player resumes and the exact board returns](./screenshots/005-puzzle-resumed-phone-macos.png)
+![The player taps the covered puzzle and the exact board returns](./screenshots/005-puzzle-resumed-phone-macos.png)
 
 **Verifications:**
 
@@ -71,3 +71,12 @@ Active time comes from event snapshots. Pausing covers the puzzle, reload replay
 
 - [x] The timer remains frozen at 01:35 after restart
 - [x] The canonical five-event document is byte-for-byte unchanged by reload
+
+## The player can still use the header Resume button
+
+![The player can still use the header Resume button](./screenshots/008-header-resume-option-phone-macos.png)
+
+**Verifications:**
+
+- [x] The existing compact Resume action restores the board too
+- [x] The alternative action appends the same canonical game/resumed event
