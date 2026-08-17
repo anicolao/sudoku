@@ -82,6 +82,42 @@ test('a QR code carries a paused checkpoint to an independent device exactly onc
     } }]
   });
 
+  await page.getByRole('button', { name: /Share puzzle only/ }).click();
+  await steps.step('puzzle-only-link-prepared', {
+    description: 'The player first prepares a clean puzzle link',
+    verifications: [
+      { spec: 'Its locally rendered QR carries only the literal givens query', check: async () => {
+        const link = await page.getByTestId('share-link').getAttribute('data-link') ?? '';
+        const qr = PNG.sync.read(await page.getByTestId('share-qr').screenshot());
+        expect(jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height)?.data).toBe(link);
+        const url = new URL(link);
+        expect(url.searchParams.get('p')).toBe(puzzle.givens);
+        expect(url.hash).toBe('');
+      } },
+      { spec: 'Sharing only the puzzle neither pauses nor appends an event', check: async () => {
+        await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events.length)).toBe(3);
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Done' }).click();
+  await steps.step('puzzle-only-link-closed', {
+    description: 'The player closes the clean-link dialog and keeps playing',
+    verifications: [{ spec: 'The dialog closes with the source puzzle still active', check: async () => {
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+    } }]
+  });
+
+  await page.getByRole('button', { name: 'Share' }).click();
+  await steps.step('share-reopened', {
+    description: 'The player opens Share again to carry current progress',
+    verifications: [{ spec: 'Prepare progress transfer is available from the unchanged game', check: async () => {
+      await expect(page.getByRole('button', { name: /Prepare progress transfer/ })).toBeEnabled();
+    } }]
+  });
+
   await page.getByRole('button', { name: /Prepare progress transfer/ }).click();
   await steps.step('transfer-prepared', {
     description: 'The player freezes the checkpoint and gets a locally rendered QR code',

@@ -1,7 +1,7 @@
 # Puzzle links and device-to-device transfer
 
-Document status: proposed implementation contract for review. This document
-does not claim that sharing has been implemented.
+Document status: implemented contract. Scenarios 014 and 015 retain the
+reviewable phone, tablet, and desktop evidence.
 
 ## 1. Product promise
 
@@ -336,8 +336,8 @@ Pure tests cover:
 - backwards replay of all existing generated puzzle events;
 - QR encoder output decoded by an independent standards-compliant decoder.
 
-Playwright Chromium on macOS adds scenario 014 with one screenshot after every
-user action:
+Playwright Chromium on macOS covers puzzle URLs in scenario 014 and progress
+transfer in scenario 015, with one screenshot after every user action:
 
 1. navigate to a valid `?p=` URL and see its checked summary;
 2. start it and verify one `game/imported` event plus the exact board;

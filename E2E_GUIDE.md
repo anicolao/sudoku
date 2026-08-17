@@ -326,6 +326,8 @@ projection.
 | 011 | Responsive and accessible play | viewport matrix, keyboard-only solve, roles/names/states, focus, zoom, reduced motion, axe |
 | 012 | Installed offline use | production shell installed online, browser restart offline, resume/solve/history/reload |
 | 013 | Second-tab protection | later tab is read-only, first writer remains intact, storage event refreshes projection |
+| 014 | Checked puzzle URL | literal givens, local uniqueness/solution/rating, explicit consent, one import event |
+| 015 | QR progress transfer | puzzle-only link, paused checkpoint, pixel-decoded QR, fresh-device import, post-import undo, idempotency |
 
 Phone, tablet, and desktop run every ordinary scenario. The accessibility
 journey additionally runs at 320 px, phone landscape, and a 200%-equivalent

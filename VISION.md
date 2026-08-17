@@ -19,6 +19,11 @@ There is no sign-in and no cloud dependency. Puzzles, preferences, the current
 game, and completed-game history stay on this device. The interface says “On
 this device” anywhere a user might otherwise assume sync or backup.
 
+Local does not mean trapped. A player can share puzzle givens or deliberately
+copy a paused checkpoint through a URL/QR code generated on-device. The
+recipient validates it locally and creates an independent event stream; no
+sharing service observes or coordinates either copy.
+
 ### Every state should be explainable
 
 The immutable event stream is the source of truth. A game can be reconstructed
@@ -66,6 +71,8 @@ instead of shrinking controls below usable sizes.
 5. Complete the puzzle and see elapsed active time, mistakes, hints, and the
    replayable game log in local history.
 6. Clear all local Sudoku data from settings when desired.
+7. Open checked puzzle givens from a URL, or copy a paused puzzle to another
+   device with a locally rendered QR code.
 
 ## Success for the first release
 
@@ -84,13 +91,15 @@ show that:
 - the installed app completes a full offline solve after browser restart;
 - core flows pass at phone, tablet, and desktop sizes with keyboard and touch;
 - semantic assertions and reviewed zero-diff screenshots agree.
+- puzzle URLs and transferred checkpoints are locally validated before one
+  explicit import event is accepted.
 
 ## Deliberate non-goals for MVP
 
-- accounts, profiles, cloud sync, multiplayer, sharing, or social features;
+- accounts, profiles, cloud sync, multiplayer, or social feeds;
 - ads, analytics, telemetry, push notifications, streak pressure, or purchases;
 - daily puzzles that require a server or globally synchronized calendar;
-- puzzle authoring, imports, exports, printing, OCR, or camera input;
+- puzzle authoring, file import/export, printing, OCR, or in-app camera input;
 - killer, samurai, irregular, or other Sudoku variants;
 - competitive rankings or anti-cheat measures;
 - cross-tab collaborative editing; a second active tab is warned and kept from
@@ -99,7 +108,7 @@ show that:
 ## Future direction
 
 After the local classic experience is proven, event sourcing leaves room for
-optional encrypted export/import, replay animation, richer hint explanations,
+optional encrypted backup, replay animation, richer hint explanations,
 and teaching views for the techniques already used to rate puzzles. Those
 additions must preserve the local-first default and must not reinterpret old
 event streams.

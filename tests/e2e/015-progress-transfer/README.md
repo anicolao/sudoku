@@ -58,9 +58,34 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 - [x] Puzzle-only and progress transfer are distinct choices
 
+## The player first prepares a clean puzzle link
+
+![The player first prepares a clean puzzle link](./screenshots/007-puzzle-only-link-prepared-phone-macos.png)
+
+**Verifications:**
+
+- [x] Its locally rendered QR carries only the literal givens query
+- [x] Sharing only the puzzle neither pauses nor appends an event
+
+## The player closes the clean-link dialog and keeps playing
+
+![The player closes the clean-link dialog and keeps playing](./screenshots/008-puzzle-only-link-closed-phone-macos.png)
+
+**Verifications:**
+
+- [x] The dialog closes with the source puzzle still active
+
+## The player opens Share again to carry current progress
+
+![The player opens Share again to carry current progress](./screenshots/009-share-reopened-phone-macos.png)
+
+**Verifications:**
+
+- [x] Prepare progress transfer is available from the unchanged game
+
 ## The player freezes the checkpoint and gets a locally rendered QR code
 
-![The player freezes the checkpoint and gets a locally rendered QR code](./screenshots/007-transfer-prepared-phone-macos.png)
+![The player freezes the checkpoint and gets a locally rendered QR code](./screenshots/010-transfer-prepared-phone-macos.png)
 
 **Verifications:**
 
@@ -69,7 +94,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The player copies the same transfer link as an accessible QR alternative
 
-![The player copies the same transfer link as an accessible QR alternative](./screenshots/008-transfer-link-copied-phone-macos.png)
+![The player copies the same transfer link as an accessible QR alternative](./screenshots/011-transfer-link-copied-phone-macos.png)
 
 **Verifications:**
 
@@ -77,7 +102,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The other device checks the scanned checkpoint before storing it
 
-![The other device checks the scanned checkpoint before storing it](./screenshots/009-recipient-checked-phone-macos.png)
+![The other device checks the scanned checkpoint before storing it](./screenshots/012-recipient-checked-phone-macos.png)
 
 **Verifications:**
 
@@ -86,7 +111,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The recipient consents and imports one paused checkpoint event
 
-![The recipient consents and imports one paused checkpoint event](./screenshots/010-recipient-imported-phone-macos.png)
+![The recipient consents and imports one paused checkpoint event](./screenshots/013-recipient-imported-phone-macos.png)
 
 **Verifications:**
 
@@ -95,7 +120,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The recipient resumes the copied game
 
-![The recipient resumes the copied game](./screenshots/011-recipient-resumed-phone-macos.png)
+![The recipient resumes the copied game](./screenshots/014-recipient-resumed-phone-macos.png)
 
 **Verifications:**
 
@@ -103,7 +128,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The recipient selects another empty cell
 
-![The recipient selects another empty cell](./screenshots/012-recipient-cell-selected-phone-macos.png)
+![The recipient selects another empty cell](./screenshots/015-recipient-cell-selected-phone-macos.png)
 
 **Verifications:**
 
@@ -111,7 +136,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## The recipient enters 8 after the transfer
 
-![The recipient enters 8 after the transfer](./screenshots/013-recipient-value-entered-phone-macos.png)
+![The recipient enters 8 after the transfer](./screenshots/016-recipient-value-entered-phone-macos.png)
 
 **Verifications:**
 
@@ -119,7 +144,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## Undo affects only the move made after import
 
-![Undo affects only the move made after import](./screenshots/014-recipient-move-undone-phone-macos.png)
+![Undo affects only the move made after import](./screenshots/017-recipient-move-undone-phone-macos.png)
 
 **Verifications:**
 
@@ -127,7 +152,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 ## Scanning the same QR again opens the existing local game
 
-![Scanning the same QR again opens the existing local game](./screenshots/015-duplicate-scan-idempotent-phone-macos.png)
+![Scanning the same QR again opens the existing local game](./screenshots/018-duplicate-scan-idempotent-phone-macos.png)
 
 **Verifications:**
 

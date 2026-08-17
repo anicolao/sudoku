@@ -70,6 +70,12 @@ describe('progress transfer codec', () => {
     expect(() => encodeTransfer(invalid)).toThrow(/fixed given/);
   });
 
+  it('rejects a hint counter that disagrees with the hinted-cell mask', () => {
+    const invalid = record();
+    invalid.hints = 2;
+    expect(() => encodeTransfer(invalid)).toThrow(/hint count/);
+  });
+
   it('rejects a hinted value that does not match the locally derived solution', async () => {
     const invalid = record();
     invalid.values[5] = 2;
