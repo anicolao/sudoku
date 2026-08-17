@@ -1,8 +1,11 @@
-import { UNITS } from './sudoku';
+import { givensAgree, isSolvedGrid, parseGrid, UNITS } from './sudoku';
 import type {
   AppProjection,
   Digit,
   GameProjection,
+  GameSettings,
+  ImportedCheckpoint,
+  PuzzleDefinition,
   ReversibleEvent,
   SudokuEvent
 } from './types';
@@ -43,6 +46,43 @@ function deriveConflicts(game: GameProjection): number[] {
     for (const cells of positions.values()) if (cells.length > 1) cells.forEach((cell) => conflicts.add(cell));
   }
   return [...conflicts].sort((left, right) => left - right);
+}
+
+function validSettings(settings: GameSettings): boolean {
+  return Object.values(settings).length === 4 &&
+    Object.values(settings).every((value) => typeof value === 'boolean');
+}
+
+function validImportedCheckpoint(
+  puzzle: PuzzleDefinition,
+  settings: GameSettings,
+  checkpoint: ImportedCheckpoint | null
+): boolean {
+  try {
+    if (!validSettings(settings) || !isSolvedGrid(parseGrid(puzzle.solution)) ||
+      !givensAgree(puzzle.givens, puzzle.solution)) return false;
+    if (!checkpoint) return true;
+    if (!checkpoint.paused || checkpoint.values.length !== 81 || checkpoint.notes.length !== 81 ||
+      !Number.isSafeInteger(checkpoint.elapsedMs) || checkpoint.elapsedMs < 0 ||
+      !Number.isSafeInteger(checkpoint.hints) || checkpoint.hints < 0 ||
+      !Number.isSafeInteger(checkpoint.mistakes) || checkpoint.mistakes < 0) return false;
+    const hints = new Set(checkpoint.hintedCells);
+    if (hints.size !== checkpoint.hintedCells.length ||
+      [...hints].some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81)) return false;
+    for (let cell = 0; cell < 81; cell += 1) {
+      const value = checkpoint.values[cell];
+      const notes = checkpoint.notes[cell];
+      if (value !== null && (!Number.isInteger(value) || value < 1 || value > 9)) return false;
+      if (!Array.isArray(notes) || new Set(notes).size !== notes.length ||
+        notes.some((note) => !Number.isInteger(note) || note < 1 || note > 9)) return false;
+      if (puzzle.givens[cell] !== '.' && (value !== null || notes.length > 0)) return false;
+      if (value !== null && notes.length > 0) return false;
+      if (hints.has(cell) && value !== Number(puzzle.solution[cell])) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
@@ -118,6 +158,11 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
 
     if (event.type === 'game/started' || event.type === 'game/imported') {
       const checkpoint = event.type === 'game/imported' ? event.payload.checkpoint : null;
+      if (event.type === 'game/imported' &&
+        !validImportedCheckpoint(event.payload.puzzle, event.payload.settings, checkpoint)) {
+        state.diagnostics.push('invalid-import');
+        continue;
+      }
       state.games[event.gameId] = {
         id: event.gameId,
         puzzle: event.payload.puzzle,

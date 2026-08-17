@@ -73,6 +73,37 @@ describe('event store', () => {
     }]);
   });
 
+  it('imports a paused checkpoint with transferred settings exactly once', () => {
+    const storage = new MemoryStorage();
+    const puzzle = generateEasyPuzzle('transfer-origin').puzzle;
+    const store = new EventStore(storage);
+    const values = Array(81).fill(null);
+    const editable = [...puzzle.givens].findIndex((value) => value === '.');
+    values[editable] = Number(puzzle.solution[editable]);
+    const settings = { checkMistakes: true, autoRemoveNotes: false, showTimer: false, numberFirst: false };
+    const checkpoint = {
+      values,
+      notes: Array.from({ length: 81 }, () => []),
+      hintedCells: [editable],
+      elapsedMs: 12_345,
+      hints: 1,
+      mistakes: 2,
+      paused: true as const
+    };
+
+    const first = store.importGame(puzzle, 'progress-transfer', '00112233445566778899aabb', checkpoint, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-1'
+    }, settings);
+    const second = store.importGame(puzzle, 'progress-transfer', '00112233445566778899aabb', checkpoint, {
+      occurredAt: new Date('2026-08-16T12:01:00.000Z'), id: 'import-2'
+    }, settings);
+
+    expect(second).toEqual(first);
+    expect(store.getDocument().events).toHaveLength(1);
+    expect(store.findImportedGame('00112233445566778899aabb')).toBe(first.activeGameId);
+    expect(first.games[first.activeGameId ?? '']).toMatchObject({ paused: true, settings, elapsedMs: 12_345 });
+  });
+
   it('migrates a frozen V0 document before publishing it', () => {
     const storage = new MemoryStorage();
     storage.setItem(EVENT_STORE_KEY, JSON.stringify({ storageVersion: 0, events: [] }));
