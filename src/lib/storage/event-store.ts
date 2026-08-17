@@ -123,7 +123,10 @@ export class EventStore {
   }
 
   startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): AppProjection {
-    const storedPuzzle: PuzzleDefinition = { ...puzzle };
+    const storedPuzzle: PuzzleDefinition = {
+      ...puzzle,
+      provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined
+    };
     const settings: GameSettings = { ...this.projection.settings };
     return this.append(metadata, (sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;

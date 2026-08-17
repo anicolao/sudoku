@@ -61,6 +61,16 @@ The status phrase **On this device** appears in the shell and links or expands
 to: “Progress and history are stored only in this browser. They are not synced
 or backed up.” It must never be represented as a cloud-success indicator.
 
+An active puzzle also offers **Share** beside Restart and Abandon. Its compact
+dialog distinguishes a clean puzzle link from a progress transfer. Preparing
+progress pauses the source, shows a locally rendered QR code and Copy link
+fallback, and plainly says that the recipient receives an independent copy.
+Incoming links use a full-view checking/consent card rather than exposing an
+unvalidated board. The QR scales before required copy or close actions, so the
+same no-scroll and 44 px target rules hold on every supported form factor. The
+complete interaction and privacy contract is in
+[PUZZLE_SHARING.md](PUZZLE_SHARING.md).
+
 ## Primary play flow
 
 ### 1. Start or resume

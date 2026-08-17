@@ -1,7 +1,7 @@
 # MVP design
 
 Document status: implemented release contract, extended with the five-level
-generator after the original Foundations MVP.
+generator and local puzzle sharing after the original Foundations MVP.
 
 ## 1. Release boundary
 
@@ -24,10 +24,13 @@ The release supports:
 - a human-readable game log derived from canonical events;
 - full reload/restart recovery and previously installed offline use;
 - touch, mouse, and keyboard interaction at supported form factors;
-- clearing all local Sudoku data.
+- clearing all local Sudoku data;
+- opening uniquely solvable givens from a checked `?p=` URL;
+- sharing either a clean puzzle or a paused progress copy through a locally
+  rendered QR code and versioned `#t=` fragment.
 
 There is no account, backend, Firebase, runtime AI, analytics, telemetry, remote
-font, CDN, or third-party asset. A second tab must not silently become a second
+font, CDN, or remotely hosted third-party asset. A second tab must not silently become a second
 writer: the app uses `BroadcastChannel` when available to warn that another tab
 is active and disables game-changing controls in the later tab.
 
@@ -39,6 +42,8 @@ is active and disables game-changing controls in the later tab.
 - A small framework-neutral domain under `src/lib/domain/`.
 - A local event repository under `src/lib/storage/`; browser APIs do not leak
   into reducers or Sudoku rules.
+- Sharing codecs and bounded validation workers under `src/lib/sharing/`; QR
+  matrices are rendered by a bundled GPL-compatible dependency.
 - Svelte stores expose immutable projections and dispatch commands. Components
   do not construct persisted events directly.
 - Vitest covers commands, reducers, Sudoku rules, generation, logical solving,
@@ -375,6 +380,13 @@ Production policy:
 “Works offline” means that after one successful load installs the application
 shell, the browser can close, go offline, reopen, resume, play, complete, and
 review a puzzle. It does not mean a first-ever offline visit can load the app.
+
+Puzzle and progress sharing preserve this boundary. Puzzle links expose givens
+in a query string; progress links keep their compact checkpoint in a fragment,
+which is never sent with HTTP requests. Neither link contains a solution.
+Validation, solution derivation, rating, checksum handling, and QR rendering
+run locally. See [PUZZLE_SHARING.md](PUZZLE_SHARING.md) for the implemented
+binary and import-event contracts.
 
 ## 8. Accessibility contract
 

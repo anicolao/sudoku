@@ -6,6 +6,7 @@ import type {
   GameSettings,
   ImportedCheckpoint,
   PuzzleDefinition,
+  GameImportedEvent,
   ReversibleEvent,
   SudokuEvent
 } from './types';
@@ -85,6 +86,15 @@ function validImportedCheckpoint(
   }
 }
 
+function validImportOrigin(event: GameImportedEvent): boolean {
+  if (event.payload.importKind === 'puzzle-link') {
+    return event.payload.transferId === null && event.payload.checkpoint === null &&
+      event.payload.puzzle.provenance?.kind === 'puzzle-link';
+  }
+  return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
+    event.payload.puzzle.provenance?.kind === 'progress-transfer';
+}
+
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
   if (!isEditable(game, event.payload.cell)) {
     diagnostics.push('illegal-cell-edit');
@@ -159,7 +169,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     if (event.type === 'game/started' || event.type === 'game/imported') {
       const checkpoint = event.type === 'game/imported' ? event.payload.checkpoint : null;
       if (event.type === 'game/imported' &&
-        !validImportedCheckpoint(event.payload.puzzle, event.payload.settings, checkpoint)) {
+        (!validImportOrigin(event) || !validImportedCheckpoint(event.payload.puzzle, event.payload.settings, checkpoint))) {
         state.diagnostics.push('invalid-import');
         continue;
       }
@@ -186,6 +196,16 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       state.activeGameId = event.gameId;
       activeStacks.set(event.gameId, []);
       redoStacks.set(event.gameId, []);
+      const importedGame = state.games[event.gameId];
+      const importedBoard = [...importedGame.puzzle.givens].map((given, cell) =>
+        given === '.' ? importedGame.values[cell] : Number(given)
+      ).join('');
+      if (importedBoard === importedGame.puzzle.solution) {
+        importedGame.status = 'complete';
+        importedGame.paused = true;
+        importedGame.resumedAt = null;
+        importedGame.completedAt = event.occurredAt;
+      }
       continue;
     }
 

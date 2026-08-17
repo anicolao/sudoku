@@ -143,6 +143,7 @@ function validateRecord(record: TransferRecord): void {
   if (![record.hints, record.mistakes].every((value) => Number.isSafeInteger(value) && value >= 0 && value <= MAX_COUNTER)) throw new Error('Transfer counters are invalid.');
   const hinted = new Set(record.hintedCells);
   if (hinted.size !== record.hintedCells.length || [...hinted].some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81)) throw new Error('Transfer hint cells are invalid.');
+  if (record.hints !== hinted.size) throw new Error('Transfer hint count is invalid.');
   for (let cell = 0; cell < 81; cell += 1) {
     const value = record.values[cell];
     const notes = record.notes[cell];

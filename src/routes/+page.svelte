@@ -270,7 +270,7 @@
     shareCopied = false;
     shareError = '';
     try {
-      shareQr = await QRCode.toDataURL(link, { errorCorrectionLevel: 'Q', margin: 3, width: 224 });
+      shareQr = await QRCode.toDataURL(link, { errorCorrectionLevel: 'Q', margin: 4, width: 224 });
       shareStage = 'ready';
     } catch {
       shareError = 'The QR code could not be prepared on this device.';
@@ -625,7 +625,7 @@
               <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
-            <p class="board-caption">Generated and rated here · #{currentGame.puzzle.id.slice(-8)}</p>
+            <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
           </div>
 
           <aside class="play-controls" aria-label="Puzzle controls">

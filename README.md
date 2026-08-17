@@ -41,6 +41,15 @@ the same-origin GET-only runtime boundary. The production service worker is
 proven to resume, finish, review, and reload a real puzzle offline while its
 cache contains no event-store data.
 
+Puzzle sharing is local-first too. A `?p=` link contains only 81 literal
+givens; the receiving browser independently validates uniqueness, derives the
+solution, and asks for consent before storing one import event. The Share action
+can instead freeze a paused checkpoint into a versioned `#t=` fragment and
+render a QR code entirely in-browser. Values, notes, time, counts, and settings
+move to a fresh device without a server or embedded solution. The receiver
+revalidates every field, duplicate scans are idempotent, and the source remains
+paused as an explicit independent copy.
+
 ## Design documents
 
 - [VISION.md](VISION.md) defines the product promise and deliberate non-goals.
@@ -50,6 +59,8 @@ cache contains no event-store data.
   accessibility requirements, and generated form-factor mockups.
 - [E2E_GUIDE.md](E2E_GUIDE.md) defines the executable browser-test and visual
   evidence contract.
+- [PUZZLE_SHARING.md](PUZZLE_SHARING.md) defines puzzle URLs, the compact
+  checkpoint codec, local QR rendering, validation, and copy semantics.
 
 ## Foundation
 
@@ -63,6 +74,8 @@ cache contains no event-store data.
   no-guess puzzles in the requested chapter band. Its cumulative ladder moves
   from singles, through pairs/intersections, triples/fish/Y-Wings, then
   colours/chains/uniqueness, and finally multi-technique Master synthesis.
+- Versioned puzzle-link and progress-transfer codecs, validation workers, and
+  locally rendered QR codes via the bundled MIT-licensed `qrcode` package.
 - Vitest for domain, replay, migration, and property tests.
 - Playwright Chromium on macOS for real-browser journeys, accessibility checks,
   offline use, privacy enforcement, generated walkthroughs, and zero-diff
