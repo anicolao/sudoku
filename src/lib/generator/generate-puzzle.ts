@@ -77,7 +77,9 @@ export function validatePuzzle(puzzle: PuzzleDefinition): boolean {
     return false;
   }
   if (countSolutions(puzzle.givens) !== 1) return false;
-  const logical = solveLogically(puzzle.givens, { maxDifficulty: puzzle.difficulty });
+  const logical = solveLogically(puzzle.givens, {
+    maxDifficulty: puzzle.difficulty === 'custom' ? 'master' : puzzle.difficulty
+  });
   return logical.solved && logical.grid === puzzle.solution &&
     (puzzle.generatorVersion === 1 || logical.difficulty === puzzle.difficulty);
 }
@@ -103,7 +105,8 @@ export function generatePuzzle(
       seed,
       generatorVersion: 2,
       validatorVersion: 2,
-      hardestTechnique: logical.hardestTechnique
+      hardestTechnique: logical.hardestTechnique,
+      provenance: { kind: 'generated', seed, generatorVersion: 2 }
     };
     if (validatePuzzle(puzzle)) return { puzzle, traceLength: logical.steps.length, attempts: attempt + 1 };
   }
