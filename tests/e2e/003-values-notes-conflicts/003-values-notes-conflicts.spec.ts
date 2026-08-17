@@ -8,8 +8,8 @@ test('the player selects cells, records notes, enters values, and sees conflicts
     'Every click below appends either no event or exactly one canonical fact, then replay updates the board and its plain-language log.'
   );
   await page.goto('/');
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
-  await expect(page.getByRole('grid', { name: 'Easy Sudoku puzzle' })).toBeVisible();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
+  await expect(page.getByRole('grid', { name: 'Foundations Sudoku puzzle' })).toBeVisible();
 
   const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
   const digit = (value: number) => page.getByRole('button', { name: new RegExp(`^${value},`) });
@@ -27,7 +27,7 @@ test('the player selects cells, records notes, enters values, and sees conflicts
       } },
       { spec: 'The game log begins with exactly one start entry', check: async () => {
         await expect(page.locator('[data-event-type]')).toHaveCount(1);
-        await expect(page.locator('[data-event-type="game/started"]')).toHaveText('Started Easy puzzle');
+        await expect(page.locator('[data-event-type="game/started"]')).toHaveText('Started Foundations puzzle');
       } }
     ]
   });
@@ -128,13 +128,20 @@ test('the player selects cells, records notes, enters values, and sees conflicts
     ]
   });
 
-  await digit(1).click();
+  const conflictChoice = await page.evaluate(() => {
+    const puzzle = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle;
+    for (let peerCell = 28; peerCell <= 35; peerCell += 1) {
+      if (puzzle.givens[peerCell] !== '.') return { value: Number(puzzle.givens[peerCell]), peerCell };
+    }
+    throw new Error('Row 4 has no fixed value for the conflict journey');
+  });
+  await digit(conflictChoice.value).click();
   await steps.step('row-conflict-visible', {
     description: 'Entering a duplicate keeps the value visible and clearly marks the row conflict',
     verifications: [
-      { spec: 'The entered 1 and the existing row 4 given both expose conflict state', check: async () => {
-        await expect(cell(27)).toHaveAccessibleName(/editable, 1, conflict, selected/);
-        await expect(cell(35)).toHaveAccessibleName(/fixed, 1, conflict/);
+      { spec: 'The entered value and the existing row 4 given both expose conflict state', check: async () => {
+        await expect(cell(27)).toHaveAccessibleName(new RegExp(`editable, ${conflictChoice.value}, conflict, selected`));
+        await expect(cell(conflictChoice.peerCell)).toHaveAccessibleName(new RegExp(`fixed, ${conflictChoice.value}, conflict`));
       } },
       { spec: 'The conflict remains a derived projection of one value event', check: async () => {
         const types = await eventTypes();
@@ -142,7 +149,7 @@ test('the player selects cells, records notes, enters values, and sees conflicts
         expect(types.at(-1)).toBe('cell/value-entered');
       } },
       { spec: 'The visible log preserves the exact newest placement', check: async () => {
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Placed 1 in r4c1');
+        await expect(page.locator('[data-event-type]').first()).toHaveText(`Placed ${conflictChoice.value} in r4c1`);
       } }
     ]
   });

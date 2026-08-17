@@ -15,7 +15,7 @@ test('storage failure remains playable in memory', async ({ page }, testInfo) =>
       await expect(page.getByText('This browser cannot save progress. This session will continue in memory.')).toBeVisible();
     } }]
   });
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('memory-only-puzzle-started', {
     description: 'The player generates a usable puzzle for this session', persistenceStatus: 'memory-only',
     verifications: [{ spec: 'The validated board is interactive despite unavailable persistence', check: async () => {

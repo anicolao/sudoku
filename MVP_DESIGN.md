@@ -1,15 +1,15 @@
 # MVP design
 
-Document status: proposed implementation contract. Nothing in this document is
-evidence that the feature has been built or verified.
+Document status: implemented release contract, extended with the five-level
+generator after the original Foundations MVP.
 
 ## 1. Release boundary
 
 The MVP is an installable, local-only Svelte SPA for classic 9×9 Sudoku. It
-generates Easy puzzles entirely on-device. Every accepted puzzle has exactly
-one solution and can be solved without guessing using only naked singles,
-hidden singles, naked pairs, and pointing pairs. Harder techniques and
-difficulty bands are outside the MVP.
+generates puzzles entirely on-device. Every accepted puzzle has exactly one
+solution and can be solved without guessing. The original Easy scope is now
+named Foundations and is joined by four cumulative chapter levels described in
+section 3.
 
 The release supports:
 
@@ -99,16 +99,21 @@ same pure modules synchronously.
 
 Generation is a deterministic pipeline:
 
-1. initialize the versioned PRNG from an explicit seed;
-2. create a complete valid grid with randomized, seeded backtracking;
-3. remove clues in a seeded order, optionally in rotationally symmetric pairs;
-4. after each removal, use an independent exhaustive solver to prove there is
-   exactly one solution;
-5. run the logical solver and reject any puzzle that cannot be completed by the
-   allowed Easy technique set;
-6. stop at the configured Easy target range or retry from the next derived seed;
-7. return the givens, solution, logical solve trace, attempt count, seed, and
-   generator/validator versions.
+1. select the versioned, pre-rated base for the requested chapter level;
+2. initialize the versioned PRNG from the explicit seed and level;
+3. apply seeded digit, row, column, band, stack, and transpose symmetries that
+   preserve Sudoku validity and the logical structure of the base;
+4. use an independent exhaustive solver to prove exactly one solution;
+5. run the logical solver only up to the requested cumulative technique ceiling;
+6. reject a transform unless its actual solve trace is solved, reproduces the
+   stored solution, and is classified in the requested band;
+7. return the givens, solution, logical solve trace length, attempt count, seed,
+   and generator/validator versions.
+
+The rated bases are source data, not remotely downloaded puzzle content. Seeded
+symmetries give reproducible variants while keeping generation comfortably off
+the UI thread. A bounded sequence of transforms protects against a solver-order
+variant changing the band.
 
 Generation has a bounded attempt budget. If it is exhausted, the UI reports
 “Could not generate a puzzle yet” and offers Retry; it never returns an
@@ -122,17 +127,29 @@ interface PuzzleDefinition {
   id: string;                 // derived from generator version and seed
   givens: string;             // exactly 81 chars: 1-9 or .
   solution: string;           // exactly 81 chars: 1-9
-  difficulty: 'easy';
+  difficulty: 'foundations' | 'intermediate' | 'advanced' | 'expert' | 'master';
   seed: string;
-  generatorVersion: 1;
-  validatorVersion: 1;
-  hardestTechnique:
-    | 'naked-single'
-    | 'hidden-single'
-    | 'naked-pair'
-    | 'pointing-pair';
+  generatorVersion: 2;
+  validatorVersion: 2;
+  hardestTechnique: SolveTechnique;
 }
 ```
+
+The chapter ladder follows the locally reviewed *Zero to Hero Review
+Solutions* curriculum. It is cumulative:
+
+| Level | Required solve-path band | Technique ceiling |
+| --- | --- | --- |
+| Foundations | Chapter 1 | full houses, naked singles, hidden singles |
+| Intermediate | Chapter 2 | pairs, pointing pairs, box/line reduction |
+| Advanced | Chapter 3 | triples, X-Wings, Swordfish, Y-Wings |
+| Expert | Chapter 4 | single-digit chains, Simple Colors, XY-Chains, 3D Medusa, Unique Rectangles |
+| Master | Chapter 5 | repeated Expert-band steps and multi-technique synthesis |
+
+Classification uses a required floor as well as a ceiling: an Intermediate
+puzzle must actually use an Intermediate technique, not merely have fewer
+clues than a Foundations puzzle. Master requires at least three Expert-band
+steps. Clue ranges are secondary generation constraints, never the rating.
 
 Every generated puzzle must prove before it can be returned:
 
@@ -141,8 +158,8 @@ Every generated puzzle must prove before it can be returned:
 - every given agrees with the solution;
 - the givens have exactly one solution;
 - the logical solver reaches that solution without guessing;
-- every logical solve step is one of naked single, hidden single, naked pair,
-  or pointing pair;
+- every logical solve step is at or below the selected chapter ceiling and the
+  completed trace reaches the selected chapter floor;
 - replaying the logical trace from the givens produces the stored solution;
 - the same generator version and seed reproduce identical output.
 
@@ -282,7 +299,7 @@ Selectors derive:
 - the human-readable game log.
 
 The game log formatter owns wording independently of event storage. Example
-entries are “Started Easy puzzle,” “Added note 3 to r4c7,” “Placed 5 in
+entries are “Started Foundations puzzle,” “Added note 3 to r4c7,” “Placed 5 in
 r5c5,” “Undid: Placed 5 in r5c5,” “Revealed 8 in r2c6,” and “Solved in 08:42.”
 It uses stable cell notation for compactness and exposes a fuller accessible
 label (“row 4, column 7”). Tests assert event type and exact formatted text.
@@ -388,10 +405,10 @@ Unit and property tests cover:
 - all Sudoku peers, candidates, conflicts, completion, and immutable givens;
 - generated grid validity, deterministic seeds, bounded failure, cancellation,
   clue removal, uniqueness, and worker message contracts;
-- logical solve traces for naked/hidden singles, naked pairs, pointing pairs,
-  and near-misses that must not apply;
-- a fixed corpus of accepted Easy seeds and rejected puzzles requiring a harder
-  technique or guessing;
+- logical solve traces across singles, subsets, intersections, fish, wings,
+  colours, chains, and uniqueness, including near-misses that must not apply;
+- a fixed corpus at all five levels plus rejected puzzles outside their selected
+  ceiling or requiring guessing;
 - every event type, malformed payload, stream-order invariant, and diagnostic;
 - replay determinism and replay from every prefix of a scenario;
 - undo/redo branching, restart, pause/resume, hint, and post-terminal rejection;
@@ -414,7 +431,7 @@ needed to review it coherently.
 1. **Static shell and verifier** — scaffold SvelteKit, static/base-path build,
    local fonts, manifest, service worker, unit/E2E harness, CI, and local-only
    landing state.
-2. **Easy generator, validator, and start** — implement the seeded solution
+2. **Foundations generator, validator, and start** — implement the seeded solution
    generator, uniqueness counter, logical technique validator, worker boundary,
    bounded failure UI, `game/started`, and rendered givens as one tracer bullet.
 3. **Values, notes, and game log** — implement commands/reducer, board input,
@@ -431,6 +448,9 @@ needed to review it coherently.
    motion, phone/tablet/desktop layouts, and automated accessibility checks.
 9. **Installed offline release** — production service worker, restart offline,
    update safety, and base-path deployment.
+10. **Five chapter levels** — add cumulative logical rating, deterministic
+    generation for Foundations through Master, the level picker, and a
+    click-by-click level-selection walkthrough.
 
 ## 11. Definition of done
 

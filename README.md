@@ -10,9 +10,10 @@ data and play history remain in this browser's `localStorage`. A service worker
 caches only the static application shell so a previously loaded app can be used
 offline.
 
-The MVP is implemented. The application can
-generate deterministic Easy puzzles in a Web Worker, independently prove a
-unique solution, reject puzzles beyond the allowed logical techniques, commit
+The MVP is implemented. The application can generate deterministic puzzles at
+five cumulative chapter levels—Foundations, Intermediate, Advanced, Expert,
+and Master—in a Web Worker, independently prove a unique solution, rate each
+puzzle from its logical solve path, reject puzzles outside the selected level, commit
 the complete puzzle definition as a `game/started` event, reconstruct it by
 replay, and render its givens as an accessible 9×9 grid. Players can now select
 cells, switch explicitly between Number and Notes modes, toggle pencil marks,
@@ -58,9 +59,10 @@ cache contains no event-store data.
 - Pure commands, event validation, reducers, selectors, and Sudoku rules; Svelte
   components render projections and never mutate canonical state directly.
 - One versioned append-only event-store document in browser `localStorage`.
-- A seeded on-device generator whose validator accepts uniquely solvable Easy
-  puzzles requiring no technique beyond naked singles, hidden singles, naked
-  pairs, and pointing pairs.
+- A seeded on-device generator whose validator accepts only uniquely solvable,
+  no-guess puzzles in the requested chapter band. Its cumulative ladder moves
+  from singles, through pairs/intersections, triples/fish/Y-Wings, then
+  colours/chains/uniqueness, and finally multi-technique Master synthesis.
 - Vitest for domain, replay, migration, and property tests.
 - Playwright Chromium on macOS for real-browser journeys, accessibility checks,
   offline use, privacy enforcement, generated walkthroughs, and zero-diff

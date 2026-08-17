@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Digit, GameProjection } from '$lib/domain/types';
   import { PEERS } from '$lib/domain/sudoku';
+  import { difficultyLabel } from '$lib/domain/difficulty';
 
   let {
     game,
@@ -84,7 +85,7 @@
   }
 </script>
 
-<div class="sudoku-board" role="grid" aria-label="Easy Sudoku puzzle" data-testid="sudoku-board">
+<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board">
   {#each Array(9) as _, row}
     <div class="sudoku-row" role="row">
     {#each Array(9) as _, column}

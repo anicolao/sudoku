@@ -31,9 +31,9 @@ test('the local-only application shell renders deterministically', async ({ page
         }
       },
       {
-        spec: 'The local Easy puzzle generator is available',
+        spec: 'The local five-level puzzle generator is available',
         check: async () => {
-          await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeEnabled();
+          await expect(page.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeEnabled();
           await expect(page.getByText('The puzzle and its solution never leave this browser.')).toBeVisible();
         }
       },

@@ -3,10 +3,10 @@ import { replay } from '../../src/lib/domain/reducer';
 import type { PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
 
 const puzzle: PuzzleDefinition = {
-  id: 'easy-v1-test',
+  id: 'foundations-v1-test',
   givens: `1${'.'.repeat(80)}`,
   solution: '123456789'.repeat(9),
-  difficulty: 'easy',
+  difficulty: 'foundations',
   seed: 'test',
   generatorVersion: 1,
   validatorVersion: 1,

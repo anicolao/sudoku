@@ -1,19 +1,38 @@
 export type Digit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
+export type PuzzleDifficulty =
+  | 'foundations'
+  | 'intermediate'
+  | 'advanced'
+  | 'expert'
+  | 'master';
+
 export type SolveTechnique =
   | 'naked-single'
   | 'hidden-single'
   | 'naked-pair'
-  | 'pointing-pair';
+  | 'hidden-pair'
+  | 'pointing-pair'
+  | 'box-line-reduction'
+  | 'naked-triple'
+  | 'hidden-triple'
+  | 'x-wing'
+  | 'swordfish'
+  | 'y-wing'
+  | 'single-digit-chain'
+  | 'simple-colors'
+  | 'xy-chain'
+  | 'medusa'
+  | 'unique-rectangle';
 
 export interface PuzzleDefinition {
   id: string;
   givens: string;
   solution: string;
-  difficulty: 'easy';
+  difficulty: PuzzleDifficulty;
   seed: string;
-  generatorVersion: 1;
-  validatorVersion: 1;
+  generatorVersion: 1 | 2;
+  validatorVersion: 1 | 2;
   hardestTechnique: SolveTechnique;
 }
 

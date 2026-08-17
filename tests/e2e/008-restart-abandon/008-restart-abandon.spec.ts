@@ -14,7 +14,7 @@ test('restart and abandon remain visible in history', async ({ page }, testInfo)
   );
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('puzzle-generated', {
     description: 'The player generates an attempt that can be restarted or abandoned',
     verifications: [{ spec: 'Restart and Abandon are both available', check: async () => {

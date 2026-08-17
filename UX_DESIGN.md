@@ -50,7 +50,8 @@ board beyond a comfortable scan size.
 Primary destinations are:
 
 - **Play** — start or resume the current puzzle;
-- **Puzzles** — generate a new Easy puzzle and revisit prior generated puzzles;
+- **Puzzles** — choose a chapter level, generate a puzzle, and revisit prior
+  generated puzzles;
 - **History** — review completed and abandoned games;
 - **Settings** — checking, note cleanup, timer visibility, motion, and local
   data controls. On phone, Settings is available from the header menu; on wider
@@ -64,8 +65,10 @@ or backed up.” It must never be represented as a cloud-success indicator.
 
 ### 1. Start or resume
 
-On first launch, Play explains fixed givens, number entry, and notes, then offers
-**Generate Easy puzzle**. Generation runs on-device and shows a cancellable
+On first launch, Play explains fixed givens, number entry, and notes, then shows
+a five-option level picker and **Generate Foundations puzzle** by default.
+Changing a level immediately updates its short technique-family summary and the
+generation action. Generation runs on-device and shows a cancellable
 progress state without starting the game timer. The generated puzzle becomes a
 game only after it passes validity, uniqueness, and allowed-technique checks and
 the `game/started` event is safely appended.
@@ -155,7 +158,7 @@ completion panel appears without covering the board. It says:
 
 ```text
 Puzzle complete
-Easy · 08:42 · 1 mistake · 0 hints
+Advanced · 08:42 · 1 mistake · 0 hints
 ```
 
 Actions are **View game log**, **Choose another puzzle**, and **Done**. Reduced
@@ -185,9 +188,9 @@ wash under 400 ms, never confetti, sound, or forced delay.
 
 ### No game
 
-Show a short explanation of generated Easy puzzles and one calm **Generate Easy
-puzzle** action. Do not show unavailable difficulty choices or manufacture
-percentages when no puzzle has been played.
+Show a short explanation, the five chapter choices, a one-line summary of the
+selected technique family, and one calm **Generate [level] puzzle** action. Do
+not manufacture percentages when no puzzle has been played.
 
 ### In progress
 
@@ -239,12 +242,14 @@ must not redirect to a remote fallback.
 
 ## Puzzle browser
 
-The MVP has one difficulty, Easy. The primary action is **Generate Easy
+The puzzle browser offers Foundations, Intermediate, Advanced, Expert, and
+Master. They map to the five cumulative curriculum chapters; clue count does
+not define the label. The primary action is **Generate [selected level]
 puzzle**. Below it, generated puzzle cards contain a stable friendly label
 derived from the short seed, status (In progress, Solved, or Abandoned), best
 local active time if solved, hint count, and a single clear action. Cards do not
-preview givens, expose the full seed by default, or suggest unavailable harder
-difficulties.
+preview givens, expose the full seed by default, or imply that a level was
+inferred from clue count alone.
 
 Filtering and sorting are ephemeral; newest generated puzzle is the default.
 “Start over” on a completed puzzle creates a new game ID and event stream using
@@ -349,7 +354,8 @@ physically removed and the app returns to first launch.
 
 Formative tasks for representative players:
 
-1. generate an Easy puzzle and distinguish a given from an editable value;
+1. inspect every chapter option, generate a Master puzzle, and distinguish a
+   given from an editable value;
 2. add and remove several notes without accidentally committing a number;
 3. identify and correct a row conflict;
 4. undo, redo, then create a new branch and explain why redo is unavailable;
@@ -371,4 +377,6 @@ human-readable event log. Form-factor prompts then specified phone stacked,
 tablet two-column, and desktop sidebar/inspector compositions. Generated board
 digits and small labels are illustrative and must not be used as puzzle fixtures
 or visual-regression baselines. A second precise-edit pass changed only the
-difficulty and corresponding log labels from Medium to Easy to match the MVP.
+difficulty and corresponding log labels from Medium to Easy for the original
+MVP. These concept mockups predate the compact five-level picker; executable
+scenario 002 screenshots are the current visual contract for level selection.

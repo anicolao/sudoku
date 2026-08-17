@@ -14,7 +14,7 @@ test('the final moves derive completion, history, review, and a repeated attempt
   );
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect(page.getByRole('grid')).toBeVisible();
   await steps.step('puzzle-generated', {
     description: 'The player generates the puzzle that will be completed',

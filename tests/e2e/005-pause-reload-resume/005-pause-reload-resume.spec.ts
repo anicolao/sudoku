@@ -17,7 +17,7 @@ test('pause freezes active time and reload reconstructs the exact game', async (
   );
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('puzzle-generated', {
     description: 'The player generates a fresh puzzle and its active timer starts at zero',
     verifications: [
