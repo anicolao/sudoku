@@ -45,6 +45,34 @@ describe('event store', () => {
     expect(store.getDocument().events[0]).toMatchObject({ type: 'settings/changed', gameId: null });
   });
 
+  it('opens a shared puzzle from one explicit import origin event', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('shared-origin').puzzle;
+    const puzzle = {
+      ...generated,
+      id: 'shared-123456789abc',
+      seed: undefined,
+      generatorVersion: undefined,
+      validatorVersion: 3 as const,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 1 as const, fingerprint: '123456789abc' }
+    };
+    const store = new EventStore(storage);
+    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-1'
+    });
+
+    expect(projection.games[projection.activeGameId ?? '']).toMatchObject({
+      puzzle,
+      values: Array(81).fill(null),
+      paused: false,
+      undoTargetId: null
+    });
+    expect(store.getDocument().events).toMatchObject([{
+      type: 'game/imported',
+      payload: { importKind: 'puzzle-link', transferId: null, checkpoint: null }
+    }]);
+  });
+
   it('migrates a frozen V0 document before publishing it', () => {
     const storage = new MemoryStorage();
     storage.setItem(EVENT_STORE_KEY, JSON.stringify({ storageVersion: 0, events: [] }));

@@ -75,6 +75,21 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .local-note, .generation-error { margin: 9px 0 0; color: #777a80; font-size: .82rem; text-align: center; }
 .generation-error { color: #b42318; }
 
+.incoming-card { width: min(100%, 560px); display: grid; justify-items: center; gap: 10px; padding: clamp(20px, 5vw, 38px); border: 1px solid #d7d5cd; border-radius: 18px; background: #fffdf8; text-align: center; }
+.incoming-card .dialog-symbol { margin-bottom: 0; }
+.incoming-card .dialog-symbol.valid { color: #257653; background: #e4f4ec; }
+.incoming-card .dialog-symbol.invalid { color: #9b2c24; background: #fff0ee; }
+.incoming-card h1 { font-size: clamp(1.7rem, 5vw, 2.6rem); }
+.incoming-card > p:not(.eyebrow, .dialog-symbol, .incoming-warning) { max-width: 46ch; margin: 0; color: #62656b; line-height: 1.4; }
+.incoming-facts { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0; }
+.incoming-facts div { min-width: 0; padding: 9px 5px; border: 1px solid #d8daf0; border-radius: 9px; background: #f0f1fa; }
+.incoming-facts dt { color: #62656b; font-size: .7rem; }
+.incoming-facts dd { margin: 2px 0 0; overflow: hidden; color: #303a7d; font-size: .9rem; font-weight: 700; text-overflow: ellipsis; }
+.incoming-warning { margin: 0; padding: 10px; border-radius: 9px; color: #754c16; background: #fff0cf; font-size: .84rem; text-align: left; }
+.incoming-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.incoming-actions button { min-height: 48px; padding: 6px 10px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; font-weight: 700; cursor: pointer; }
+.incoming-actions button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
+
 .play-view { width: min(100%, 940px); display: grid; gap: 14px; }
 .puzzle-heading { width: 100%; display: flex; align-items: end; justify-content: space-between; gap: 18px; }
 .puzzle-heading h1 { font-size: clamp(1.75rem, 4vw, 2.6rem); }
@@ -287,6 +302,9 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .hero-card .local-note { display: none; }
   .hero-card .welcome-copy h1 { margin-bottom: 12px; font-size: 1.6rem; text-align: center; }
   .library-view { gap: 5px; }
+  .incoming-card { gap: 5px; padding: 10px; }
+  .incoming-card .dialog-symbol { display: none; }
+  .incoming-card h1 { font-size: 1.5rem; }
   .library-view .library-heading { display: none; }
   .settings-list { gap: 3px; }
   .settings-list button { min-height: 44px; padding: 3px 10px; }

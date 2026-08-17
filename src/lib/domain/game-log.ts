@@ -23,6 +23,12 @@ export function formatGameLog(events: readonly SudokuEvent[], gameId: string, ga
       if (event.type === 'game/started') {
         return { id: event.id, type: event.type, text: `Started ${difficultyLabel(event.payload.puzzle.difficulty)} puzzle` };
       }
+      if (event.type === 'game/imported') {
+        const text = event.payload.importKind === 'progress-transfer'
+          ? `Continued transferred puzzle at ${Math.floor(event.elapsedMs / 60_000)}:${String(Math.floor(event.elapsedMs / 1_000) % 60).padStart(2, '0')}`
+          : `Opened shared ${difficultyLabel(event.payload.puzzle.difficulty)} puzzle`;
+        return { id: event.id, type: event.type, text };
+      }
       if (event.type === 'game/paused') return { id: event.id, type: event.type, text: 'Paused puzzle' };
       if (event.type === 'game/resumed') return { id: event.id, type: event.type, text: 'Resumed puzzle' };
       if (event.type === 'game/restarted') return { id: event.id, type: event.type, text: 'Restarted puzzle' };

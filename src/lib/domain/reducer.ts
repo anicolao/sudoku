@@ -116,25 +116,26 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       continue;
     }
 
-    if (event.type === 'game/started') {
+    if (event.type === 'game/started' || event.type === 'game/imported') {
+      const checkpoint = event.type === 'game/imported' ? event.payload.checkpoint : null;
       state.games[event.gameId] = {
         id: event.gameId,
         puzzle: event.payload.puzzle,
         settings: event.payload.settings,
         startedAt: event.occurredAt,
-        values: Array<Digit | null>(81).fill(null),
-        notes: Array.from({ length: 81 }, () => []),
+        values: checkpoint ? structuredClone(checkpoint.values) : Array<Digit | null>(81).fill(null),
+        notes: checkpoint ? structuredClone(checkpoint.notes) : Array.from({ length: 81 }, () => []),
         conflicts: [],
         mistakeCells: [],
         undoTargetId: null,
         redoTargetId: null,
-        paused: false,
-        elapsedMs: 0,
-        resumedAt: event.occurredAt,
+        paused: checkpoint?.paused ?? false,
+        elapsedMs: checkpoint?.elapsedMs ?? 0,
+        resumedAt: checkpoint ? null : event.occurredAt,
         status: 'active',
-        hints: 0,
-        mistakes: 0,
-        hintedCells: [],
+        hints: checkpoint?.hints ?? 0,
+        mistakes: checkpoint?.mistakes ?? 0,
+        hintedCells: checkpoint ? [...checkpoint.hintedCells] : [],
         completedAt: null
       };
       state.activeGameId = event.gameId;
@@ -186,7 +187,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
 
   for (const game of Object.values(state.games)) {
     for (const event of valid) {
-      if (event.gameId !== game.id || event.type === 'game/started') continue;
+      if (event.gameId !== game.id || event.type === 'game/started' || event.type === 'game/imported') continue;
       if (event.type === 'game/paused') {
         if (game.paused || event.elapsedMs < game.elapsedMs) state.diagnostics.push('invalid-pause');
         else {

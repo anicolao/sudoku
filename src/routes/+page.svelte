@@ -9,11 +9,14 @@
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
   import { EVENT_STORE_KEY, EventStore, loadEventStore, type EventMetadata } from '$lib/storage/event-store';
+  import type { SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
+  import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
 
   type PersistenceStatus = 'checking' | 'local' | 'memory-only';
   type GenerationStatus = 'idle' | 'generating' | 'failed';
   type InputMode = 'number' | 'notes';
   type View = 'play' | 'puzzles' | 'history' | 'settings';
+  type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
 
   const version = import.meta.env.VITE_APP_VERSION;
   const revision = import.meta.env.VITE_GIT_HASH;
@@ -34,6 +37,9 @@
   let storageWarning = $state('');
   let secondaryTab = $state(false);
   let selectedDifficulty = $state<PuzzleDifficulty>('foundations');
+  let incomingStatus = $state<IncomingStatus>('none');
+  let incomingPuzzle = $state<SharedPuzzleValidation | null>(null);
+  let incomingError = $state('');
   let timerNow = $state(
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
@@ -76,6 +82,7 @@
     storageWarning = loaded.warning;
     persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
     projection = store.getProjection();
+    void inspectIncomingPuzzle();
     if (import.meta.env.VITE_E2E_MODE === '1') {
       const latestTime = store.getDocument().events.at(-1)?.occurredAt;
       if (latestTime && Date.parse(latestTime) > timerNow.getTime()) timerNow = new Date(latestTime);
@@ -131,6 +138,60 @@
     if (!store) return;
     persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
     storageWarning = store.getWarning();
+  }
+
+  async function inspectIncomingPuzzle(): Promise<void> {
+    const url = new URL(window.location.href);
+    const values = url.searchParams.getAll('p');
+    if (values.length === 0) return;
+    if (values.length !== 1) {
+      incomingStatus = 'invalid';
+      incomingError = 'This puzzle link is ambiguous because it contains more than one puzzle.';
+      return;
+    }
+    incomingStatus = 'checking';
+    incomingError = '';
+    try {
+      incomingPuzzle = await validateSharedPuzzleInWorker(values[0]);
+      incomingStatus = 'ready';
+    } catch (error) {
+      incomingStatus = 'invalid';
+      incomingError = error instanceof Error ? error.message : 'This puzzle could not be checked safely.';
+    }
+  }
+
+  function clearIncomingUrl(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('p');
+    history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function dismissIncoming(): void {
+    clearIncomingUrl();
+    incomingStatus = 'none';
+    incomingPuzzle = null;
+    incomingError = '';
+  }
+
+  function acceptIncomingPuzzle(abandonCurrent = false): void {
+    if (!store || !incomingPuzzle || secondaryTab) return;
+    if (activeGame?.status === 'active') {
+      if (!abandonCurrent) return;
+      projection = store.abandon(activeGame.id, metadata());
+    }
+    projection = store.importGame(
+      incomingPuzzle.puzzle,
+      'puzzle-link',
+      null,
+      null,
+      metadata(false)
+    );
+    syncStoreStatus();
+    reviewedGameId = null;
+    selectedCell = null;
+    view = 'play';
+    announcement = 'Shared puzzle opened on this device';
+    dismissIncoming();
   }
 
   function metadata(trackElapsed = true): EventMetadata {
@@ -352,7 +413,24 @@
   {/if}
 
   <main>
-    {#if view === 'settings'}
+    {#if incomingStatus !== 'none'}
+      <section class="incoming-card" aria-labelledby="incoming-title" data-e2e-no-clip>
+        {#if incomingStatus === 'checking'}
+          <p class="dialog-symbol" aria-hidden="true">◇</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Checking shared puzzle…</h1><p>Proving its solution and rating locally.</p>
+        {:else if incomingStatus === 'invalid'}
+          <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
+        {:else if incomingPuzzle}
+          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
+          <dl class="incoming-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div><div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          {#if activeGame?.status === 'active'}
+            <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncomingPuzzle(true)} disabled={secondaryTab}>Abandon current and open shared puzzle</button></div>
+          {:else}
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncomingPuzzle()} disabled={secondaryTab}>Start this puzzle</button></div>
+          {/if}
+        {/if}
+      </section>
+    {:else if view === 'settings'}
       <section class="library-view settings-view" aria-labelledby="settings-title">
         <div class="library-heading"><p class="eyebrow">On this device</p><h1 id="settings-title">Settings</h1><p>Preferences apply to new puzzles and stay in this browser.</p></div>
         <div class="settings-list">
