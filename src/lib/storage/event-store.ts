@@ -3,6 +3,7 @@ import type {
   AppProjection,
   Digit,
   GameSettings,
+  ImportedCheckpoint,
   PuzzleDefinition,
   StoredEventDocumentV1,
   SudokuEvent
@@ -134,6 +135,43 @@ export class EventStore {
         payload: { gameId, puzzle: storedPuzzle, settings },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: metadata.elapsedMs ?? 0,
+        schemaVersion: 1,
+        reducerVersion: 1
+      };
+    });
+  }
+
+  importGame(
+    puzzle: PuzzleDefinition,
+    importKind: 'puzzle-link' | 'progress-transfer',
+    transferId: string | null,
+    checkpoint: ImportedCheckpoint | null,
+    metadata: EventMetadata
+  ): AppProjection {
+    const storedPuzzle: PuzzleDefinition = {
+      ...puzzle,
+      provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined
+    };
+    const settings: GameSettings = checkpoint
+      ? { ...this.projection.settings }
+      : { ...this.projection.settings };
+    return this.append(metadata, (sequence) => {
+      const gameId = `game-${storedPuzzle.id}-${sequence}`;
+      return {
+        id: metadata.id,
+        sequence,
+        gameId,
+        type: 'game/imported',
+        payload: {
+          gameId,
+          importKind,
+          transferId,
+          puzzle: storedPuzzle,
+          settings,
+          checkpoint: checkpoint ? structuredClone(checkpoint) : null
+        },
+        occurredAt: metadata.occurredAt.toISOString(),
+        elapsedMs: checkpoint?.elapsedMs ?? 0,
         schemaVersion: 1,
         reducerVersion: 1
       };

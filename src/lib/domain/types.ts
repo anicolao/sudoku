@@ -75,6 +75,28 @@ export interface GameStartedEvent extends EventEnvelope {
   };
 }
 
+export interface ImportedCheckpoint {
+  values: Array<Digit | null>;
+  notes: Digit[][];
+  hintedCells: number[];
+  elapsedMs: number;
+  hints: number;
+  mistakes: number;
+  paused: true;
+}
+
+export interface GameImportedEvent extends EventEnvelope {
+  type: 'game/imported';
+  payload: {
+    gameId: string;
+    importKind: 'puzzle-link' | 'progress-transfer';
+    transferId: string | null;
+    puzzle: PuzzleDefinition;
+    settings: GameSettings;
+    checkpoint: ImportedCheckpoint | null;
+  };
+}
+
 export interface ValueEnteredEvent extends EventEnvelope {
   type: 'cell/value-entered';
   payload: { cell: number; value: Digit };
@@ -133,6 +155,7 @@ export type ReversibleEvent =
 export type SudokuEvent =
   | SettingsChangedEvent
   | GameStartedEvent
+  | GameImportedEvent
   | ReversibleEvent
   | MoveUndoneEvent
   | MoveRedoneEvent
