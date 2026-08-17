@@ -14,7 +14,7 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
   );
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('puzzle-generated', {
     description: 'The player generates the puzzle used for the correction journey',
     verifications: [

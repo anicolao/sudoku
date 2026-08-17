@@ -167,7 +167,8 @@ IDs, and no shared storage. The offline project is serial.
 
 Every scenario fixes:
 
-- a generator seed, generator version, and exact expected Easy puzzle;
+- a generator seed, selected chapter level, generator version, and exact
+  expected puzzle;
 - event IDs and game IDs through an injected E2E ID source;
 - browser clock with `page.clock.install()`;
 - locale, timezone, viewport, reduced motion, and device scale;
@@ -313,7 +314,7 @@ projection.
 | ID | Journey | Essential proof |
 | --- | --- | --- |
 | 001 | App shell and local-only boundary | static shell, build marker, local status, empty store, no account/network UI |
-| 002 | Generate, validate, and start Easy puzzle | fixed seed, responsive worker, unique solution, allowed solve trace, one `game/started`, exact initial board |
+| 002 | Choose a level, generate, validate, and start | every chapter choice, fixed seed, responsive worker, unique solution, rated solve trace, one `game/started`, exact Master board |
 | 003 | Values, notes, and conflicts | number/note modes, replacement, note cleanup, conflicts, exact event/log sequence |
 | 004 | Undo, redo, erase, and branch | compensating events, replayed board, redo invalidated by new branch |
 | 005 | Pause, timer, reload, and resume | fixed active time, board cover, reload equivalence, resumed append |

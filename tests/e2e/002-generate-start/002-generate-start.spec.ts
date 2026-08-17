@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test('the player generates, validates, and starts an Easy puzzle', async ({ page }, testInfo) => {
+test('the player chooses a chapter level and starts a rated puzzle', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
-    'Generate, validate, and start an Easy puzzle',
-    'One deliberate action crosses the worker, independent validators, canonical event store, replay, and responsive board.'
+    'Choose a chapter level, then generate and start its puzzle',
+    'Each chapter choice is visible before a Master puzzle crosses the worker, independent validators, canonical event store, replay, and responsive board.'
   );
 
   await page.clock.install({ time: new Date('2026-08-16T12:00:00.000Z') });
@@ -22,34 +22,56 @@ test('the player generates, validates, and starts an Easy puzzle', async ({ page
         }
       },
       {
-        spec: 'Generate Easy puzzle is enabled and promises local validation',
+        spec: 'Generate Foundations puzzle is enabled and promises local validation',
         check: async () => {
-          await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeEnabled();
+          await expect(page.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeEnabled();
           await expect(page.getByRole('list', { name: 'Puzzle promises' })).toContainText('Unique solution');
         }
       }
     ]
   });
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  for (const level of [
+    { label: 'Intermediate', chapter: 2, summary: 'Pairs and intersections' },
+    { label: 'Advanced', chapter: 3, summary: 'Triples, fish, and Y-Wings' },
+    { label: 'Expert', chapter: 4, summary: 'Colors, chains, and uniqueness' },
+    { label: 'Master', chapter: 5, summary: 'Multi-technique synthesis' }
+  ]) {
+    await page.getByRole('button', { name: `${level.label} Chapter ${level.chapter}` }).click();
+    await steps.step(`${level.chapter}-${level.label.toLowerCase()}-selected`, {
+      description: `${level.label} is selected as Chapter ${level.chapter}`,
+      verifications: [
+        {
+          spec: `${level.label} exposes its chapter-matched technique family before generation`,
+          check: async () => {
+            await expect(page.getByRole('button', { name: `${level.label} Chapter ${level.chapter}` })).toHaveAttribute('aria-pressed', 'true');
+            await expect(page.getByText(new RegExp(`${level.label}.*${level.summary}`))).toBeVisible();
+            await expect(page.getByRole('button', { name: `Generate ${level.label} puzzle` })).toBeEnabled();
+          }
+        }
+      ]
+    });
+  }
+
+  await page.getByRole('button', { name: 'Generate Master puzzle' }).click();
 
   await steps.step('validated-puzzle-started', {
-    description: 'The generated Easy puzzle is validated, persisted, and ready to play',
+    description: 'The generated Master puzzle is validated, rated, persisted, and ready to play',
     verifications: [
       {
-        spec: 'The real board has 81 cells with exactly 40 fixed givens',
+        spec: 'The real board has 81 cells with exactly 23 fixed givens',
         check: async () => {
-          const board = page.getByRole('grid', { name: 'Easy Sudoku puzzle' });
+          const board = page.getByRole('grid', { name: 'Master Sudoku puzzle' });
           await expect(board).toBeVisible();
           await expect(board.getByRole('gridcell')).toHaveCount(81);
-          await expect(board.getByRole('gridcell', { name: /fixed/ })).toHaveCount(40);
+          await expect(board.getByRole('gridcell', { name: /fixed/ })).toHaveCount(23);
         }
       },
       {
-        spec: 'The UI reports a unique Easy puzzle and its stable generated identity',
+        spec: 'The UI reports a unique Master puzzle and its stable generated identity',
         check: async () => {
           await expect(page.getByText('Unique solution', { exact: true })).toBeVisible();
-          await expect(page.getByText(/Generated and validated here · #[0-9a-f]{8}/)).toBeVisible();
+          await expect(page.getByText(/Generated and rated here · #[0-9a-f]{8}/)).toBeVisible();
         }
       },
       {
@@ -72,10 +94,10 @@ test('the player generates, validates, and starts an Easy puzzle', async ({ page
                 reducerVersion: 1,
                 payload: {
                   puzzle: {
-                    difficulty: 'easy',
+                    difficulty: 'master',
                     seed: 'walkthrough-seed',
-                    generatorVersion: 1,
-                    validatorVersion: 1
+                    generatorVersion: 2,
+                    validatorVersion: 2
                   }
                 }
               }

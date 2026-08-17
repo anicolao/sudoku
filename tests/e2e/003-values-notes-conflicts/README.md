@@ -100,6 +100,6 @@ Every click below appends either no event or exactly one canonical fact, then re
 
 **Verifications:**
 
-- [x] The entered 1 and the existing row 4 given both expose conflict state
+- [x] The entered value and the existing row 4 given both expose conflict state
 - [x] The conflict remains a derived projection of one value event
 - [x] The visible log preserves the exact newest placement

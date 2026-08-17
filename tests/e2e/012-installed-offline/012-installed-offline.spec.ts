@@ -12,7 +12,7 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
   await expect(page.locator('[data-app-ready="true"]')).toBeVisible();
   await page.waitForFunction(() => document.documentElement.dataset.offlineReady === 'true');
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).not.toBeNull();
   await steps.step('online-puzzle-installed', {
     description: 'Online once, the player generates a validated puzzle and installs the application shell',

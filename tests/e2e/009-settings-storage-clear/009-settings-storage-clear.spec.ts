@@ -54,14 +54,14 @@ test('recover storage, choose settings, observe a mistake, and clear everything'
   await page.getByRole('button', { name: 'Play' }).click();
   await steps.step('play-returned', {
     description: 'The player returns to the empty play view',
-    verifications: [{ spec: 'The recovered clean store is ready to generate', check: async () => await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeEnabled() }]
+    verifications: [{ spec: 'The recovered clean store is ready to generate', check: async () => await expect(page.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeEnabled() }]
   });
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('settings-snapshotted', {
     description: 'The player generates a puzzle with the chosen preferences',
     verifications: [{ spec: 'The game snapshots mistake checking on and timer display off', check: async () => {
-      await expect(page.getByRole('grid', { name: 'Easy Sudoku puzzle' })).toBeVisible();
+      await expect(page.getByRole('grid', { name: 'Foundations Sudoku puzzle' })).toBeVisible();
       await expect(page.locator('.timer')).toHaveCount(0);
       const start = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events.at(-1));
       expect(start.payload.settings).toMatchObject({ checkMistakes: true, showTimer: false });

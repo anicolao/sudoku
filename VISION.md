@@ -58,8 +58,8 @@ instead of shrinking controls below usable sizes.
 
 ## The MVP experience
 
-1. Open the app and either resume the current puzzle or generate a new Easy
-   puzzle on-device.
+1. Open the app and either resume the current puzzle or choose one of five
+   chapter levels and generate it on-device.
 2. Select a cell and enter a number or toggle one or more pencil notes.
 3. Use erase, undo, redo, pause, or a deliberate hint when needed.
 4. Close or reload at any point and return to the exact reconstructed state.
@@ -69,15 +69,14 @@ instead of shrinking controls below usable sizes.
 
 ## Success for the first release
 
-The MVP succeeds when a player can generate and complete Easy puzzles with no
+The product succeeds when a player can generate and complete any offered level with no
 network, recover exactly after interruption, understand each visible state, and
 trust that replay produces the same board every time. Engineering evidence must
 show that:
 
 - every generated puzzle has a valid unique solution;
-- the logical validator solves every accepted puzzle without guessing and uses
-  no technique beyond naked singles, hidden singles, naked pairs, and pointing
-  pairs;
+- the logical validator solves every accepted puzzle without guessing and its
+  actual solve trace lands in the selected cumulative chapter band;
 - identical generator version and seed produce the identical puzzle;
 - every accepted event preserves board and stream invariants;
 - reload and replay converge on the same projection;
@@ -101,6 +100,6 @@ show that:
 
 After the local classic experience is proven, event sourcing leaves room for
 optional encrypted export/import, replay animation, richer hint explanations,
-additional difficulty levels, and additional solving techniques. Those
+and teaching views for the techniques already used to rate puzzles. Those
 additions must preserve the local-first default and must not reinterpret old
 event streams.

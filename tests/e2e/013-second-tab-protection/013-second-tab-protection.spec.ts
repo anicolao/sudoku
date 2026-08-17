@@ -3,7 +3,7 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('a later tab is read-only and follows the first writer', async ({ context, page }, testInfo) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect(page.getByRole('gridcell')).toHaveCount(81);
 
   const later = await context.newPage();

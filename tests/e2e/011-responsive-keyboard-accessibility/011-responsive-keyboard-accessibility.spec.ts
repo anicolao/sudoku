@@ -13,10 +13,10 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await steps.step('responsive-welcome', {
     description: 'The local welcome state fits the current viewport before play begins',
     verifications: [
-      { spec: 'Puzzle generation is available without scrolling', check: async () => await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeVisible() }
+      { spec: 'Puzzle generation is available without scrolling', check: async () => await expect(page.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeVisible() }
     ]
   });
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('responsive-board-generated', {
     description: 'The player generates a board in the current form factor',
     verifications: [

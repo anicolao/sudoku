@@ -1,10 +1,18 @@
 /// <reference lib="webworker" />
 
-import { generateEasyPuzzle } from './generate-puzzle';
+import type { PuzzleDifficulty } from '$lib/domain/types';
+import { generatePuzzle } from './generate-puzzle';
 
-self.addEventListener('message', (event: MessageEvent<{ seed: string; maxAttempts?: number }>) => {
+self.addEventListener('message', (event: MessageEvent<{
+  difficulty: PuzzleDifficulty;
+  seed: string;
+  maxAttempts?: number;
+}>) => {
   try {
-    self.postMessage({ ok: true, result: generateEasyPuzzle(event.data.seed, event.data.maxAttempts) });
+    self.postMessage({
+      ok: true,
+      result: generatePuzzle(event.data.difficulty, event.data.seed, event.data.maxAttempts)
+    });
   } catch (error) {
     self.postMessage({
       ok: false,

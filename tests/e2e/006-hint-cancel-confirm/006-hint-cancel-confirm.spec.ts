@@ -12,7 +12,7 @@ test('a hint is explicit, cancellable, deterministic, and recorded', async ({ pa
   );
   await page.goto('/');
 
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('puzzle-generated', {
     description: 'The generated puzzle offers an enabled Hint action',
     verifications: [

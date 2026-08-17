@@ -67,7 +67,7 @@ test('ordinary play makes only same-origin GET requests', async ({ page }, testI
     description: 'The local-only welcome view loads from bundled same-origin assets',
     verifications: [{ spec: 'Observed requests are same-origin GETs and CSP restricts connections to self', check: assertPrivate }]
   });
-  await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await steps.step('private-puzzle-generated', {
     description: 'The player generates and validates a puzzle locally',
     verifications: [{ spec: 'Generation adds no external request or beacon', check: assertPrivate }]

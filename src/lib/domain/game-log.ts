@@ -1,4 +1,5 @@
 import type { GameProjection, ReversibleEvent, SettingsChangedEvent, SudokuEvent } from './types';
+import { difficultyLabel } from './difficulty';
 
 const cellName = (cell: number): string => `r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`;
 
@@ -20,7 +21,7 @@ export function formatGameLog(events: readonly SudokuEvent[], gameId: string, ga
     .filter((event): event is Exclude<SudokuEvent, SettingsChangedEvent> => event.gameId === gameId)
     .map((event) => {
       if (event.type === 'game/started') {
-        return { id: event.id, type: event.type, text: 'Started Easy puzzle' };
+        return { id: event.id, type: event.type, text: `Started ${difficultyLabel(event.payload.puzzle.difficulty)} puzzle` };
       }
       if (event.type === 'game/paused') return { id: event.id, type: event.type, text: 'Paused puzzle' };
       if (event.type === 'game/resumed') return { id: event.id, type: event.type, text: 'Resumed puzzle' };

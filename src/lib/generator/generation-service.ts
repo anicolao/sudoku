@@ -1,6 +1,8 @@
 import type { GenerationResult } from './generate-puzzle';
+import type { PuzzleDifficulty } from '$lib/domain/types';
 
 export function generateInWorker(
+  difficulty: PuzzleDifficulty,
   seed: string,
   options: { maxAttempts?: number; signal?: AbortSignal } = {}
 ): Promise<GenerationResult> {
@@ -24,6 +26,6 @@ export function generateInWorker(
       stop();
       reject(new Error('Could not generate a puzzle yet'));
     });
-    worker.postMessage({ seed, maxAttempts: options.maxAttempts });
+    worker.postMessage({ difficulty, seed, maxAttempts: options.maxAttempts });
   });
 }
