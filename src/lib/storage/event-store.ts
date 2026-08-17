@@ -168,7 +168,15 @@ export class EventStore {
           transferId,
           puzzle: storedPuzzle,
           settings,
-          checkpoint: checkpoint ? structuredClone(checkpoint) : null
+          checkpoint: checkpoint ? {
+            values: [...checkpoint.values],
+            notes: checkpoint.notes.map((notes) => [...notes]),
+            hintedCells: [...checkpoint.hintedCells],
+            elapsedMs: checkpoint.elapsedMs,
+            hints: checkpoint.hints,
+            mistakes: checkpoint.mistakes,
+            paused: true
+          } : null
         },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: checkpoint?.elapsedMs ?? 0,

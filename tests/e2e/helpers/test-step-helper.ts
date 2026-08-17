@@ -61,7 +61,7 @@ export class TestStepHelper {
       }
 
       for (const element of document.querySelectorAll<HTMLElement>('body *')) {
-        if (element.matches('.sr-live, .sr-live *') || !element.checkVisibility()) continue;
+        if (element.matches('.sr-live, .sr-live *, #svelte-announcer, #svelte-announcer *') || !element.checkVisibility()) continue;
         const rect = element.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) continue;
         if (rect.left < -1 || rect.right > viewport.width + 1 || rect.top < -1 || rect.bottom > viewport.height + 1) {
