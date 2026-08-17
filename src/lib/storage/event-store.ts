@@ -146,15 +146,15 @@ export class EventStore {
     importKind: 'puzzle-link' | 'progress-transfer',
     transferId: string | null,
     checkpoint: ImportedCheckpoint | null,
-    metadata: EventMetadata
+    metadata: EventMetadata,
+    importedSettings: GameSettings = this.projection.settings
   ): AppProjection {
+    if (transferId && this.findImportedGame(transferId)) return this.getProjection();
     const storedPuzzle: PuzzleDefinition = {
       ...puzzle,
       provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined
     };
-    const settings: GameSettings = checkpoint
-      ? { ...this.projection.settings }
-      : { ...this.projection.settings };
+    const settings: GameSettings = { ...importedSettings };
     return this.append(metadata, (sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;
       return {
@@ -176,6 +176,13 @@ export class EventStore {
         reducerVersion: 1
       };
     });
+  }
+
+  findImportedGame(transferId: string): string | null {
+    const event = this.document.events.find((candidate) =>
+      candidate.type === 'game/imported' && candidate.payload.transferId === transferId
+    );
+    return event?.gameId ?? null;
   }
 
   changeSettings(changes: Partial<GameSettings>, metadata: EventMetadata): AppProjection {
