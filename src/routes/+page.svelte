@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
@@ -9,14 +10,23 @@
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
   import { EVENT_STORE_KEY, EventStore, loadEventStore, type EventMetadata } from '$lib/storage/event-store';
-  import type { SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
+  import { puzzleUrl, type SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
+  import {
+    checkpointFromGame,
+    encodeTransfer,
+    transferUrl,
+    type ValidatedTransfer
+  } from '$lib/sharing/transfer-codec';
+  import { validateTransferInWorker } from '$lib/sharing/transfer-validation-service';
 
   type PersistenceStatus = 'checking' | 'local' | 'memory-only';
   type GenerationStatus = 'idle' | 'generating' | 'failed';
   type InputMode = 'number' | 'notes';
   type View = 'play' | 'puzzles' | 'history' | 'settings';
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
+  type IncomingKind = 'puzzle' | 'transfer';
+  type ShareStage = 'choose' | 'ready';
 
   const version = import.meta.env.VITE_APP_VERSION;
   const revision = import.meta.env.VITE_GIT_HASH;
@@ -39,7 +49,17 @@
   let selectedDifficulty = $state<PuzzleDifficulty>('foundations');
   let incomingStatus = $state<IncomingStatus>('none');
   let incomingPuzzle = $state<SharedPuzzleValidation | null>(null);
+  let incomingTransfer = $state<ValidatedTransfer | null>(null);
+  let incomingKind = $state<IncomingKind>('puzzle');
   let incomingError = $state('');
+  let shareDialogOpen = $state(false);
+  let shareStage = $state<ShareStage>('choose');
+  let shareLink = $state('');
+  let shareQr = $state('');
+  let shareError = $state('');
+  let shareIsProgress = $state(false);
+  let shareCopied = $state(false);
+  let systemShareAvailable = $state(false);
   let timerNow = $state(
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
@@ -81,8 +101,9 @@
     store = loaded.store;
     storageWarning = loaded.warning;
     persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
+    systemShareAvailable = typeof navigator.share === 'function';
     projection = store.getProjection();
-    void inspectIncomingPuzzle();
+    void inspectIncomingLink();
     if (import.meta.env.VITE_E2E_MODE === '1') {
       const latestTime = store.getDocument().events.at(-1)?.occurredAt;
       if (latestTime && Date.parse(latestTime) > timerNow.getTime()) timerNow = new Date(latestTime);
@@ -96,6 +117,9 @@
     }
 
     const cleanup: Array<() => void> = [];
+    const inspectFragment = (): void => { void inspectIncomingLink(); };
+    window.addEventListener('hashchange', inspectFragment);
+    cleanup.push(() => window.removeEventListener('hashchange', inspectFragment));
     const updateE2EClock = (event: Event): void => {
       timerNow = new Date(timerNow.getTime() + (event as CustomEvent<number>).detail);
     };
@@ -140,19 +164,34 @@
     storageWarning = store.getWarning();
   }
 
-  async function inspectIncomingPuzzle(): Promise<void> {
+  async function inspectIncomingLink(): Promise<void> {
     const url = new URL(window.location.href);
-    const values = url.searchParams.getAll('p');
-    if (values.length === 0) return;
-    if (values.length !== 1) {
+    const puzzles = url.searchParams.getAll('p');
+    const transfers = new URLSearchParams(url.hash.slice(1)).getAll('t');
+    if (puzzles.length === 0 && transfers.length === 0) return;
+    if (puzzles.length + transfers.length !== 1) {
       incomingStatus = 'invalid';
-      incomingError = 'This puzzle link is ambiguous because it contains more than one puzzle.';
+      incomingError = 'This link is ambiguous because it contains more than one puzzle or transfer.';
       return;
     }
+    incomingKind = transfers.length ? 'transfer' : 'puzzle';
     incomingStatus = 'checking';
     incomingError = '';
     try {
-      incomingPuzzle = await validateSharedPuzzleInWorker(values[0]);
+      if (incomingKind === 'transfer') {
+        incomingTransfer = await validateTransferInWorker(transfers[0]);
+        const existingGameId = store?.findImportedGame(incomingTransfer.transferId);
+        if (existingGameId) {
+          clearIncomingUrl();
+          incomingStatus = 'none';
+          reviewedGameId = projection.activeGameId === existingGameId ? null : existingGameId;
+          view = 'play';
+          announcement = 'This transfer is already on this device';
+          return;
+        }
+      } else {
+        incomingPuzzle = await validateSharedPuzzleInWorker(puzzles[0]);
+      }
       incomingStatus = 'ready';
     } catch (error) {
       incomingStatus = 'invalid';
@@ -163,35 +202,114 @@
   function clearIncomingUrl(): void {
     const url = new URL(window.location.href);
     url.searchParams.delete('p');
-    history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    const hash = new URLSearchParams(url.hash.slice(1));
+    hash.delete('t');
+    const nextHash = hash.toString();
+    history.replaceState(history.state, '', `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ''}`);
   }
 
   function dismissIncoming(): void {
     clearIncomingUrl();
     incomingStatus = 'none';
     incomingPuzzle = null;
+    incomingTransfer = null;
     incomingError = '';
   }
 
-  function acceptIncomingPuzzle(abandonCurrent = false): void {
-    if (!store || !incomingPuzzle || secondaryTab) return;
+  function acceptIncoming(abandonCurrent = false): void {
+    if (!store || (!incomingPuzzle && !incomingTransfer) || secondaryTab) return;
     if (activeGame?.status === 'active') {
       if (!abandonCurrent) return;
       projection = store.abandon(activeGame.id, metadata());
     }
-    projection = store.importGame(
-      incomingPuzzle.puzzle,
-      'puzzle-link',
-      null,
-      null,
-      metadata(false)
-    );
+    if (incomingTransfer) {
+      projection = store.importGame(
+        incomingTransfer.puzzle,
+        'progress-transfer',
+        incomingTransfer.transferId,
+        incomingTransfer.checkpoint,
+        metadata(false),
+        incomingTransfer.settings
+      );
+    } else if (incomingPuzzle) {
+      projection = store.importGame(
+        incomingPuzzle.puzzle,
+        'puzzle-link',
+        null,
+        null,
+        metadata(false)
+      );
+    }
     syncStoreStatus();
     reviewedGameId = null;
     selectedCell = null;
     view = 'play';
-    announcement = 'Shared puzzle opened on this device';
+    announcement = incomingTransfer ? 'Transferred puzzle continued on this device' : 'Shared puzzle opened on this device';
     dismissIncoming();
+  }
+
+  function openShareDialog(): void {
+    if (!currentGame || isReadOnly) return;
+    shareDialogOpen = true;
+    shareStage = 'choose';
+    shareLink = '';
+    shareQr = '';
+    shareError = '';
+    shareCopied = false;
+  }
+
+  function newTransferId(): string {
+    if (import.meta.env.VITE_E2E_MODE === '1') return '00112233445566778899aabb';
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function showShareLink(link: string, progress: boolean): Promise<void> {
+    shareLink = link;
+    shareIsProgress = progress;
+    shareCopied = false;
+    shareError = '';
+    try {
+      shareQr = await QRCode.toDataURL(link, { errorCorrectionLevel: 'Q', margin: 3, width: 224 });
+      shareStage = 'ready';
+    } catch {
+      shareError = 'The QR code could not be prepared on this device.';
+    }
+  }
+
+  async function sharePuzzleOnly(): Promise<void> {
+    if (!currentGame) return;
+    await showShareLink(puzzleUrl(window.location.href, currentGame.puzzle.givens), false);
+  }
+
+  async function prepareProgressTransfer(): Promise<void> {
+    if (!store || !currentGame || isReadOnly || currentGame.status !== 'active') return;
+    let pausedGame = currentGame;
+    if (!pausedGame.paused) {
+      projection = store.pause(pausedGame.id, metadata());
+      pausedGame = projection.games[pausedGame.id];
+      selectedCell = null;
+      syncStoreStatus();
+    }
+    const record = { ...checkpointFromGame(pausedGame), transferId: newTransferId() };
+    await showShareLink(transferUrl(window.location.href, encodeTransfer(record)), true);
+    announcement = 'Progress transfer ready. The source puzzle remains paused.';
+  }
+
+  async function copyShareLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      shareCopied = true;
+      announcement = 'Share link copied';
+    } catch {
+      shareError = 'Copying is unavailable in this browser. The QR code is still ready to scan.';
+    }
+  }
+
+  async function openSystemShare(): Promise<void> {
+    if (!navigator.share) return;
+    try { await navigator.share({ title: 'Sudoku puzzle', url: shareLink }); }
+    catch (error) { if ((error as DOMException).name !== 'AbortError') shareError = 'System sharing is unavailable.'; }
   }
 
   function metadata(trackElapsed = true): EventMetadata {
@@ -293,6 +411,7 @@
     if (event.key !== 'Escape') return;
     if (hintDialogOpen) hintDialogOpen = false;
     else if (clearDialogOpen) clearDialogOpen = false;
+    else if (shareDialogOpen) shareDialogOpen = false;
   }
 
   function undo(): void {
@@ -416,17 +535,26 @@
     {#if incomingStatus !== 'none'}
       <section class="incoming-card" aria-labelledby="incoming-title" data-e2e-no-clip>
         {#if incomingStatus === 'checking'}
-          <p class="dialog-symbol" aria-hidden="true">◇</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Checking shared puzzle…</h1><p>Proving its solution and rating locally.</p>
+          <p class="dialog-symbol" aria-hidden="true">◇</p><p class="eyebrow">{incomingKind === 'transfer' ? 'Progress transfer' : 'Shared puzzle'}</p><h1 id="incoming-title">Checking {incomingKind === 'transfer' ? 'transferred' : 'shared'} puzzle…</h1><p>Proving its solution and checking every field locally.</p>
         {:else if incomingStatus === 'invalid'}
-          <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
+          <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">{incomingKind === 'transfer' ? 'Progress transfer' : 'Shared puzzle'}</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
+        {:else if incomingTransfer}
+          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Progress transfer</p><h1 id="incoming-title">Transferred puzzle ready</h1><p>Its puzzle and paused checkpoint were checked entirely on this device.</p>
+          <dl class="incoming-facts transfer-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingTransfer.puzzle.difficulty)}</dd></div><div><dt>Filled</dt><dd>{incomingTransfer.checkpoint.values.filter(Boolean).length}</dd></div><div><dt>Notes</dt><dd>{incomingTransfer.checkpoint.notes.filter((notes) => notes.length).length}</dd></div><div><dt>Time</dt><dd>{formatElapsed(incomingTransfer.checkpoint.elapsedMs)}</dd></div><div><dt>Hints</dt><dd>{incomingTransfer.checkpoint.hints}</dd></div><div><dt>Mistakes</dt><dd>{incomingTransfer.checkpoint.mistakes}</dd></div></dl>
+          {#if activeGame?.status === 'active'}
+            <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Continuing here will keep the current attempt in History as abandoned.</p>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)} disabled={secondaryTab}>Abandon current and continue here</button></div>
+          {:else}
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()} disabled={secondaryTab}>Continue on this device</button></div>
+          {/if}
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
           <dl class="incoming-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div><div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncomingPuzzle(true)} disabled={secondaryTab}>Abandon current and open shared puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)} disabled={secondaryTab}>Abandon current and open shared puzzle</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncomingPuzzle()} disabled={secondaryTab}>Start this puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()} disabled={secondaryTab}>Start this puzzle</button></div>
           {/if}
         {/if}
       </section>
@@ -518,7 +646,7 @@
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
               <button type="button" onclick={() => hintDialogOpen = true} disabled={currentGame.paused || isReadOnly}>Hint</button>
             </div>
-            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
+            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={openShareDialog}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
               <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
@@ -549,6 +677,29 @@
       </section>
     {/if}
   </main>
+
+  {#if shareDialogOpen}
+    <div class="dialog-backdrop" role="presentation">
+      <div class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-title" data-e2e-no-clip>
+        {#if shareStage === 'choose'}
+          <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Start a clean copy, or carry this exact progress to another device.</p>
+          <div class="share-choices">
+            <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
+            <button type="button" class="confirm" onclick={prepareProgressTransfer}><strong>Prepare progress transfer</strong><small>Pauses and copies values, notes, and time.</small></button>
+          </div>
+          {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
+          <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
+        {:else}
+          <p class="eyebrow">{shareIsProgress ? 'Progress transfer' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
+          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareIsProgress ? 'QR code for transferring this paused puzzle' : 'QR code for opening this puzzle'} />
+          <p class="share-link-status" data-testid="share-link" data-link={shareLink}>Local link ready · {shareLink.length} characters</p>
+          {#if shareIsProgress}<p class="transfer-note">This creates a copy on the other device. Your game stays paused here until you resume or abandon it.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
+          {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
+          <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   {#if hintDialogOpen}
     <div class="dialog-backdrop" role="presentation">

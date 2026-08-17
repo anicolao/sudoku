@@ -85,6 +85,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .incoming-facts div { min-width: 0; padding: 9px 5px; border: 1px solid #d8daf0; border-radius: 9px; background: #f0f1fa; }
 .incoming-facts dt { color: #62656b; font-size: .7rem; }
 .incoming-facts dd { margin: 2px 0 0; overflow: hidden; color: #303a7d; font-size: .9rem; font-weight: 700; text-overflow: ellipsis; }
+.incoming-facts.transfer-facts { grid-template-columns: repeat(3, 1fr); }
 .incoming-warning { margin: 0; padding: 10px; border-radius: 9px; color: #754c16; background: #fff0cf; font-size: .84rem; text-align: left; }
 .incoming-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .incoming-actions button { min-height: 48px; padding: 6px 10px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; font-weight: 700; cursor: pointer; }
@@ -140,7 +141,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .utility-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .utility-actions button { min-height: 44px; border: 1px solid #d7d5cd; border-radius: 8px; background: #fffdf8; }
 .utility-actions button:disabled { color: #999; background: #f1f0ec; }
-.game-management { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.game-management { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .game-management button { min-height: 44px; border: 1px solid #d7d5cd; border-radius: 8px; color: #62656b; background: transparent; cursor: pointer; }
 .game-management button:last-child { color: #9b2c24; }
 .completion-panel { padding: 14px; border: 1px solid #b9bedf; border-radius: 12px; background: #f0f1fa; }
@@ -170,6 +171,22 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .confirm-dialog button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
 .confirm-dialog button.danger { border-color: #9b2c24; color: #fff; background: #9b2c24; }
 .danger-dialog .dialog-symbol { color: #9b2c24; background: #fff0ee; }
+.share-dialog { width: min(100%, 430px); max-height: calc(100svh - 24px); display: grid; justify-items: center; gap: 10px; padding: 22px; overflow: hidden; border-radius: 16px; background: #fffdf8; box-shadow: 0 18px 60px #0004; text-align: center; }
+.share-dialog h2 { margin: 0; font-size: 1.5rem; }
+.share-dialog > p:not(.eyebrow, .dialog-symbol, .share-error, .transfer-note) { margin: 0; color: #62656b; }
+.share-choices { width: 100%; display: grid; gap: 8px; }
+.share-choices button { min-height: 62px; display: grid; gap: 2px; place-content: center; padding: 8px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; cursor: pointer; }
+.share-choices button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
+.share-choices small { font-size: .76rem; }
+.share-dialog .text-action { min-height: 44px; border: 0; color: #62656b; background: transparent; cursor: pointer; }
+.share-qr { width: min(224px, 42svh, 70vw); height: min(224px, 42svh, 70vw); image-rendering: pixelated; }
+.share-link-status { width: 100%; min-height: 34px; display: grid; place-items: center; margin: 0; padding: 5px 9px; border: 1px solid #c8c7c2; border-radius: 8px; color: #565a62; background: #fff; font-size: .76rem; }
+.transfer-note { margin: 0; color: #62656b; font-size: .82rem; line-height: 1.3; }
+.share-error { margin: 0; color: #b42318; font-size: .8rem; }
+.share-actions { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.share-actions button { min-height: 46px; border: 1px solid #c8c7c2; border-radius: 9px; background: #fff; font-weight: 700; cursor: pointer; }
+.share-actions button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
+.share-actions:has(button:nth-child(3)) { grid-template-columns: repeat(3, 1fr); }
 
 .library-view { width: min(100%, 760px); max-height: 100%; align-self: center; display: grid; gap: 18px; padding-block: 18px; }
 .library-heading h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); }
@@ -305,6 +322,11 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .incoming-card { gap: 5px; padding: 10px; }
   .incoming-card .dialog-symbol { display: none; }
   .incoming-card h1 { font-size: 1.5rem; }
+  .share-dialog { gap: 5px; padding: 10px; }
+  .share-dialog .dialog-symbol { display: none; }
+  .share-dialog h2 { font-size: 1.25rem; }
+  .share-qr { width: min(128px, 28svh); height: min(128px, 28svh); }
+  .transfer-note { font-size: .72rem; }
   .library-view .library-heading { display: none; }
   .settings-list { gap: 3px; }
   .settings-list button { min-height: 44px; padding: 3px 10px; }
