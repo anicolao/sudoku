@@ -10,6 +10,12 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   );
   const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
   await page.goto('/');
+  await steps.step('responsive-welcome', {
+    description: 'The local welcome state fits the current viewport before play begins',
+    verifications: [
+      { spec: 'Puzzle generation is available without scrolling', check: async () => await expect(page.getByRole('button', { name: 'Generate Easy puzzle' })).toBeVisible() }
+    ]
+  });
   await page.getByRole('button', { name: 'Generate Easy puzzle' }).click();
   await steps.step('responsive-board-generated', {
     description: 'The player generates a board in the current form factor',
@@ -123,6 +129,30 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await steps.step('escape-closes-dialog', {
     description: 'Escape closes the topmost transient dialog',
     verifications: [{ spec: 'The dialog closes without appending an event', check: async () => await expect(page.getByRole('dialog')).toHaveCount(0) }]
+  });
+
+  await page.getByRole('button', { name: 'Puzzles', exact: true }).click();
+  await steps.step('responsive-puzzles-view', {
+    description: 'The player opens the puzzle library in the same fixed viewport',
+    verifications: [{ spec: 'The active-puzzle notice and return action remain available', check: async () => await expect(page.getByRole('button', { name: 'Return to puzzle' })).toBeVisible() }]
+  });
+
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await steps.step('responsive-history-view', {
+    description: 'The player opens history without entering a scrolling region',
+    verifications: [{ spec: 'The current attempt is represented by one fixed-size card', check: async () => {
+      await expect(page.locator('.history-card')).toHaveCount(1);
+      await expect(page.locator('.history-state')).toHaveText('In progress');
+    } }]
+  });
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await steps.step('responsive-settings-view', {
+    description: 'The player opens all local settings without scrolling',
+    verifications: [{ spec: 'All four preference switches and the local-data action remain available', check: async () => {
+      await expect(page.getByRole('switch')).toHaveCount(4);
+      await expect(page.getByRole('button', { name: 'Clear all local Sudoku data' })).toBeVisible();
+    } }]
   });
   steps.generateDocs();
 });

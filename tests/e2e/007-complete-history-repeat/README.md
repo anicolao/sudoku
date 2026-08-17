@@ -84,3 +84,27 @@ A near-complete canonical fixture leaves the final user actions visible. Complet
 
 - [x] The board resets to its original givens with active controls
 - [x] A second game/started event has a new game ID but the same puzzle ID
+
+## History opens on the newest attempt without creating a scrolling list
+
+![History opens on the newest attempt without creating a scrolling list](./screenshots/010-paginated-history-opened-phone-macos.png)
+
+**Verifications:**
+
+- [x] Exactly one card is visible and the page indicator reports two retained attempts
+
+## The player pages to the older solved attempt
+
+![The player pages to the older solved attempt](./screenshots/011-older-history-page-phone-macos.png)
+
+**Verifications:**
+
+- [x] The solved card replaces the active card within the same fixed viewport
+
+## The player pages back to the newest attempt
+
+![The player pages back to the newest attempt](./screenshots/012-newer-history-page-phone-macos.png)
+
+**Verifications:**
+
+- [x] The active card returns and no additional history cards are mounted

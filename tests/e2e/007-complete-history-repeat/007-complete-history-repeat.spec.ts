@@ -150,5 +150,40 @@ test('the final moves derive completion, history, review, and a repeated attempt
     ]
   });
 
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await steps.step('paginated-history-opened', {
+    description: 'History opens on the newest attempt without creating a scrolling list',
+    verifications: [
+      { spec: 'Exactly one card is visible and the page indicator reports two retained attempts', check: async () => {
+        await expect(page.locator('.history-card')).toHaveCount(1);
+        await expect(page.getByText('Attempt 1 of 2')).toBeVisible();
+        await expect(page.locator('.history-state')).toHaveText('In progress');
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Older' }).click();
+  await steps.step('older-history-page', {
+    description: 'The player pages to the older solved attempt',
+    verifications: [
+      { spec: 'The solved card replaces the active card within the same fixed viewport', check: async () => {
+        await expect(page.getByText('Attempt 2 of 2')).toBeVisible();
+        await expect(page.locator('.history-state')).toHaveText('Solved');
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Newer' }).click();
+  await steps.step('newer-history-page', {
+    description: 'The player pages back to the newest attempt',
+    verifications: [
+      { spec: 'The active card returns and no additional history cards are mounted', check: async () => {
+        await expect(page.getByText('Attempt 1 of 2')).toBeVisible();
+        await expect(page.locator('.history-state')).toHaveText('In progress');
+        await expect(page.locator('.history-card')).toHaveCount(1);
+      } }
+    ]
+  });
+
   steps.generateDocs();
 });

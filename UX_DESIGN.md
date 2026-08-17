@@ -175,8 +175,8 @@ wash under 400 ms, never confetti, sound, or forced delay.
 - The accessible cell name follows this order: position, fixed/editable, value
   or empty, notes, conflict/mistake, selected. Example: “Row 4, column 7,
   editable, empty, notes 2 3 8, selected.”
-- The selected cell remains visible at 200% zoom. Focus scrolls within the
-  document only when reflow makes that necessary.
+- The selected cell and all required controls remain visible at 200% zoom; the
+  compact layout never relies on focus-induced document scrolling.
 - Never expose the solution through DOM attributes, hidden text, accessible
   descriptions, or client-facing debug panels. The solution exists locally for
   validation but is reachable only through domain commands.
@@ -335,11 +335,11 @@ physically removed and the app returns to first launch.
 - Meet WCAG 2.2 AA semantics, contrast, focus, reflow, target-size, error, and
   status-message requirements.
 - Complete a puzzle using keyboard only and touch only.
-- At 200% zoom and 320 CSS px, retain all content with no horizontal document
-  scrolling; vertical scrolling is acceptable and expected after reflow.
-- At the base phone viewport, keep the active play controls within one screen
-  where platform browser chrome permits; never hide required controls behind a
-  hover interaction.
+- At 200% zoom and 320 CSS px, retain the board and all required controls in one
+  viewport with no document or nested scrolling.
+- At every supported viewport, keep each state within one screen. Compact
+  layouts may hide secondary chrome and paginate unbounded history, but never
+  hide required controls behind scrolling or hover.
 - Honour reduced motion and forced-colour modes.
 - Test screen-reader announcements with VoiceOver in Chromium on macOS. Safari,
   Firefox, WebKit, Windows, and other platform/browser combinations are outside
