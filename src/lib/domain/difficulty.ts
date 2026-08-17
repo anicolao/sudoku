@@ -71,4 +71,4 @@ export function normalizeDifficulty(value: string): PuzzleDifficulty {
 }
 
 export const difficultyLabel = (value: string): string =>
-  DIFFICULTY_BY_ID[normalizeDifficulty(value)].label;
+  value === 'custom' ? 'Custom' : DIFFICULTY_BY_ID[normalizeDifficulty(value)].label;

@@ -7,6 +7,13 @@ export type PuzzleDifficulty =
   | 'expert'
   | 'master';
 
+export type PuzzleRating = PuzzleDifficulty | 'custom';
+
+export type PuzzleProvenance =
+  | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
+  | { kind: 'puzzle-link'; formatVersion: 1; fingerprint: string }
+  | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
+
 export type SolveTechnique =
   | 'naked-single'
   | 'hidden-single'
@@ -29,11 +36,12 @@ export interface PuzzleDefinition {
   id: string;
   givens: string;
   solution: string;
-  difficulty: PuzzleDifficulty;
-  seed: string;
-  generatorVersion: 1 | 2;
-  validatorVersion: 1 | 2;
-  hardestTechnique: SolveTechnique;
+  difficulty: PuzzleRating;
+  seed?: string;
+  generatorVersion?: 1 | 2;
+  validatorVersion: 1 | 2 | 3;
+  hardestTechnique: SolveTechnique | null;
+  provenance?: PuzzleProvenance;
 }
 
 export interface GameSettings {
