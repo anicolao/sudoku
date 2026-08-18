@@ -28,6 +28,10 @@ test('tabs follow the same stream and can keep different puzzles open', async ({
   const [firstCell, secondCell] = blanks;
   const firstValue = Number(puzzle.solution[firstCell]);
   const secondValue = Number(puzzle.solution[secondCell]);
+  const takeover = await context.newPage();
+  await takeover.addInitScript(() => { delete (window as Window & { BroadcastChannel?: unknown }).BroadcastChannel; });
+  await takeover.goto('/');
+  await expect(takeover.getByRole('gridcell')).toHaveCount(81);
 
   await page.locator(`[data-cell="${firstCell}"]`).click();
   await page.getByRole('button', { name: new RegExp(`^${firstValue},`) }).click();
@@ -39,22 +43,32 @@ test('tabs follow the same stream and can keep different puzzles open', async ({
     ]
   });
 
-  await later.locator(`[data-cell="${secondCell}"]`).click();
+  steps.usePage(takeover);
+  await takeover.locator(`[data-cell="${secondCell}"]`).click();
   await steps.step('second-tab-cell-selected', {
-    description: 'The player selects another cell in the second tab',
+    description: 'A background tab that missed the notification receives focus',
     verifications: [
-      { spec: 'Selection is local to this tab until an event is committed', check: async () => await expect(later.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(/editable, empty, selected/) }
+      { spec: 'The player can select a cell even before the stale stream catches up', check: async () => await expect(takeover.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(/editable, empty, selected/) }
     ]
   });
-  await later.getByRole('button', { name: new RegExp(`^${secondValue},`) }).click();
+  await takeover.getByRole('button', { name: new RegExp(`^${secondValue},`) }).click();
   await steps.step('second-tab-event-committed', {
-    description: 'The second tab commits the next non-overlapping event',
+    description: 'The focused tab catches up and commits its first action',
     verifications: [
-      { spec: 'The value is accepted in the second tab', check: async () => await expect(later.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`)) },
-      { spec: 'The first tab follows the second tab event', check: async () => await expect(page.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`)) }
+      { spec: 'The preflight refresh retains the earlier value and accepts the new one', check: async () => {
+        await expect(takeover.locator(`[data-cell="${firstCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${firstValue}`));
+        await expect(takeover.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`));
+      } },
+      { spec: 'Other tabs recover the takeover event when focused, even without its notification', check: async () => {
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await expect(page.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`));
+        await later.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await expect(later.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`));
+      } }
     ]
   });
 
+  steps.usePage(later);
   await later.getByRole('button', { name: 'Puzzles', exact: true }).click();
   await steps.step('puzzle-library-opened', {
     description: 'The player opens the puzzle library while the first puzzle remains active',

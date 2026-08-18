@@ -20,22 +20,22 @@ Every puzzle has an independent IndexedDB event stream. Tabs viewing the same pu
 - [x] The second tab follows the committed value without reloading
 - [x] The observing tab remains writable
 
-## The player selects another cell in the second tab
+## A background tab that missed the notification receives focus
 
-![The player selects another cell in the second tab](./screenshots/002-second-tab-cell-selected-phone-macos.png)
-
-**Verifications:**
-
-- [x] Selection is local to this tab until an event is committed
-
-## The second tab commits the next non-overlapping event
-
-![The second tab commits the next non-overlapping event](./screenshots/003-second-tab-event-committed-phone-macos.png)
+![A background tab that missed the notification receives focus](./screenshots/002-second-tab-cell-selected-phone-macos.png)
 
 **Verifications:**
 
-- [x] The value is accepted in the second tab
-- [x] The first tab follows the second tab event
+- [x] The player can select a cell even before the stale stream catches up
+
+## The focused tab catches up and commits its first action
+
+![The focused tab catches up and commits its first action](./screenshots/003-second-tab-event-committed-phone-macos.png)
+
+**Verifications:**
+
+- [x] The preflight refresh retains the earlier value and accepts the new one
+- [x] Other tabs recover the takeover event when focused, even without its notification
 
 ## The player opens the puzzle library while the first puzzle remains active
 

@@ -116,6 +116,7 @@ export class IndexedDbEventStore {
   private revisions = new Map<string, number>();
   private warning: string;
   private pendingWrites = 0;
+  private reloadQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly database: IDBDatabase | null,
@@ -155,14 +156,22 @@ export class IndexedDbEventStore {
     if (this.mirrorForE2E) this.storage.setItem(EVENT_STORE_KEY, JSON.stringify(document));
   }
 
+  private withTransactionalTestId(event: SudokuEvent, sequence: number): SudokuEvent {
+    return this.mirrorForE2E ? { ...event, id: `event-${sequence}` } as SudokuEvent : event;
+  }
+
   async reload(): Promise<AppProjection> {
     if (!this.database) return this.getProjection();
-    try {
-      const latest = await readDatabase(this.database);
-      this.updateCache(latest.document, latest.streams);
-    } catch {
-      this.warning = 'Progress can no longer be read from this browser.';
-    }
+    const queued = this.reloadQueue.then(async () => {
+      try {
+        const latest = await readDatabase(this.database!);
+        this.updateCache(latest.document, latest.streams);
+      } catch {
+        this.warning = 'Progress can no longer be read from this browser.';
+      }
+    });
+    this.reloadQueue = queued;
+    await queued;
     return this.getProjection();
   }
 
@@ -176,9 +185,15 @@ export class IndexedDbEventStore {
   }
 
   private async appendTransaction(create: (sequence: number) => SudokuEvent): Promise<CommitResult> {
+    // A background tab may have missed or not yet processed a BroadcastChannel
+    // notification. Refresh before fixing the command's expected revision so
+    // the first action after focus can take over from the last committed event.
+    // A genuinely concurrent writer can still advance the revision between
+    // this read and the transaction below, in which case this command loses.
+    await this.reload();
     const revisionSnapshot = new Map(this.revisions);
     if (!this.database) {
-      const event = create(this.document.nextSequence);
+      const event = this.withTransactionalTestId(create(this.document.nextSequence), this.document.nextSequence);
       const id = streamId(event.gameId);
       const expectedRevision = revisionSnapshot.get(id) ?? 0;
       const next: StoredEventDocumentV1 = {
@@ -199,7 +214,7 @@ export class IndexedDbEventStore {
       const streams = transaction.objectStore(STREAM_STORE);
       const meta = await request(metadata.get(META_KEY) as IDBRequest<MetaRecord | undefined>);
       const sequence = meta?.nextSequence ?? 1;
-      event = create(sequence);
+      event = this.withTransactionalTestId(create(sequence), sequence);
       const id = streamId(event.gameId);
       const expectedRevision = revisionSnapshot.get(id) ?? 0;
       const current = await request(streams.get(id) as IDBRequest<StreamRecord | undefined>);
