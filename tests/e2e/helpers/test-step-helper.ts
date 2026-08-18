@@ -37,6 +37,7 @@ export class TestStepHelper {
     id: string,
     options: { description: string; verifications: Verification[]; persistenceStatus?: 'local' | 'memory-only' }
   ): Promise<void> {
+    await this.page.waitForFunction(() => document.documentElement.dataset.eventStorePending !== 'true');
     for (const verification of options.verifications) await verification.check();
 
     await expect(this.page.locator('[data-app-ready="true"]')).toBeVisible();

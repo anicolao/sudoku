@@ -5,7 +5,7 @@ test('storage failure remains playable in memory', async ({ page }, testInfo) =>
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata('Continue when browser storage is unavailable', 'A failed storage probe is visible, specific, and non-fatal: the player can still generate and play for the current tab session.');
   await page.addInitScript(() => {
-    Storage.prototype.setItem = function (): never { throw new DOMException('blocked', 'QuotaExceededError'); };
+    IDBFactory.prototype.open = function (): never { throw new DOMException('blocked', 'SecurityError'); };
   });
   await page.goto('/');
   await steps.step('memory-only-explained', {

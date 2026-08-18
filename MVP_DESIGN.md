@@ -20,7 +20,7 @@ The release supports:
 - undo and redo without rewriting history;
 - explicit hints that reveal one cell and are counted in the result;
 - active elapsed time, with a setting to hide it;
-- one resumable current game and a local list of completed/abandoned games;
+- multiple resumable games, one tab-local current game, and a local History;
 - a human-readable game log derived from canonical events;
 - full reload/restart recovery and previously installed offline use;
 - touch, mouse, and keyboard interaction at supported form factors;
@@ -30,9 +30,10 @@ The release supports:
   rendered QR code and versioned `#t=` fragment.
 
 There is no account, backend, Firebase, runtime AI, analytics, telemetry, remote
-font, CDN, or remotely hosted third-party asset. A second tab must not silently become a second
-writer: the app uses `BroadcastChannel` when available to warn that another tab
-is active and disables game-changing controls in the later tab.
+font, CDN, or remotely hosted third-party asset. Tabs may edit different games
+independently. Tabs viewing one game follow committed events through
+`BroadcastChannel`; the repository discards a command if that stream's revision
+changed after the tab last read it.
 
 ## 2. Technical foundation
 
@@ -214,9 +215,9 @@ type SudokuEvent = {
 
 IDs, timestamps, and the clock are injected at the command boundary. The
 reducer does not call `Date`, `crypto`, browser storage, or any random source.
-The stream order is `sequence`; IDs only deduplicate. Sequences are allocated by
-the repository immediately before an atomic `localStorage.setItem` of the
-single store document.
+The replay order is the global `sequence`; IDs only deduplicate. Sequences are
+allocated in the same IndexedDB transaction that checks and advances the
+selected stream revision.
 
 ### Initial vocabulary
 
@@ -311,52 +312,53 @@ label (“row 4, column 7”). Tests assert event type and exact formatted text.
 
 ## 6. Local persistence
 
-The MVP uses one canonical key:
-
-```text
-sudoku.event-store.v1
-```
-
-Its serialized value is:
+IndexedDB database `sudoku.event-streams.v2` is canonical. It contains a
+`streams` object store with one record per game plus one settings stream, and a
+`metadata` object store holding the next global sequence. Each stream record is:
 
 ```ts
-interface StoredEventDocumentV1 {
-  storageVersion: 1;
-  nextSequence: number;
+interface StreamRecord {
+  id: string;                 // game:<gameId>, or settings
+  revision: number;
   events: SudokuEvent[];
 }
 ```
 
-Keeping the counter and events in one JSON value makes each browser write
-atomic at the key level. Logical events are append-only even though
-`localStorage` replaces the serialized document on each append. No derived
-board, history card, or timer string is persisted.
+The repository opens a read-write transaction across both object stores, reads
+the latest stream revision, and compares it with the revision in the command's
+tab. A match appends one event and advances both revision and global sequence.
+A mismatch means another tab committed an overlapping event: the command is
+discarded, the latest streams are replayed, and the user sees a concise notice.
+Transactions for different game streams both commit. No derived board, history
+card, timer string, focus, selection, or tab choice is persisted as an event.
 
 Read and write behaviour:
 
 - validate the outer document and every event before publishing state;
-- re-read immediately before append and use `nextSequence` from that document;
-- write the new complete document once, then replay what was actually stored;
-- listen for `storage` events and reload read-only views when another context
-  changes data;
+- compare the expected per-stream revision inside the append transaction;
+- allocate the global sequence and append only when that revision still matches;
+- use `BroadcastChannel` as a notification, then reload from IndexedDB rather
+  than trusting message contents;
+- refresh from IndexedDB on focus so missed notifications are harmless;
+- keep each tab's selected game in `sessionStorage`, allowing different games
+  to remain open simultaneously;
 - on quota or unavailable-storage errors, continue the current session in
   memory and show “This browser cannot save progress”;
-- on malformed JSON, preserve the raw value under a timestamped
+- migrate a valid legacy `sudoku.event-store.v1` document into per-game streams
+  once, deleting it only after the IndexedDB transaction completes;
+- on malformed legacy JSON, preserve the raw value under a timestamped
   `sudoku.event-store.corrupt.*` key when possible, start a clean store only
   after informing the user, and offer copy/download of the raw text in a later
   recovery release;
 - never automatically trim or compact canonical history in MVP;
-- **Clear all local Sudoku data** removes the canonical and quarantined keys,
-  unregisters no service worker, and clearly states that recovery is impossible.
+- **Clear all local Sudoku data** clears every IndexedDB stream and removes
+  quarantined legacy keys, unregisters no service worker, and clearly states
+  that recovery is impossible.
 
-Schema migration is a pure `Vn -> Vn+1` chain tested with frozen fixtures. The
-original raw document is retained until the migrated document validates and is
-written successfully. Event meaning is never changed in place; a reducer
-version remains available for every supported historical stream.
-
-`localStorage` is chosen because the requested local-only MVP and expected event
-volume are small. IndexedDB becomes appropriate if puzzle packs, replay media,
-or large archives exceed this simple atomic-document model.
+Schema migration is tested with frozen fixtures. The original raw document is
+retained until the migrated streams validate and the IndexedDB transaction
+completes. Event meaning is never changed in place; a reducer version remains
+available for every supported historical stream.
 
 ## 7. Offline and privacy boundary
 

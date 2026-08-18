@@ -23,7 +23,7 @@ test('the final moves derive completion, history, review, and a repeated attempt
     ]
   });
 
-  const finalCells = await page.evaluate(() => {
+  const finalCells = await page.evaluate(async () => {
     const document = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '');
     const start = document.events[0];
     const puzzle = start.payload.puzzle;
@@ -38,7 +38,8 @@ test('the final moves derive completion, history, review, and a repeated attempt
         schemaVersion: 1, reducerVersion: 1
       });
     }
-    localStorage.setItem('sudoku.event-store.v1', JSON.stringify(document));
+    await (window as unknown as { __sudokuReplaceEventDocument: (value: unknown) => Promise<unknown> })
+      .__sudokuReplaceEventDocument(document);
     return final;
   });
   await page.reload();

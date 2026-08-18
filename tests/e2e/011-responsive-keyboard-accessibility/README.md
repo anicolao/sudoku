@@ -137,7 +137,7 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 **Verifications:**
 
-- [x] The active-puzzle notice and return action remain available
+- [x] Another puzzle can be generated without closing the active one
 
 ## The player opens history without entering a scrolling region
 

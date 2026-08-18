@@ -272,7 +272,7 @@ The dependency and license are recorded in the repository.
 Transfer links are bearer data, not encryption. Anyone who sees the QR or
 copied fragment can inspect the checkpoint and open a copy. The dialog states
 this plainly. The app does not put transfer URLs in its own event log,
-`localStorage`, console, error reports, service-worker cache, or accessible
+IndexedDB, `localStorage`, console, error reports, service-worker cache, or accessible
 hidden text after the dialog closes.
 
 The service worker caches only application assets. Request instrumentation must
@@ -313,7 +313,7 @@ scanning.
 | Validation times out | Terminate the worker and append nothing |
 | Active local game exists | Require explicit keep-current or abandon/open choice |
 | Duplicate transfer ID | Open the already imported local game |
-| Local storage is unavailable | Allow an explicit memory-only import with the existing warning |
+| IndexedDB is unavailable | Allow an explicit memory-only import with the existing warning |
 | Recipient is offline with the app installed | Decode, validate, import, and play normally |
 | Recipient lacks the installed app while offline | The browser owns the load failure; no remote fallback |
 | Clipboard or Web Share fails | Keep the dialog open, retain the QR, and report the local failure |
