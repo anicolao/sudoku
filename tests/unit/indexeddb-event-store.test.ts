@@ -74,4 +74,41 @@ describe('IndexedDB event streams', () => {
     expect(right.getDocument().events).toHaveLength(2);
     expect(left.getProjection()).toEqual(right.getProjection());
   });
+
+  it('lets a stale background tab take over after the other tab has finished writing', async () => {
+    const factory = new IDBFactory();
+    const storage = new MemoryStorage();
+    const creator = (await loadIndexedDbEventStore(storage, factory)).store;
+    const puzzle = generateEasyPuzzle('focus-takeover').puzzle;
+    const started = await creator.startGame(puzzle, at('start'));
+    const gameId = started.gameId!;
+    const cells = [...puzzle.givens].flatMap((given, cell) => given === '.' ? [cell] : []);
+    const activeTab = (await loadIndexedDbEventStore(storage, factory)).store;
+    const backgroundTab = (await loadIndexedDbEventStore(storage, factory)).store;
+
+    const first = await activeTab.enterValue(
+      gameId,
+      cells[0],
+      Number(puzzle.solution[cells[0]]) as 1,
+      at('first-tab-move', 1)
+    );
+    expect(first.committed).toBe(true);
+    expect(backgroundTab.getDocument().events).toHaveLength(1);
+
+    const takeover = await backgroundTab.enterValue(
+      gameId,
+      cells[1],
+      Number(puzzle.solution[cells[1]]) as 1,
+      at('takeover-move', 2)
+    );
+
+    expect(takeover.committed).toBe(true);
+    expect(backgroundTab.getDocument().events.map((event) => event.type)).toEqual([
+      'game/started',
+      'cell/value-entered',
+      'cell/value-entered'
+    ]);
+    expect(backgroundTab.getProjection().games[gameId].values[cells[0]]).not.toBeNull();
+    expect(backgroundTab.getProjection().games[gameId].values[cells[1]]).not.toBeNull();
+  });
 });
