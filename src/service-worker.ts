@@ -10,10 +10,26 @@ const scopeName = new URL(self.registration.scope).pathname
   .toLowerCase() || 'root';
 const cachePrefix = `sudoku-app-${scopeName}-`;
 const cacheName = `${cachePrefix}${version}`;
-const assets = [...build, ...files, ...prerendered];
+const scopeUrl = new URL(self.registration.scope);
+const versionUrl = new URL('version.json', scopeUrl);
+const normalizePath = (pathname: string): string => pathname.replace(/\/+$/, '') || '/';
+const assets = [...new Set([...build, ...files, ...prerendered])].filter((asset) => {
+  const pathname = normalizePath(new URL(asset, scopeUrl).pathname);
+  return pathname !== normalizePath(scopeUrl.pathname) && pathname !== normalizePath(versionUrl.pathname);
+});
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(assets)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(cacheName);
+    await cache.addAll(assets);
+
+    const freshShellUrl = new URL(scopeUrl);
+    freshShellUrl.searchParams.set('shell', version);
+    const response = await fetch(new Request(freshShellUrl, { cache: 'reload' }));
+    if (!response.ok) throw new Error(`Could not cache application shell: ${response.status}`);
+    await cache.put(new Request(scopeUrl), response);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,5 +50,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
+  if (normalizePath(url.pathname) === normalizePath(versionUrl.pathname)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  event.respondWith(
+    caches.open(cacheName).then((cache) => {
+      const cacheKey = request.mode === 'navigate' ? new Request(scopeUrl) : request;
+      return cache.match(cacheKey).then((cached) => cached ?? fetch(request));
+    })
+  );
 });

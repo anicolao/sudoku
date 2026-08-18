@@ -366,14 +366,22 @@ The production build bundles JavaScript, CSS, fonts, icons, the generator
 worker, and help. Its service worker precaches a versioned app shell, not user
 records.
 The previous cache remains active until the replacement installs successfully.
+The cached shell renders first and then fetches a small static `version.json`
+with an internal cache-busting query. When its revision differs from the
+revision embedded in the running client, the browser updates the worker. The
+replacement worker fetches revision-busted HTML, stores it under the canonical
+navigation cache key, activates immediately, and reloads once. Player-facing
+URLs never need a deployment query parameter. Offline or update failures leave
+the current cached shell usable. Navigation and bundled assets remain
+cache-first; only `version.json` is network-only.
 
 Production policy:
 
 - no analytics, telemetry, advertising, error reporting, remote logging, or
   third-party embeds;
-- no `fetch`, XHR, WebSocket, EventSource, `sendBeacon`, or runtime dynamic
-  imports from other origins;
-- restrictive CSP, including `default-src 'self'` and `connect-src 'none'`;
+- no XHR, WebSocket, EventSource, `sendBeacon`, or runtime dynamic imports, and
+  no `fetch` except the same-origin static revision check;
+- restrictive CSP, including `default-src 'self'` and `connect-src 'self'`;
 - no remote fonts or images;
 - base-path-safe manifest, routes, icons, and service-worker scope;
 - update and migration failures leave the current version and local stream

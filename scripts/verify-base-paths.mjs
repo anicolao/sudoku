@@ -54,9 +54,21 @@ const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
 if (
   !serviceWorker.includes('location.pathname') ||
   !serviceWorker.includes('registration.scope') ||
+  !serviceWorker.includes('version.json') ||
+  !serviceWorker.includes('skipWaiting') ||
+  !serviceWorker.includes('shell') ||
   serviceWorker.includes('"/_app/')
 ) {
-  throw new Error('build/service-worker.js does not derive precache paths from its deployment scope');
+  throw new Error('build/service-worker.js does not implement the base-safe revision update protocol');
+}
+
+const versionPath = path.join(buildDirectory, 'version.json');
+if (!fs.existsSync(versionPath)) {
+  throw new Error('build/version.json does not exist');
+}
+const deployedVersion = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+if (typeof deployedVersion.revision !== 'string' || !/^[a-z0-9._-]{1,128}$/i.test(deployedVersion.revision)) {
+  throw new Error('build/version.json does not contain a valid revision');
 }
 
 console.log(`Verified deployment assets remain under ${base}`);

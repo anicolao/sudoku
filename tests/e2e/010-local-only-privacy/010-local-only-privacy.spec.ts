@@ -5,7 +5,7 @@ test('ordinary play makes only same-origin GET requests', async ({ page }, testI
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Keep every puzzle and action on this device',
-    'The browser observes the complete runtime request surface while the player generates, enters a value, opens and cancels a hint, visits History and Settings, cancels deletion, and reloads. Only bundled same-origin GET assets are allowed.'
+    'The browser observes the complete gameplay request surface while the player generates, enters a value, opens and cancels a hint, visits History and Settings, cancels deletion, and reloads. Only same-origin GET shell assets are allowed here; the service-worker-enabled offline journey separately proves the static revision check.'
   );
   const observed: Array<{ method: string; url: string }> = [];
   const record = (request: Request) => observed.push({ method: request.method(), url: request.url() });

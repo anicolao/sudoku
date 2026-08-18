@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
+  import { checkForShellUpdate } from '$lib/shell-update';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
   import { describeMove, formatGameLog } from '$lib/domain/game-log';
@@ -103,14 +104,36 @@
 
   onMount(() => {
     let disposed = false;
+    const cleanup: Array<() => void> = [];
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       document.documentElement.dataset.offlineReady = 'false';
-      void navigator.serviceWorker.ready.then(() => {
+      void navigator.serviceWorker.ready.then(async (registration) => {
+        if (disposed) return;
         document.documentElement.dataset.offlineReady = 'true';
+        const result = await checkForShellUpdate(revision, window.location.href, registration);
+        if (disposed) return;
+
+        const reloadKey = 'sudoku.shell-update-reload';
+        if (result.status === 'current') {
+          sessionStorage.removeItem(reloadKey);
+          return;
+        }
+        if (result.status !== 'requested' || sessionStorage.getItem(reloadKey) === result.revision) return;
+
+        let reloading = false;
+        const reload = (): void => {
+          if (disposed || reloading) return;
+          reloading = true;
+          sessionStorage.setItem(reloadKey, result.revision);
+          window.location.reload();
+        };
+        navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+        cleanup.push(() => navigator.serviceWorker.removeEventListener('controllerchange', reload));
+        const fallback = window.setTimeout(reload, 2_000);
+        cleanup.push(() => window.clearTimeout(fallback));
       });
     }
 
-    const cleanup: Array<() => void> = [];
     const inspectFragment = (): void => { void inspectIncomingLink(); };
     window.addEventListener('hashchange', inspectFragment);
     cleanup.push(() => window.removeEventListener('hashchange', inspectFragment));

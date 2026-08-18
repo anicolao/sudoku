@@ -399,7 +399,8 @@ Before app code runs, install instrumentation that records or throws on:
 - `navigator.sendBeacon`.
 
 Also listen to every Playwright `request`. In ordinary operation, every browser
-request must be a same-origin `GET` for the document or a bundled static asset.
+request must be a same-origin `GET` for the document, a bundled static asset, or
+the cache-busted static revision manifest.
 Any other method, origin, analytics endpoint, remote font, source map request,
 or dynamic content request fails the scenario.
 
@@ -415,13 +416,15 @@ Offline proof uses the production build and `serviceWorkers: 'allow'`:
 1. launch a fresh context online against loopback preview;
 2. load the app and wait for explicit `data-offline-ready="true"` after the
    service worker is active and the versioned shell cache is complete;
-3. start a puzzle, enter a value, pause, and close the page;
-4. set the context offline and reopen the installed URL;
-5. assert exact replay, resume, complete the puzzle, and open History;
-6. reload offline again and prove the completed board and History remain;
-7. inspect Cache Storage to ensure it contains application assets but not the
+3. prove the client fetched uncached `version.json` without adding a visible URL
+   parameter, and that the manifest itself is absent from Cache Storage;
+4. start a puzzle, enter a value, pause, and close the page;
+5. set the context offline and reopen the installed URL;
+6. assert exact replay, resume, complete the puzzle, and open History;
+7. reload offline again and prove the completed board and History remain;
+8. inspect Cache Storage to ensure it contains application assets but not the
    `sudoku.event-store.v1` contents;
-8. return the test context online during cleanup.
+9. return the test context online during cleanup.
 
 This scenario is serial, has a documented project-level timeout if production
 browser restart needs more than the shared limit, and still uses observable

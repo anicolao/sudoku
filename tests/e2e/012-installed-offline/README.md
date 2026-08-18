@@ -10,6 +10,7 @@ After one online installation, the player starts and pauses a real event-sourced
 
 - [x] game/started is persisted before the network is disabled
 - [x] The service worker reports its precache ready
+- [x] The installed shell checks the uncached same-origin revision manifest without changing the visible URL
 
 ## The player selects an editable cell while online
 
