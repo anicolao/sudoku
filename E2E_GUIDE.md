@@ -185,8 +185,11 @@ Its givens, solution, uniqueness, and allowed logical solve trace are checked by
 unit tests. E2E specs inject the seed at the normal generation boundary and
 assert the generated stable ID rather than bypassing generation with a board.
 
-Each test begins with a new browser context and asserts that `localStorage` is
-empty before optionally installing a fixture. Never depend on execution order.
+Each test begins with a new browser context and therefore an empty IndexedDB
+database and `localStorage` namespace before optionally installing a fixture.
+Never depend on execution order. Storage-specific tests exercise IndexedDB;
+the E2E build may expose a read-only flat event mirror and a bounded fixture
+replacement hook, neither of which is read by application code.
 
 ## 5. Unified step pattern
 
@@ -373,7 +376,7 @@ each move with the stream/log oracle, then prove:
 
 Test separate fresh contexts for:
 
-- `localStorage.setItem` throwing before first write: play works in memory and
+- IndexedDB open/write failure before first write: play works in memory and
   persistence language changes;
 - malformed outer JSON: affected raw text is quarantined and no partial board is
   shown;

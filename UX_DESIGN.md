@@ -241,12 +241,14 @@ Do not partially render the affected game. Say: “This puzzle history cannot be
 opened safely.” Offer **Start a new puzzle**, **Clear local data**, and technical
 details with the diagnostic code. Other valid games remain visible.
 
-### Second active tab
+### More than one active tab
 
-The later tab shows: “Sudoku is already open in another tab. Return there to
-keep playing.” It may browse read-only projections but game-changing controls
-are disabled. If coordination APIs are unavailable, the settings/help text
-states that simultaneous tabs are unsupported.
+Each tab keeps its selected puzzle locally. Tabs viewing the same puzzle remain
+editable and quietly follow committed events from one another. A tab may open
+or generate another puzzle without changing the puzzle shown elsewhere. If two
+commands overlap on the same stream revision, the later transaction is
+discarded, the board refreshes, and a live region says that the latest puzzle
+state is shown.
 
 ### Offline
 

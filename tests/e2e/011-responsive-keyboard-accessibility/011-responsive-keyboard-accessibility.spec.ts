@@ -134,7 +134,10 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await page.getByRole('button', { name: 'Puzzles', exact: true }).click();
   await steps.step('responsive-puzzles-view', {
     description: 'The player opens the puzzle library in the same fixed viewport',
-    verifications: [{ spec: 'The active-puzzle notice and return action remain available', check: async () => await expect(page.getByRole('button', { name: 'Return to puzzle' })).toBeVisible() }]
+    verifications: [{ spec: 'Another puzzle can be generated without closing the active one', check: async () => {
+      await expect(page.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeEnabled();
+      await expect(page.getByText('Generating another puzzle keeps this one available in History.')).toBeVisible();
+    } }]
   });
 
   await page.getByRole('button', { name: 'History', exact: true }).click();

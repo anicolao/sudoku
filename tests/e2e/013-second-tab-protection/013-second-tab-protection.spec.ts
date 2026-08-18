@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test('a later tab is read-only and follows the first writer', async ({ context, page }, testInfo) => {
+test('tabs follow the same stream and can keep different puzzles open', async ({ context, page }, testInfo) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect(page.getByRole('gridcell')).toHaveCount(81);
@@ -9,32 +9,72 @@ test('a later tab is read-only and follows the first writer', async ({ context, 
   const later = await context.newPage();
   const steps = new TestStepHelper(later, testInfo);
   steps.setMetadata(
-    'Protect the active game from a second tab',
-    'Opening Sudoku again never creates a silent second writer. The later tab becomes a live read-only view while the first tab retains authority.'
+    'Solve in more than one tab',
+    'Every puzzle has an independent IndexedDB event stream. Tabs viewing the same puzzle follow committed events and remain editable; opening another puzzle affects only that tab.'
   );
   await later.goto('/');
-  await steps.step('later-tab-read-only', {
-    description: 'The later tab detects the already-open Sudoku session',
+  await steps.step('second-tab-follows-puzzle', {
+    description: 'A second tab opens the same in-progress puzzle',
     verifications: [
-      { spec: 'A specific read-only banner identifies the first tab as the place to continue', check: async () => await expect(later.getByText('Another Sudoku tab was opened first. Continue there to make changes.')).toBeVisible() },
-      { spec: 'Every number input is disabled in the later tab', check: async () => await expect(later.locator('.number-pad button:enabled')).toHaveCount(0) }
+      { spec: 'The complete board is reconstructed from IndexedDB', check: async () => await expect(later.getByRole('gridcell')).toHaveCount(81) },
+      { spec: 'Number input remains available in the second tab', check: async () => await expect(later.locator('.number-pad button:enabled')).toHaveCount(9) }
     ]
   });
 
-  const editableCell = await page.locator('[data-cell]').evaluateAll((cells) =>
-    cells.findIndex((cell) => cell.getAttribute('aria-label')?.includes('editable'))
+  const puzzle = await later.evaluate(() =>
+    JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle as { givens: string; solution: string }
   );
-  const correct = await page.evaluate((cell) => {
-    const start = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0];
-    return Number(start.payload.puzzle.solution[cell]);
-  }, editableCell);
-  await page.locator(`[data-cell="${editableCell}"]`).click();
-  await page.getByRole('button', { name: new RegExp(`^${correct},`) }).click();
-  await steps.step('first-tab-move-observed', {
-    description: 'The first tab places a value and the later tab refreshes from storage',
+  const blanks = [...puzzle.givens].flatMap((given, cell) => given === '.' ? [cell] : []);
+  const [firstCell, secondCell] = blanks;
+  const firstValue = Number(puzzle.solution[firstCell]);
+  const secondValue = Number(puzzle.solution[secondCell]);
+
+  await page.locator(`[data-cell="${firstCell}"]`).click();
+  await page.getByRole('button', { name: new RegExp(`^${firstValue},`) }).click();
+  await steps.step('first-tab-event-followed', {
+    description: 'The first tab commits a value to the shared puzzle stream',
     verifications: [
-      { spec: 'The later board shows the exact value written by the first tab', check: async () => await expect(later.locator(`[data-cell="${editableCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${correct}`)) },
-      { spec: 'The later tab remains read-only after refreshing', check: async () => await expect(later.locator('.number-pad button:enabled')).toHaveCount(0) }
+      { spec: 'The second tab follows the committed value without reloading', check: async () => await expect(later.locator(`[data-cell="${firstCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${firstValue}`)) },
+      { spec: 'The observing tab remains writable', check: async () => await expect(later.locator('.number-pad button:enabled')).toHaveCount(9) }
+    ]
+  });
+
+  await later.locator(`[data-cell="${secondCell}"]`).click();
+  await steps.step('second-tab-cell-selected', {
+    description: 'The player selects another cell in the second tab',
+    verifications: [
+      { spec: 'Selection is local to this tab until an event is committed', check: async () => await expect(later.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(/editable, empty, selected/) }
+    ]
+  });
+  await later.getByRole('button', { name: new RegExp(`^${secondValue},`) }).click();
+  await steps.step('second-tab-event-committed', {
+    description: 'The second tab commits the next non-overlapping event',
+    verifications: [
+      { spec: 'The value is accepted in the second tab', check: async () => await expect(later.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`)) },
+      { spec: 'The first tab follows the second tab event', check: async () => await expect(page.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`)) }
+    ]
+  });
+
+  await later.getByRole('button', { name: 'Puzzles', exact: true }).click();
+  await steps.step('puzzle-library-opened', {
+    description: 'The player opens the puzzle library while the first puzzle remains active',
+    verifications: [
+      { spec: 'Generation remains available with an in-progress puzzle', check: async () => await expect(later.getByRole('button', { name: 'Generate Foundations puzzle' })).toBeEnabled() },
+      { spec: 'The interface explains that the current puzzle remains in History', check: async () => await expect(later.getByText('Generating another puzzle keeps this one available in History.')).toBeVisible() }
+    ]
+  });
+  await later.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
+  await steps.step('different-puzzle-opened', {
+    description: 'The second tab opens another independent puzzle stream',
+    verifications: [
+      { spec: 'The new board starts without either earlier entry', check: async () => {
+        await expect(later.locator(`[data-cell="${firstCell}"]`)).not.toHaveAccessibleName(new RegExp(`editable, ${firstValue}`));
+        await expect(later.locator(`[data-cell="${secondCell}"]`)).not.toHaveAccessibleName(new RegExp(`editable, ${secondValue}`));
+      } },
+      { spec: 'The first tab stays on its original puzzle and retains both values', check: async () => {
+        await expect(page.locator(`[data-cell="${firstCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${firstValue}`));
+        await expect(page.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${secondValue}`));
+      } }
     ]
   });
   steps.generateDocs();

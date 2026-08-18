@@ -9,7 +9,13 @@
   import { elapsedAt, formatElapsed } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
-  import { EVENT_STORE_KEY, EventStore, loadEventStore, type EventMetadata } from '$lib/storage/event-store';
+  import type { EventMetadata } from '$lib/storage/event-store';
+  import {
+    EVENT_CHANNEL_NAME,
+    IndexedDbEventStore,
+    loadIndexedDbEventStore,
+    type CommitResult
+  } from '$lib/storage/indexeddb-event-store';
   import { puzzleUrl, type SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
   import {
@@ -33,7 +39,7 @@
   let persistenceStatus = $state<PersistenceStatus>('checking');
   let generationStatus = $state<GenerationStatus>('idle');
   let generationError = $state('');
-  let store = $state<EventStore>();
+  let store = $state<IndexedDbEventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
   let selectedDigit = $state<Digit | null>(null);
@@ -45,7 +51,8 @@
   let clearDialogOpen = $state(false);
   let historyPage = $state(0);
   let storageWarning = $state('');
-  let secondaryTab = $state(false);
+  let tabGameId = $state<string | null>(null);
+  let eventChannel: BroadcastChannel | null = null;
   let selectedDifficulty = $state<PuzzleDifficulty>('foundations');
   let incomingStatus = $state<IncomingStatus>('none');
   let incomingPuzzle = $state<SharedPuzzleValidation | null>(null);
@@ -64,12 +71,10 @@
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
 
-  const activeGame = $derived(
-    projection.activeGameId ? projection.games[projection.activeGameId] : undefined
-  );
+  const activeGame = $derived(tabGameId ? projection.games[tabGameId] : undefined);
   const currentGame = $derived(reviewedGameId ? projection.games[reviewedGameId] : activeGame);
   const isReadOnly = $derived(
-    !currentGame || currentGame.status !== 'active' || reviewedGameId !== null || secondaryTab
+    !currentGame || currentGame.status !== 'active' || reviewedGameId !== null
   );
   const gameLog = $derived(
     store && currentGame ? formatGameLog(store.getDocument().events, currentGame.id, currentGame) : []
@@ -97,18 +102,7 @@
   const selectedLevel = $derived(DIFFICULTY_BY_ID[selectedDifficulty]);
 
   onMount(() => {
-    const loaded = loadEventStore(localStorage, timerNow);
-    store = loaded.store;
-    storageWarning = loaded.warning;
-    persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
-    systemShareAvailable = typeof navigator.share === 'function';
-    projection = store.getProjection();
-    void inspectIncomingLink();
-    if (import.meta.env.VITE_E2E_MODE === '1') {
-      const latestTime = store.getDocument().events.at(-1)?.occurredAt;
-      if (latestTime && Date.parse(latestTime) > timerNow.getTime()) timerNow = new Date(latestTime);
-    }
-
+    let disposed = false;
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       document.documentElement.dataset.offlineReady = 'false';
       void navigator.serviceWorker.ready.then(() => {
@@ -131,32 +125,79 @@
       cleanup.push(() => window.clearInterval(timer));
     }
 
-    const refreshFromStorage = (event: StorageEvent): void => {
-      if (event.key === EVENT_STORE_KEY && store) projection = store.reload();
+    const refresh = (): void => { void refreshFromDatabase(); };
+    window.addEventListener('focus', refresh);
+    cleanup.push(() => window.removeEventListener('focus', refresh));
+
+    void (async () => {
+      const loaded = await loadIndexedDbEventStore(
+        localStorage,
+        indexedDB,
+        timerNow,
+        import.meta.env.VITE_E2E_MODE === '1'
+      );
+      if (disposed) return;
+      store = loaded.store;
+      storageWarning = loaded.warning;
+      persistenceStatus = store.isPersistent() ? 'local' : 'memory-only';
+      systemShareAvailable = typeof navigator.share === 'function';
+      projection = store.getProjection();
+      const selected = sessionStorage.getItem('sudoku.tab-game');
+      selectTabGame(selected && projection.games[selected] ? selected : defaultGameId());
+      if (import.meta.env.VITE_E2E_MODE === '1') {
+        const latestTime = store.getDocument().events.at(-1)?.occurredAt;
+        if (latestTime && Date.parse(latestTime) > timerNow.getTime()) timerNow = new Date(latestTime);
+        (window as Window & { __sudokuReplaceEventDocument?: typeof store.replaceDocumentForTests }).__sudokuReplaceEventDocument =
+          async (document) => {
+            projection = await store!.replaceDocumentForTests(document);
+            selectTabGame(projection.activeGameId);
+            return projection;
+          };
+      }
+      if ('BroadcastChannel' in window) {
+        eventChannel = new BroadcastChannel(EVENT_CHANNEL_NAME);
+        eventChannel.onmessage = refresh;
+      }
+      await inspectIncomingLink();
+    })();
+
+    return () => {
+      disposed = true;
+      eventChannel?.close();
+      eventChannel = null;
+      cleanup.forEach((dispose) => dispose());
     };
-    window.addEventListener('storage', refreshFromStorage);
-    cleanup.push(() => window.removeEventListener('storage', refreshFromStorage));
-
-    if ('BroadcastChannel' in window) {
-      const channel = new BroadcastChannel('sudoku.active-tab.v1');
-      const instanceId = import.meta.env.VITE_E2E_MODE === '1'
-        ? `${performance.timeOrigin}-${Math.random()}`
-        : crypto.randomUUID();
-      channel.onmessage = (message: MessageEvent<{ type: string; sender: string }>) => {
-        if (message.data.sender === instanceId) return;
-        if (message.data.type === 'hello' && !secondaryTab) {
-          channel.postMessage({ type: 'active', sender: instanceId });
-        } else if (message.data.type === 'active') {
-          secondaryTab = true;
-          announcement = 'Another tab is active. This tab is read only.';
-        }
-      };
-      channel.postMessage({ type: 'hello', sender: instanceId });
-      cleanup.push(() => channel.close());
-    }
-
-    return () => cleanup.forEach((dispose) => dispose());
   });
+
+  function selectTabGame(gameId: string | null): void {
+    tabGameId = gameId;
+    if (gameId) sessionStorage.setItem('sudoku.tab-game', gameId);
+    else sessionStorage.removeItem('sudoku.tab-game');
+  }
+
+  function defaultGameId(): string | null {
+    if (projection.activeGameId && projection.games[projection.activeGameId]?.status === 'active') return projection.activeGameId;
+    return Object.values(projection.games).reverse().find((game) => game.status === 'active')?.id ?? null;
+  }
+
+  async function refreshFromDatabase(): Promise<void> {
+    if (!store) return;
+    projection = await store.reload();
+    if (tabGameId && !projection.games[tabGameId]) selectTabGame(defaultGameId());
+    syncStoreStatus();
+  }
+
+  function applyCommit(result: CommitResult, successMessage: string): boolean {
+    projection = result.projection;
+    syncStoreStatus();
+    if (!result.committed) {
+      announcement = 'That action overlapped another tab and was discarded. The latest puzzle state is shown.';
+      return false;
+    }
+    eventChannel?.postMessage({ type: 'events-changed', gameId: result.gameId });
+    announcement = successMessage;
+    return true;
+  }
 
   function syncStoreStatus(): void {
     if (!store) return;
@@ -216,14 +257,16 @@
     incomingError = '';
   }
 
-  function acceptIncoming(abandonCurrent = false): void {
-    if (!store || (!incomingPuzzle && !incomingTransfer) || secondaryTab) return;
+  async function acceptIncoming(abandonCurrent = false): Promise<void> {
+    if (!store || (!incomingPuzzle && !incomingTransfer)) return;
     if (activeGame?.status === 'active') {
       if (!abandonCurrent) return;
-      projection = store.abandon(activeGame.id, metadata());
+      const abandoned = await store.abandon(activeGame.id, metadata());
+      if (!applyCommit(abandoned, 'Puzzle abandoned')) return;
     }
+    let result: CommitResult;
     if (incomingTransfer) {
-      projection = store.importGame(
+      result = await store.importGame(
         incomingTransfer.puzzle,
         'progress-transfer',
         incomingTransfer.transferId,
@@ -232,19 +275,19 @@
         incomingTransfer.settings
       );
     } else if (incomingPuzzle) {
-      projection = store.importGame(
+      result = await store.importGame(
         incomingPuzzle.puzzle,
         'puzzle-link',
         null,
         null,
         metadata(false)
       );
-    }
-    syncStoreStatus();
+    } else return;
+    if (!applyCommit(result, incomingTransfer ? 'Transferred puzzle continued on this device' : 'Shared puzzle opened on this device')) return;
+    selectTabGame(result.gameId);
     reviewedGameId = null;
     selectedCell = null;
     view = 'play';
-    announcement = incomingTransfer ? 'Transferred puzzle continued on this device' : 'Shared puzzle opened on this device';
     dismissIncoming();
   }
 
@@ -286,10 +329,10 @@
     if (!store || !currentGame || isReadOnly || currentGame.status !== 'active') return;
     let pausedGame = currentGame;
     if (!pausedGame.paused) {
-      projection = store.pause(pausedGame.id, metadata());
+      const result = await store.pause(pausedGame.id, metadata());
+      if (!applyCommit(result, 'Puzzle paused for transfer')) return;
       pausedGame = projection.games[pausedGame.id];
       selectedCell = null;
-      syncStoreStatus();
     }
     const record = { ...checkpointFromGame(pausedGame), transferId: newTransferId() };
     await showShareLink(transferUrl(window.location.href, encodeTransfer(record)), true);
@@ -330,8 +373,9 @@
       const seed = import.meta.env.VITE_E2E_MODE === '1' ? 'walkthrough-seed' : crypto.randomUUID();
       const { puzzle } = await generateInWorker(selectedDifficulty, seed);
       if (!store) throw new Error('Puzzle storage is not ready');
-      projection = store.startGame(puzzle, metadata(false));
-      syncStoreStatus();
+      const result = await store.startGame(puzzle, metadata(false));
+      if (!applyCommit(result, 'New puzzle ready')) throw new Error('Puzzle generation overlapped another tab');
+      selectTabGame(result.gameId);
       reviewedGameId = null;
       view = 'play';
       generationStatus = 'idle';
@@ -352,7 +396,7 @@
     }
   }
 
-  function enterDigit(value: Digit, cellOverride: number | null = null): void {
+  async function enterDigit(value: Digit, cellOverride: number | null = null): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
     const cell = cellOverride ?? selectedCell;
     if (cell === null) {
@@ -366,17 +410,16 @@
     if (currentGame.puzzle.givens[cell] !== '.') return;
     if (inputMode === 'notes') {
       const enabled = !currentGame.notes[cell].includes(value);
-      projection = store.toggleNote(currentGame.id, cell, value, enabled, metadata());
-      announcement = `${enabled ? 'Added' : 'Removed'} note ${value}`;
+      const result = await store.toggleNote(currentGame.id, cell, value, enabled, metadata());
+      applyCommit(result, `${enabled ? 'Added' : 'Removed'} note ${value}`);
     } else {
-      const next = store.enterValue(currentGame.id, cell, value, metadata());
-      projection = next;
-      announcement = next.games[currentGame.id].conflicts.includes(cell)
+      const result = await store.enterValue(currentGame.id, cell, value, metadata());
+      if (!applyCommit(result, `Entered ${value}`)) return;
+      announcement = result.projection.games[currentGame.id].conflicts.includes(cell)
         ? `Entered ${value}, conflict`
         : `Entered ${value}`;
     }
     if (selectedDigit === value) selectedDigit = null;
-    syncStoreStatus();
   }
 
   function remaining(value: Digit): number {
@@ -387,18 +430,18 @@
     return 9 - board.filter((entry) => entry === value).length;
   }
 
-  function eraseCell(): void {
+  async function eraseCell(): Promise<void> {
     if (!store || !currentGame || selectedCell === null || !canErase) return;
-    projection = store.clearCell(currentGame.id, selectedCell, metadata());
-    announcement = `Erased row ${Math.floor(selectedCell / 9) + 1}, column ${(selectedCell % 9) + 1}`;
+    const result = await store.clearCell(currentGame.id, selectedCell, metadata());
+    applyCommit(result, `Erased row ${Math.floor(selectedCell / 9) + 1}, column ${(selectedCell % 9) + 1}`);
   }
 
-  function eraseCellAt(cell: number): void {
+  async function eraseCellAt(cell: number): Promise<void> {
     selectedCell = cell;
     if (!store || !currentGame || isReadOnly || currentGame.paused || currentGame.puzzle.givens[cell] !== '.') return;
     if (currentGame.values[cell] === null && currentGame.notes[cell].length === 0) return;
-    projection = store.clearCell(currentGame.id, cell, metadata());
-    announcement = `Erased row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
+    const result = await store.clearCell(currentGame.id, cell, metadata());
+    applyCommit(result, `Erased row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`);
   }
 
   function toggleNotesMode(): void {
@@ -414,65 +457,61 @@
     else if (shareDialogOpen) shareDialogOpen = false;
   }
 
-  function undo(): void {
+  async function undo(): Promise<void> {
     if (!store || !currentGame?.undoTargetId || isReadOnly || currentGame.paused) return;
-    projection = store.undo(currentGame.id, currentGame.undoTargetId, metadata());
-    announcement = 'Undid last move';
+    applyCommit(await store.undo(currentGame.id, currentGame.undoTargetId, metadata()), 'Undid last move');
   }
 
-  function redo(): void {
+  async function redo(): Promise<void> {
     if (!store || !currentGame?.redoTargetId || isReadOnly || currentGame.paused) return;
-    projection = store.redo(currentGame.id, currentGame.redoTargetId, metadata());
-    announcement = 'Redid last move';
+    applyCommit(await store.redo(currentGame.id, currentGame.redoTargetId, metadata()), 'Redid last move');
   }
 
-  function togglePause(): void {
+  async function togglePause(): Promise<void> {
     if (!store || !currentGame || isReadOnly) return;
     if (currentGame.paused) {
-      projection = store.resume(currentGame.id, metadata());
-      announcement = 'Puzzle resumed';
+      applyCommit(await store.resume(currentGame.id, metadata()), 'Puzzle resumed');
     } else {
-      projection = store.pause(currentGame.id, metadata());
+      const result = await store.pause(currentGame.id, metadata());
+      if (!applyCommit(result, 'Puzzle paused')) return;
       selectedCell = null;
-      announcement = 'Puzzle paused';
     }
   }
 
-  function confirmHint(): void {
+  async function confirmHint(): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
     const cell = currentGame.values.findIndex((value, index) =>
       currentGame.puzzle.givens[index] === '.' && value === null
     );
     if (cell < 0) return;
     const value = Number(currentGame.puzzle.solution[cell]) as Digit;
-    projection = store.revealHint(currentGame.id, cell, value, metadata());
+    const result = await store.revealHint(currentGame.id, cell, value, metadata());
+    if (!applyCommit(result, `Hint revealed ${value} in row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`)) return;
     selectedCell = cell;
     hintDialogOpen = false;
-    announcement = `Hint revealed ${value} in row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
   }
 
-  function restartGame(): void {
+  async function restartGame(): Promise<void> {
     if (!store || !currentGame || isReadOnly) return;
-    projection = store.restart(currentGame.id, metadata());
+    if (!applyCommit(await store.restart(currentGame.id, metadata()), 'Puzzle restarted')) return;
     selectedCell = null;
-    announcement = 'Puzzle restarted';
   }
 
-  function abandonGame(): void {
+  async function abandonGame(): Promise<void> {
     if (!store || !currentGame || isReadOnly) return;
-    projection = store.abandon(currentGame.id, metadata());
+    if (!applyCommit(await store.abandon(currentGame.id, metadata()), 'Puzzle abandoned')) return;
     selectedCell = null;
     view = 'history';
-    announcement = 'Puzzle abandoned';
   }
 
-  function startOver(gameId: string): void {
+  async function startOver(gameId: string): Promise<void> {
     if (!store) return;
-    projection = store.startGame(projection.games[gameId].puzzle, metadata(false));
+    const result = await store.startGame(projection.games[gameId].puzzle, metadata(false));
+    if (!applyCommit(result, 'Started another attempt')) return;
+    selectTabGame(result.gameId);
     reviewedGameId = null;
     selectedCell = null;
     view = 'play';
-    announcement = 'Started another attempt';
   }
 
   function showView(next: View): void {
@@ -481,16 +520,16 @@
     if (next !== 'play') reviewedGameId = null;
   }
 
-  function changeSetting(key: keyof GameSettings): void {
-    if (!store || secondaryTab) return;
-    projection = store.changeSettings({ [key]: !projection.settings[key] }, metadata(false));
-    syncStoreStatus();
-    announcement = 'Setting saved on this device';
+  async function changeSetting(key: keyof GameSettings): Promise<void> {
+    if (!store) return;
+    applyCommit(await store.changeSettings({ [key]: !projection.settings[key] }, metadata(false)), 'Setting saved on this device');
   }
 
-  function clearAllData(): void {
+  async function clearAllData(): Promise<void> {
     if (!store) return;
-    projection = store.clearAll();
+    projection = await store.clearAll();
+    eventChannel?.postMessage({ type: 'events-changed', gameId: null });
+    selectTabGame(null);
     reviewedGameId = null;
     selectedCell = null;
     clearDialogOpen = false;
@@ -500,7 +539,10 @@
   }
 
   function reviewGame(gameId: string): void {
-    reviewedGameId = gameId;
+    if (projection.games[gameId].status === 'active') {
+      selectTabGame(gameId);
+      reviewedGameId = null;
+    } else reviewedGameId = gameId;
     selectedCell = null;
     view = 'play';
   }
@@ -524,10 +566,10 @@
     <div class="device-status" role="status"><span class:warning={persistenceStatus === 'memory-only'} aria-hidden="true"></span>{persistenceStatus === 'memory-only' ? 'Memory only' : 'On this device'}</div>
   </header>
 
-  {#if storageWarning || secondaryTab}
+  {#if storageWarning}
     <div class="app-warning" role="status">
-      <strong>{secondaryTab ? 'Read-only tab' : 'Storage notice'}</strong>
-      <span>{secondaryTab ? 'Another Sudoku tab was opened first. Continue there to make changes.' : storageWarning}</span>
+      <strong>Storage notice</strong>
+      <span>{storageWarning}</span>
     </div>
   {/if}
 
@@ -543,18 +585,18 @@
           <dl class="incoming-facts transfer-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingTransfer.puzzle.difficulty)}</dd></div><div><dt>Filled</dt><dd>{incomingTransfer.checkpoint.values.filter(Boolean).length}</dd></div><div><dt>Notes</dt><dd>{incomingTransfer.checkpoint.notes.filter((notes) => notes.length).length}</dd></div><div><dt>Time</dt><dd>{formatElapsed(incomingTransfer.checkpoint.elapsedMs)}</dd></div><div><dt>Hints</dt><dd>{incomingTransfer.checkpoint.hints}</dd></div><div><dt>Mistakes</dt><dd>{incomingTransfer.checkpoint.mistakes}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Continuing here will keep the current attempt in History as abandoned.</p>
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)} disabled={secondaryTab}>Abandon current and continue here</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and continue here</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()} disabled={secondaryTab}>Continue on this device</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>Continue on this device</button></div>
           {/if}
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
           <dl class="incoming-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div><div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)} disabled={secondaryTab}>Abandon current and open shared puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open shared puzzle</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()} disabled={secondaryTab}>Start this puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>Start this puzzle</button></div>
           {/if}
         {/if}
       </section>
@@ -562,12 +604,12 @@
       <section class="library-view settings-view" aria-labelledby="settings-title">
         <div class="library-heading"><p class="eyebrow">On this device</p><h1 id="settings-title">Settings</h1><p>Preferences apply to new puzzles and stay in this browser.</p></div>
         <div class="settings-list">
-          <button type="button" role="switch" aria-checked={projection.settings.checkMistakes} onclick={() => changeSetting('checkMistakes')} disabled={secondaryTab}><span><strong>Check mistakes</strong><small>Mark entries that do not match the solution.</small></span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked={projection.settings.autoRemoveNotes} onclick={() => changeSetting('autoRemoveNotes')} disabled={secondaryTab}><span><strong>Remove matching notes</strong><small>Clear a digit from peers after placing it.</small></span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked={projection.settings.showTimer} onclick={() => changeSetting('showTimer')} disabled={secondaryTab}><span><strong>Show timer</strong><small>Display active solving time while you play.</small></span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked={projection.settings.numberFirst} onclick={() => changeSetting('numberFirst')} disabled={secondaryTab}><span><strong>Number-first input</strong><small>Allow choosing a number before choosing its cell.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.checkMistakes} onclick={() => changeSetting('checkMistakes')}><span><strong>Check mistakes</strong><small>Mark entries that do not match the solution.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.autoRemoveNotes} onclick={() => changeSetting('autoRemoveNotes')}><span><strong>Remove matching notes</strong><small>Clear a digit from peers after placing it.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.showTimer} onclick={() => changeSetting('showTimer')}><span><strong>Show timer</strong><small>Display active solving time while you play.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.numberFirst} onclick={() => changeSetting('numberFirst')}><span><strong>Number-first input</strong><small>Allow choosing a number before choosing its cell.</small></span><i aria-hidden="true"></i></button>
         </div>
-        <section class="privacy-card" aria-labelledby="local-data-title"><div><h2 id="local-data-title">Local Sudoku data</h2><p>Delete every puzzle, event, preference, and recovery copy from this browser. This cannot be undone.</p></div><button type="button" onclick={() => clearDialogOpen = true} disabled={secondaryTab}>Clear all local Sudoku data</button></section>
+        <section class="privacy-card" aria-labelledby="local-data-title"><div><h2 id="local-data-title">Local Sudoku data</h2><p>Delete every puzzle, event, preference, and recovery copy from this browser. This cannot be undone.</p></div><button type="button" onclick={() => clearDialogOpen = true}>Clear all local Sudoku data</button></section>
       </section>
     {:else if view === 'history'}
       <section class="library-view" aria-labelledby="history-title">
@@ -580,7 +622,7 @@
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>Review board</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}</div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}</div>
               </article>
             {/each}
           </div>
@@ -596,14 +638,13 @@
     {:else if view === 'puzzles'}
       <section class="library-view" aria-labelledby="puzzles-title">
         <div class="library-heading"><p class="eyebrow">Generated here</p><h1 id="puzzles-title">Puzzles</h1><p>Choose any chapter level. Every puzzle is generated and rated entirely on this device.</p></div>
-        {#if !activeGame || activeGame.status !== 'active'}
-          <div class="generation-panel" data-e2e-no-clip>
+        <div class="generation-panel" data-e2e-no-clip>
             <fieldset class="difficulty-picker"><legend>Puzzle level</legend><div>{#each DIFFICULTY_LEVELS as level}<button type="button" aria-pressed={selectedDifficulty === level.id} onclick={() => selectDifficulty(level.id)}><strong>{level.label}</strong><small>Chapter {level.chapter}</small></button>{/each}</div></fieldset>
             <p class="level-summary" aria-live="polite"><strong>{selectedLevel.label}</strong> · {selectedLevel.summary}</p>
-            <button class="primary-action compact" type="button" onclick={generatePuzzle} disabled={secondaryTab || generationStatus === 'generating'}>{generationStatus === 'generating' ? 'Generating and rating…' : `Generate ${selectedLevel.label} puzzle`}</button>
+            <button class="primary-action compact" type="button" onclick={generatePuzzle} disabled={generationStatus === 'generating'}>{generationStatus === 'generating' ? 'Generating and rating…' : `Generate ${selectedLevel.label} puzzle`}</button>
             {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
-          </div>
-        {:else}<div class="empty-library"><strong>One puzzle is in progress</strong><span>Finish or abandon it before generating another.</span><button type="button" onclick={() => showView('play')}>Return to puzzle</button></div>{/if}
+            {#if activeGame?.status === 'active'}<p class="local-note">Generating another puzzle keeps this one available in History.</p>{/if}
+        </div>
       </section>
     {:else if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
@@ -669,7 +710,7 @@
           {#if generationStatus === 'generating'}
             <button class="primary-action" type="button" disabled aria-busy="true">Generating and validating…</button>
           {:else}
-            <button class="primary-action" type="button" onclick={generatePuzzle} disabled={secondaryTab}>{generationStatus === 'failed' ? `Retry ${selectedLevel.label}` : `Generate ${selectedLevel.label} puzzle`}</button>
+            <button class="primary-action" type="button" onclick={generatePuzzle}>{generationStatus === 'failed' ? `Retry ${selectedLevel.label}` : `Generate ${selectedLevel.label} puzzle`}</button>
           {/if}
           {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
           <p class="local-note">The puzzle and its solution never leave this browser.</p>

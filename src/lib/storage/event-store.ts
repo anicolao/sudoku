@@ -12,11 +12,11 @@ import type {
 export const EVENT_STORE_KEY = 'sudoku.event-store.v1';
 export const CORRUPT_STORE_PREFIX = 'sudoku.event-store.corrupt.';
 
-const emptyDocument = (): StoredEventDocumentV1 => ({ storageVersion: 1, nextSequence: 1, events: [] });
+export const emptyDocument = (): StoredEventDocumentV1 => ({ storageVersion: 1, nextSequence: 1, events: [] });
 
 interface StoredEventDocumentV0 { storageVersion: 0; events: SudokuEvent[]; }
 
-function parseDocument(raw: string): { document: StoredEventDocumentV1; migrated: boolean } {
+export function parseDocument(raw: string): { document: StoredEventDocumentV1; migrated: boolean } {
   const parsed = JSON.parse(raw) as StoredEventDocumentV1 | StoredEventDocumentV0;
   if (parsed.storageVersion === 0 && Array.isArray(parsed.events)) {
     return {

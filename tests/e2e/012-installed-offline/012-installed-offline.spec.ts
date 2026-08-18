@@ -40,7 +40,7 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
   });
 
   const finalCells = blanks.slice(-2);
-  await page.evaluate(({ finalCells, first }) => {
+  await page.evaluate(async ({ finalCells, first }) => {
     const document = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '');
     const start = document.events[0];
     const blanks = [...start.payload.puzzle.givens].flatMap((value, cell) => value === '.' ? [cell] : []);
@@ -54,7 +54,8 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
         schemaVersion: 1, reducerVersion: 1
       });
     }
-    localStorage.setItem('sudoku.event-store.v1', JSON.stringify(document));
+    await (window as unknown as { __sudokuReplaceEventDocument: (value: unknown) => Promise<unknown> })
+      .__sudokuReplaceEventDocument(document);
   }, { finalCells, first });
   await page.reload();
   await page.getByRole('button', { name: 'Pause' }).click();
@@ -82,7 +83,7 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
   await steps.step('game-resumed-offline', {
     description: 'The player resumes entirely offline',
     verifications: [{ spec: 'game/resumed appends locally and restores the exact two blanks', check: async () => {
-      expect((await eventDocument()).events.at(-1).type).toBe('game/resumed');
+      await expect.poll(async () => (await eventDocument()).events.at(-1).type).toBe('game/resumed');
       await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(2);
     } }]
   });
