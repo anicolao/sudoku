@@ -7,10 +7,16 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
     'Install once, then finish a puzzle offline',
     'After one online installation, the player starts and pauses a real event-sourced puzzle, closes the page, reopens with the network disabled, resumes, solves, reviews History, and reloads. Application caches contain only bundled same-origin GET assets—not puzzle events.'
   );
+  const observedRequests: string[] = [];
+  page.on('request', (request) => observedRequests.push(request.url()));
   const eventDocument = async () => page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? ''));
   await page.goto('/');
   await expect(page.locator('[data-app-ready="true"]')).toBeVisible();
   await page.waitForFunction(() => document.documentElement.dataset.offlineReady === 'true');
+  await expect.poll(() => observedRequests.some((request) => {
+    const url = new URL(request);
+    return url.pathname === '/version.json' && url.searchParams.has('update');
+  })).toBe(true);
 
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).not.toBeNull();
@@ -18,7 +24,14 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
     description: 'Online once, the player generates a validated puzzle and installs the application shell',
     verifications: [
       { spec: 'game/started is persisted before the network is disabled', check: async () => expect((await eventDocument()).events.at(-1).type).toBe('game/started') },
-      { spec: 'The service worker reports its precache ready', check: async () => expect(await page.evaluate(() => document.documentElement.dataset.offlineReady)).toBe('true') }
+      { spec: 'The service worker reports its precache ready', check: async () => expect(await page.evaluate(() => document.documentElement.dataset.offlineReady)).toBe('true') },
+      { spec: 'The installed shell checks the uncached same-origin revision manifest without changing the visible URL', check: async () => {
+        expect(observedRequests.some((request) => {
+          const url = new URL(request);
+          return url.pathname === '/version.json' && url.searchParams.has('update');
+        })).toBe(true);
+        expect(new URL(page.url()).search).toBe('');
+      } }
     ]
   });
   const start = (await eventDocument()).events[0];
@@ -152,6 +165,8 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
         expect(cached.names.every((name: string) => name.startsWith('sudoku-app-'))).toBe(true);
         expect(cached.requests.every((request: { method: string; url: string }) => request.method === 'GET' && new URL(request.url).origin === 'http://127.0.0.1:4177')).toBe(true);
         expect(cached.requests.some((request: { url: string }) => request.url.includes('event-store'))).toBe(false);
+        expect(cached.requests.some((request: { url: string }) => new URL(request.url).pathname === '/version.json')).toBe(false);
+        expect(cached.requests.some((request: { url: string }) => request.url === 'http://127.0.0.1:4177/')).toBe(true);
       } }
     ]
   });

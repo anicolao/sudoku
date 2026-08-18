@@ -8,7 +8,10 @@ and the visible game is rebuilt by replaying those events.
 No account, server, analytics, advertising, or cloud sync is required. Puzzle
 data and play history remain in this browser's IndexedDB. A service worker
 caches only the static application shell so a previously loaded app can be used
-offline.
+offline. The cached UI renders immediately, then checks a small uncached
+same-origin revision manifest; when a deployment changes, the replacement
+worker caches revision-busted HTML and takes over without requiring a visible
+URL parameter.
 
 The MVP is implemented. The application can generate deterministic puzzles at
 five cumulative chapter levels—Foundations, Intermediate, Advanced, Expert,
@@ -145,9 +148,9 @@ Pushes to `main` publish the production path at
 ## Privacy and data ownership
 
 The MVP makes no runtime request except same-origin `GET` requests for bundled
-application assets. Local history is not a backup: clearing site data, browser
-eviction, private-browsing teardown, or loss of the device removes it. User data
-is not included in the service-worker cache.
+application assets and the static revision manifest. Local history is not a
+backup: clearing site data, browser eviction, private-browsing teardown, or loss
+of the device removes it. User data is not included in the service-worker cache.
 
 The settings screen provides **Clear all local Sudoku data**, with a precise
 confirmation. This is the one intentional exception to logical append-only
