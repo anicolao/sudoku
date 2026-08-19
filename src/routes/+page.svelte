@@ -43,6 +43,7 @@
   let store = $state<IndexedDbEventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
+  let highlightAllNumberPeers = $state(false);
   let selectedDigit = $state<Digit | null>(null);
   let inputMode = $state<InputMode>('number');
   let announcement = $state('');
@@ -410,7 +411,20 @@
 
   function selectCell(cell: number): void {
     if (currentGame?.paused) return;
+    const value = currentGame
+      ? currentGame.puzzle.givens[cell] === '.'
+        ? currentGame.values[cell]
+        : Number(currentGame.puzzle.givens[cell])
+      : null;
+    if (selectedCell === cell && value !== null) {
+      highlightAllNumberPeers = !highlightAllNumberPeers;
+      announcement = highlightAllNumberPeers
+        ? `Highlighted every ${value} and all of their peers`
+        : `Highlighted row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1} peers`;
+      return;
+    }
     selectedCell = cell;
+    highlightAllNumberPeers = false;
     const row = Math.floor(cell / 9) + 1;
     const column = (cell % 9) + 1;
     announcement = `Selected row ${row}, column ${column}`;
@@ -694,7 +708,7 @@
                 <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
               </button>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
+              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
             <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
