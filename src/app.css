@@ -139,6 +139,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .number-pad button { min-width: 44px; min-height: 52px; display: grid; place-items: center; padding: 3px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; cursor: pointer; }
 .number-pad button.selected-number { color: #fff; background: #4654a3; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4654a3; }
 .number-pad button.selected-number small { color: #fff; }
+.number-pad button.all-notes { color: #8a5818; border-color: #d3a157; background: #fff8e8; font-weight: 700; }
 .number-pad strong { font-size: 1.35rem; line-height: 1; }
 .number-pad small { color: #666970; font-size: .66rem; line-height: 1; }
 .utility-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
@@ -313,6 +314,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
 @media (max-height: 650px) {
   .shell-header,
   footer { display: none; }
+  .primary-nav { min-height: 54px; }
   main { padding: 6px 10px; }
   .hero-card { grid-template-columns: 1fr; gap: 8px; padding: 12px; }
   .hero-card .puzzle-preview,

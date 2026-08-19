@@ -249,6 +249,20 @@ export class EventStore {
     }));
   }
 
+  fillNotes(gameId: string, cell: number, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'cell/notes-filled',
+      payload: { cell },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
   clearCell(gameId: string, cell: number, metadata: EventMetadata): AppProjection {
     return this.append(metadata, (sequence) => ({
       id: metadata.id,

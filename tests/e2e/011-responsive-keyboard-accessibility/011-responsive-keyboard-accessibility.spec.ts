@@ -85,7 +85,7 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await steps.step('notes-mode-keyboard-toggle', {
     description: 'N toggles Notes mode without leaving the grid',
     verifications: [{ spec: 'Notes is pressed and the cell keeps focus', check: async () => {
-      await expect(page.getByRole('button', { name: 'Notes' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Notes', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(cell(noteCell)).toBeFocused();
     } }]
   });
@@ -152,8 +152,8 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await steps.step('responsive-settings-view', {
     description: 'The player opens all local settings without scrolling',
-    verifications: [{ spec: 'All four preference switches and the local-data action remain available', check: async () => {
-      await expect(page.getByRole('switch')).toHaveCount(4);
+    verifications: [{ spec: 'All five preference switches and the local-data action remain available', check: async () => {
+      await expect(page.getByRole('switch')).toHaveCount(5);
       await expect(page.getByRole('button', { name: 'Clear all local Sudoku data' })).toBeVisible();
     } }]
   });

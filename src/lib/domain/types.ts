@@ -49,6 +49,7 @@ export interface GameSettings {
   autoRemoveNotes: boolean;
   showTimer: boolean;
   numberFirst: boolean;
+  notesFirst: boolean;
 }
 
 interface EventEnvelope<GameId extends string | null = string> {
@@ -107,6 +108,11 @@ export interface NoteToggledEvent extends EventEnvelope {
   payload: { cell: number; value: Digit; enabled: boolean };
 }
 
+export interface NotesFilledEvent extends EventEnvelope {
+  type: 'cell/notes-filled';
+  payload: { cell: number };
+}
+
 export interface CellClearedEvent extends EventEnvelope {
   type: 'cell/cleared';
   payload: { cell: number };
@@ -155,6 +161,7 @@ export interface GameAbandonedEvent extends EventEnvelope {
 export type ReversibleEvent =
   | ValueEnteredEvent
   | NoteToggledEvent
+  | NotesFilledEvent
   | CellClearedEvent
   | ValueErasedEvent
   | HintRevealedEvent;

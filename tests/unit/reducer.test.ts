@@ -31,7 +31,7 @@ describe('event replay for values and notes', () => {
         type: 'game/started',
         payload: {
           gameId: 'game-1', puzzle,
-          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
         }
       },
       { ...envelope(2), type: 'cell/note-toggled', payload: { cell: 1, value: 2, enabled: true } },
@@ -53,7 +53,7 @@ describe('event replay for values and notes', () => {
         type: 'game/started',
         payload: {
           gameId: 'game-1', puzzle,
-          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
         }
       },
       { ...envelope(2), type: 'cell/value-entered', payload: { cell: 0, value: 9 } }
@@ -69,7 +69,7 @@ describe('event replay for values and notes', () => {
         ...envelope(1), type: 'game/started',
         payload: {
           gameId: 'game-1', puzzle,
-          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
         }
       },
       { ...envelope(2), type: 'cell/value-entered', payload: { cell: 1, value: 2 } },
@@ -93,7 +93,7 @@ describe('event replay for values and notes', () => {
         ...envelope(1), type: 'game/started',
         payload: {
           gameId: 'game-1', puzzle,
-          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
         }
       },
       { ...envelope(2), type: 'cell/note-toggled', payload: { cell: 1, value: 3, enabled: true } },
@@ -116,13 +116,31 @@ describe('event replay for values and notes', () => {
     expect(restored.valueSourceEventIds[1]).toBe('event-4');
   });
 
+  it('fills every pencil mark as one reversible event', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
+        }
+      },
+      { ...envelope(2), type: 'cell/note-toggled', payload: { cell: 1, value: 3, enabled: true } },
+      { ...envelope(3), type: 'cell/notes-filled', payload: { cell: 1 } }
+    ];
+
+    expect(replay(events).games['game-1'].notes[1]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    events.push({ ...envelope(4), type: 'move/undone', payload: { targetEventId: 'event-3' } });
+    expect(replay(events).games['game-1'].notes[1]).toEqual([3]);
+  });
+
   it('freezes elapsed time while paused and resumes from the event snapshot', () => {
     const events: SudokuEvent[] = [
       {
         ...envelope(1), type: 'game/started',
         payload: {
           gameId: 'game-1', puzzle,
-          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
         }
       },
       { ...envelope(2), elapsedMs: 65_000, type: 'game/paused', payload: {} },

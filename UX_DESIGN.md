@@ -115,7 +115,10 @@ global Notes mode is active, not that every note is an error or warning.
 
 The mode control has two explicit states: **Number** and **Notes**. Notes mode
 uses `aria-pressed`, an amber border/tint, and the text label. It must not rely on
-colour or a pencil icon alone.
+colour or a pencil icon alone. It adds an **All** key immediately after 9; the
+key fills pencil marks 1–9 in the selected empty cell as one undoable action. A
+local **Start in Notes mode** setting makes Notes the initial mode for newly
+opened puzzles without changing existing game snapshots.
 
 Both interaction orders work:
 

@@ -176,6 +176,7 @@ export function encodeTransfer(record: TransferRecord): string {
     (settings.autoRemoveNotes ? 2 : 0) |
     (settings.showTimer ? 4 : 0) |
     (settings.numberFirst ? 8 : 0) |
+    (settings.notesFirst ? 32 : 0) |
     16
   );
   const checksum = crc32(Uint8Array.from(output));
@@ -210,7 +211,7 @@ export function decodeTransfer(encoded: string): TransferRecord {
   const mistakes = readVarint(body, cursor);
   if (cursor.value !== body.length - 1) throw new Error('Transfer payload has trailing data.');
   const flags = body[cursor.value];
-  if ((flags & 0xe0) !== 0 || (flags & 16) === 0) throw new Error('Transfer flags are invalid.');
+  if ((flags & 0xc0) !== 0 || (flags & 16) === 0) throw new Error('Transfer flags are invalid.');
   const record: TransferRecord = {
     transferId,
     givens,
@@ -225,7 +226,8 @@ export function decodeTransfer(encoded: string): TransferRecord {
       checkMistakes: !!(flags & 1),
       autoRemoveNotes: !!(flags & 2),
       showTimer: !!(flags & 4),
-      numberFirst: !!(flags & 8)
+      numberFirst: !!(flags & 8),
+      notesFirst: !!(flags & 32)
     }
   };
   validateRecord(record);
