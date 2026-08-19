@@ -137,6 +137,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .mode-switch button:disabled, .number-pad button:disabled { cursor: not-allowed; opacity: .55; }
 .number-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .number-pad button { min-width: 44px; min-height: 52px; display: grid; place-items: center; padding: 3px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; cursor: pointer; }
+.number-pad button.complete-number:disabled { opacity: 1; color: #777a80; border-color: #d7d5cd; background: #efeee9; }
+.number-pad button.complete-number:disabled small { color: #777a80; }
 .number-pad button.selected-number { color: #fff; background: #4654a3; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4654a3; }
 .number-pad button.selected-number small { color: #fff; }
 .number-pad button.all-notes { color: #8a5818; border-color: #d3a157; background: #fff8e8; font-weight: 700; }
