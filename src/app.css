@@ -111,6 +111,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .sudoku-cell.given { color: #20242b; font-weight: 700; background: #fffdf8; }
 .sudoku-cell.peer { background: #f1f2f7; }
 .sudoku-cell.matching { background: #e1e4f7; }
+.sudoku-cell.number-peer { background: #fde8ef; }
+.sudoku-cell.number-match { background: #f5bfd2; }
 .sudoku-cell.selected { z-index: 1; background: #eceefa; box-shadow: inset 0 0 0 3px #4654a3; }
 .sudoku-cell.conflict { z-index: 2; color: #b42318; box-shadow: inset 0 0 0 3px #b42318; }
 .sudoku-cell.mistake { color: #b42318; background: #fff0ee; }

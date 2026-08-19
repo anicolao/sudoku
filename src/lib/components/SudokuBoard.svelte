@@ -6,6 +6,7 @@
   let {
     game,
     selected,
+    highlightAllNumberPeers,
     onselect,
     onnumber,
     ontoggleNotes,
@@ -15,6 +16,7 @@
   }: {
     game: GameProjection;
     selected: number | null;
+    highlightAllNumberPeers: boolean;
     onselect: (cell: number) => void;
     onnumber: (cell: number, value: Digit) => void;
     ontoggleNotes: () => void;
@@ -32,6 +34,14 @@
         ? game.values[selected]
         : Number(game.puzzle.givens[selected])
   );
+  const matchingCells = $derived.by(() => selectedValue === null
+    ? []
+    : Array.from({ length: 81 }, (_, cell) => cell).filter((cell) => {
+        const given = game.puzzle.givens[cell];
+        const value = given === '.' ? game.values[cell] : Number(given);
+        return value === selectedValue;
+      }));
+  const matchingPeers = $derived.by(() => new Set(matchingCells.flatMap((cell) => PEERS[cell])));
 
   function label(cell: number): string {
     const given = game.puzzle.givens[cell];
@@ -92,8 +102,10 @@
       {@const cell = row * 9 + column}
       {@const given = game.puzzle.givens[cell]}
       {@const value = given === '.' ? game.values[cell] : Number(given)}
-      {@const isPeer = selected !== null && PEERS[selected].includes(cell)}
-      {@const matches = selectedValue !== null && value === selectedValue}
+      {@const isPeer = !highlightAllNumberPeers && selected !== null && PEERS[selected].includes(cell)}
+      {@const matches = !highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
+      {@const isNumberPeer = highlightAllNumberPeers && matchingPeers.has(cell)}
+      {@const isNumberMatch = highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
       <button
         type="button"
         class="sudoku-cell"
@@ -101,6 +113,8 @@
         class:selected={selected === cell}
         class:peer={isPeer}
         class:matching={matches}
+        class:number-peer={isNumberPeer}
+        class:number-match={isNumberMatch}
         class:conflict={game.conflicts.includes(cell)}
         class:mistake={game.mistakeCells.includes(cell)}
         class:hinted={game.hintedCells.includes(cell)}
@@ -114,6 +128,7 @@
         aria-readonly={given !== '.'}
         tabindex={rovingCell === cell ? 0 : -1}
         data-cell={cell}
+        data-highlight={isNumberMatch ? 'number-match' : isNumberPeer ? 'number-peer' : matches ? 'matching' : isPeer ? 'peer' : undefined}
         data-e2e-board-cell
         onclick={() => onselect(cell)}
         onkeydown={(event) => handleKeydown(event, cell)}

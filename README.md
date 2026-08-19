@@ -20,7 +20,8 @@ puzzle from its logical solve path, reject puzzles outside the selected level, c
 the complete puzzle definition as a `game/started` event, reconstruct it by
 replay, and render its givens as an accessible 9×9 grid. Players can now select
 cells, switch explicitly between Number and Notes modes, toggle pencil marks,
-enter and replace values, see peer and duplicate-conflict highlighting, inspect
+enter and replace values, see peer and duplicate-conflict highlighting, expand
+a filled cell's second tap to every matching digit's peer set, inspect
 remaining number counts, and read a game log derived from the canonical stream.
 Erase, undo, and redo append compensating events instead of rewriting history;
 erasing a placed value replays without that placement so its cleared cell notes

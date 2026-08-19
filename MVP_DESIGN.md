@@ -237,8 +237,8 @@ selected stream revision.
 | `game/abandoned` | no additional data | Close an unfinished game |
 | `settings/changed` | validated changed fields | Persist local preferences |
 
-Selection, highlighted peers, open dialogs, navigation, and whether the game log
-is expanded are ephemeral UI state and are not events. Fixed givens, automatic
+Selection, local or number-wide highlighted peers, open dialogs, navigation,
+and whether the game log is expanded are ephemeral UI state and are not events. Fixed givens, automatic
 candidate calculation, conflicts, completion, statistics, number availability,
 and history cards are projections and are not appended as redundant facts.
 

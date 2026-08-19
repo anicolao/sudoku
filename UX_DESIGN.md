@@ -101,6 +101,12 @@ A cell may be selected by tap/click or keyboard navigation. Selection shows:
 - a stronger but distinct highlight on matching values;
 - programmatic `aria-selected="true"` and a complete accessible label.
 
+Tapping the same filled cell a second time switches from that cell's blue peer
+set to a pink number-wide view: every instance of the selected digit is
+emphasized, along with the union of all of those instances' peers. A third tap,
+or selecting a different cell, returns to the ordinary local peer view. This is
+ephemeral inspection state and never appends an event.
+
 Given cells are dark and visually heavier. User values are indigo. Notes are a
 3×3 mini-grid in the cell and use charcoal by default; amber indicates that the
 global Notes mode is active, not that every note is an error or warning.
