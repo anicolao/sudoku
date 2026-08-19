@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForStoredEvent } from '../helpers/event-store';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('an installed game resumes, completes, and reloads offline', async ({ context, page }, testInfo) => {
@@ -19,7 +20,7 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
   })).toBe(true);
 
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).not.toBeNull();
+  const started = await waitForStoredEvent(page, 'game/started');
   await steps.step('online-puzzle-installed', {
     description: 'Online once, the player generates a validated puzzle and installs the application shell',
     verifications: [
@@ -34,7 +35,7 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
       } }
     ]
   });
-  const start = (await eventDocument()).events[0];
+  const start = started;
   const blanks: number[] = [...start.payload.puzzle.givens].flatMap((value: string, cell: number) => value === '.' ? [cell] : []);
   const first = blanks[0];
   const firstValue = Number(start.payload.puzzle.solution[first]);

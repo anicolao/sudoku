@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForStoredEvent } from '../helpers/event-store';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('erasing a value replays without every effect of its placement', async ({ page }, testInfo) => {
@@ -15,12 +16,9 @@ test('erasing a value replays without every effect of its placement', async ({ p
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).not.toBeNull();
-  const values = await page.evaluate(() => {
-    const puzzle = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle;
-    const placed = Number(puzzle.solution[34]);
-    return { placed, retained: placed === 1 ? 2 : 1 };
-  });
+  const started = await waitForStoredEvent(page, 'game/started');
+  const placed = Number(started.payload.puzzle.solution[34]);
+  const values = { placed, retained: placed === 1 ? 2 : 1 };
   await steps.step('puzzle-generated', {
     description: 'The player generates a puzzle for the replay correction',
     verifications: [{ spec: 'The target and its row peer are editable', check: async () => {
