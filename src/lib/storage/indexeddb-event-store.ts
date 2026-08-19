@@ -303,6 +303,10 @@ export class IndexedDbEventStore {
     return this.gameEvent(gameId, metadata, 'cell/cleared', { cell });
   }
 
+  eraseValue(gameId: string, cell: number, value: Digit, targetEventId: string, metadata: EventMetadata): Promise<CommitResult> {
+    return this.gameEvent(gameId, metadata, 'cell/value-erased', { cell, value, targetEventId });
+  }
+
   undo(gameId: string, targetEventId: string, metadata: EventMetadata): Promise<CommitResult> {
     return this.gameEvent(gameId, metadata, 'move/undone', { targetEventId });
   }

@@ -59,47 +59,47 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
     verifications: [
       { spec: 'Row 4 column 8 is empty again', check: async () => await expect(cell(34)).toHaveAccessibleName(/editable, empty, selected/) },
       { spec: 'The newest event and log row record Erased r4c8', check: async () => {
-        expect((await stream()).at(-1).type).toBe('cell/cleared');
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Erased r4c8');
+        expect((await stream()).at(-1).type).toBe('cell/value-erased');
+        await expect(page.locator('[data-event-type]').first()).toHaveText(`Erased ${correct} from r4c8`);
       } }
     ]
   });
 
-  await page.getByRole('button', { name: 'Undo Erased r4c8' }).click();
+  await page.getByRole('button', { name: `Undo Erased ${correct} from r4c8` }).click();
   await steps.step('erase-undone', {
     description: 'Undo restores the erased value by appending a compensation',
     verifications: [
       { spec: 'The original value is visible again', check: async () => await expect(cell(34)).toHaveAccessibleName(new RegExp(`editable, ${correct}, selected`)) },
       { spec: 'The stream retains clear and appends move/undone', check: async () => {
         const events = await stream();
-        expect(events.map((event: { type: string }) => event.type)).toEqual(['game/started', 'cell/value-entered', 'cell/cleared', 'move/undone']);
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Undid: Erased r4c8');
+        expect(events.map((event: { type: string }) => event.type)).toEqual(['game/started', 'cell/value-entered', 'cell/value-erased', 'move/undone']);
+        await expect(page.locator('[data-event-type]').first()).toHaveText(`Undid: Erased ${correct} from r4c8`);
       } }
     ]
   });
 
-  await page.getByRole('button', { name: 'Redo Erased r4c8' }).click();
+  await page.getByRole('button', { name: `Redo Erased ${correct} from r4c8` }).click();
   await steps.step('erase-redone', {
     description: 'Redo reapplies the same clear without rewriting the original event',
     verifications: [
       { spec: 'The cell is empty and the clear is again the active move', check: async () => {
         await expect(cell(34)).toHaveAccessibleName(/editable, empty, selected/);
-        await expect(page.getByRole('button', { name: 'Undo Erased r4c8' })).toBeEnabled();
+        await expect(page.getByRole('button', { name: `Undo Erased ${correct} from r4c8` })).toBeEnabled();
       } },
       { spec: 'The newest event and log entry are move/redone', check: async () => {
         expect((await stream()).at(-1).type).toBe('move/redone');
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Redid: Erased r4c8');
+        await expect(page.locator('[data-event-type]').first()).toHaveText(`Redid: Erased ${correct} from r4c8`);
       } }
     ]
   });
 
-  await page.getByRole('button', { name: 'Undo Erased r4c8' }).click();
+  await page.getByRole('button', { name: `Undo Erased ${correct} from r4c8` }).click();
   await steps.step('erase-undone-again', {
     description: 'The player undoes the clear once more before choosing a new direction',
     verifications: [
       { spec: 'The value is restored and Redo is available', check: async () => {
         await expect(cell(34)).toHaveAccessibleName(new RegExp(`editable, ${correct}, selected`));
-        await expect(page.getByRole('button', { name: 'Redo Erased r4c8' })).toBeEnabled();
+        await expect(page.getByRole('button', { name: `Redo Erased ${correct} from r4c8` })).toBeEnabled();
       } }
     ]
   });
@@ -110,7 +110,7 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
     verifications: [
       { spec: 'Selection changes without affecting the redo branch', check: async () => {
         await expect(cell(27)).toHaveAttribute('aria-selected', 'true');
-        await expect(page.getByRole('button', { name: 'Redo Erased r4c8' })).toBeEnabled();
+        await expect(page.getByRole('button', { name: `Redo Erased ${correct} from r4c8` })).toBeEnabled();
       } }
     ]
   });

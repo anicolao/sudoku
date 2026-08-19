@@ -26,6 +26,7 @@ const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/value-entered' ||
   event.type === 'cell/note-toggled' ||
   event.type === 'cell/cleared' ||
+  event.type === 'cell/value-erased' ||
   event.type === 'hint/revealed';
 
 function isEditable(game: GameProjection, cell: number): boolean {
@@ -102,6 +103,7 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
   }
   if (event.type === 'cell/value-entered') {
     game.values[event.payload.cell] = event.payload.value;
+    game.valueSourceEventIds[event.payload.cell] = event.id;
     game.notes[event.payload.cell] = [];
     if (game.settings.autoRemoveNotes) {
       for (const unit of UNITS) {
@@ -119,15 +121,18 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
       return;
     }
     game.values[event.payload.cell] = event.payload.value;
+    game.valueSourceEventIds[event.payload.cell] = null;
     game.notes[event.payload.cell] = [];
     game.hintedCells.push(event.payload.cell);
     return;
   }
   if (event.type === 'cell/cleared') {
     game.values[event.payload.cell] = null;
+    game.valueSourceEventIds[event.payload.cell] = null;
     game.notes[event.payload.cell] = [];
     return;
   }
+  if (event.type === 'cell/value-erased') return;
   if (game.values[event.payload.cell] !== null) {
     diagnostics.push('notes-on-filled-cell');
     return;
@@ -179,6 +184,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         settings: event.payload.settings,
         startedAt: event.occurredAt,
         values: checkpoint ? structuredClone(checkpoint.values) : Array<Digit | null>(81).fill(null),
+        valueSourceEventIds: Array<string | null>(81).fill(null),
         notes: checkpoint ? structuredClone(checkpoint.notes) : Array.from({ length: 81 }, () => []),
         conflicts: [],
         mistakeCells: [],
@@ -250,6 +256,20 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     inactive.delete(event.payload.targetEventId);
   }
 
+  const eventsById = new Map(valid.map((event) => [event.id, event]));
+  const erasedValueEvents = new Set<string>();
+  for (const event of valid) {
+    if (event.type !== 'cell/value-erased' || inactive.has(event.id)) continue;
+    const target = eventsById.get(event.payload.targetEventId);
+    if (!target || target.type !== 'cell/value-entered' || target.gameId !== event.gameId ||
+      target.payload.cell !== event.payload.cell || target.payload.value !== event.payload.value ||
+      target.sequence >= event.sequence || inactive.has(target.id) || erasedValueEvents.has(target.id)) {
+      state.diagnostics.push('invalid-value-erase-target');
+      continue;
+    }
+    erasedValueEvents.add(target.id);
+  }
+
   for (const game of Object.values(state.games)) {
     for (const event of valid) {
       if (event.gameId !== game.id || event.type === 'game/started' || event.type === 'game/imported') continue;
@@ -273,6 +293,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       }
       if (event.type === 'game/restarted') {
         game.values.fill(null);
+        game.valueSourceEventIds.fill(null);
         game.notes = Array.from({ length: 81 }, () => []);
         game.conflicts = [];
         game.hintedCells = [];
@@ -296,7 +317,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       if (event.type === 'cell/value-entered' && game.settings.checkMistakes && event.payload.value !== Number(game.puzzle.solution[event.payload.cell])) {
         game.mistakes += 1;
       }
-      if (isReversible(event) && !inactive.has(event.id) && game.status === 'active') {
+      if (isReversible(event) && !inactive.has(event.id) && !erasedValueEvents.has(event.id) && game.status === 'active') {
         applyMove(game, event, state.diagnostics);
         const board = [...game.puzzle.givens].map((given, cell) =>
           given === '.' ? game.values[cell] : Number(given)

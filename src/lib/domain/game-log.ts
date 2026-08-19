@@ -11,6 +11,7 @@ export interface GameLogEntry {
 
 export function describeMove(event: ReversibleEvent): string {
   if (event.type === 'cell/value-entered') return `Placed ${event.payload.value} in ${cellName(event.payload.cell)}`;
+  if (event.type === 'cell/value-erased') return `Erased ${event.payload.value} from ${cellName(event.payload.cell)}`;
   if (event.type === 'cell/cleared') return `Erased ${cellName(event.payload.cell)}`;
   if (event.type === 'hint/revealed') return `Revealed ${event.payload.value} in ${cellName(event.payload.cell)}`;
   return `${event.payload.enabled ? 'Added' : 'Removed'} note ${event.payload.value} ${event.payload.enabled ? 'to' : 'from'} ${cellName(event.payload.cell)}`;
@@ -35,7 +36,7 @@ export function formatGameLog(events: readonly SudokuEvent[], gameId: string, ga
       if (event.type === 'game/abandoned') return { id: event.id, type: event.type, text: 'Abandoned puzzle' };
       if (event.type === 'move/undone' || event.type === 'move/redone') {
         const target = events.find((candidate) => candidate.id === event.payload.targetEventId);
-        const targetText = target && (target.type === 'cell/value-entered' || target.type === 'cell/note-toggled' || target.type === 'cell/cleared')
+        const targetText = target && (target.type === 'cell/value-entered' || target.type === 'cell/value-erased' || target.type === 'cell/note-toggled' || target.type === 'cell/cleared')
           ? describeMove(target)
           : event.payload.targetEventId;
         return { id: event.id, type: event.type, text: `${event.type === 'move/undone' ? 'Undid' : 'Redid'}: ${targetText}` };

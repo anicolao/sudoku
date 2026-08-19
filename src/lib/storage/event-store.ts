@@ -263,6 +263,26 @@ export class EventStore {
     }));
   }
 
+  eraseValue(
+    gameId: string,
+    cell: number,
+    value: Digit,
+    targetEventId: string,
+    metadata: EventMetadata
+  ): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'cell/value-erased',
+      payload: { cell, value, targetEventId },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
   undo(gameId: string, targetEventId: string, metadata: EventMetadata): AppProjection {
     return this.append(metadata, (sequence) => ({
       id: metadata.id,

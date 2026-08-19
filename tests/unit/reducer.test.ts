@@ -87,6 +87,35 @@ describe('event replay for values and notes', () => {
     expect(events).toHaveLength(7);
   });
 
+  it('replays value erasure as though the targeted placement never happened', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+        }
+      },
+      { ...envelope(2), type: 'cell/note-toggled', payload: { cell: 1, value: 3, enabled: true } },
+      { ...envelope(3), type: 'cell/note-toggled', payload: { cell: 2, value: 2, enabled: true } },
+      { ...envelope(4), type: 'cell/value-entered', payload: { cell: 1, value: 2 } },
+      { ...envelope(5), type: 'cell/value-erased', payload: { cell: 1, value: 2, targetEventId: 'event-4' } }
+    ];
+
+    const erased = replay(events).games['game-1'];
+    expect(erased.values[1]).toBeNull();
+    expect(erased.notes[1]).toEqual([3]);
+    expect(erased.notes[2]).toEqual([2]);
+    expect(erased.valueSourceEventIds[1]).toBeNull();
+
+    events.push({ ...envelope(6), type: 'move/undone', payload: { targetEventId: 'event-5' } });
+    const restored = replay(events).games['game-1'];
+    expect(restored.values[1]).toBe(2);
+    expect(restored.notes[1]).toEqual([]);
+    expect(restored.notes[2]).toEqual([]);
+    expect(restored.valueSourceEventIds[1]).toBe('event-4');
+  });
+
   it('freezes elapsed time while paused and resumes from the event snapshot', () => {
     const events: SudokuEvent[] = [
       {
