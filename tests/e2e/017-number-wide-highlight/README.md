@@ -18,6 +18,7 @@ The first tap on a filled cell shows its own peers in blue. A second tap on that
 
 - [x] Exactly the selected cell’s 20 peers use the local peer treatment
 - [x] Every matching digit uses the ordinary blue matching treatment
+- [x] The board handles taps without enabling double-tap zoom
 
 ## The second tap expands 1 highlighting across the puzzle in pink
 
@@ -28,6 +29,7 @@ The first tap on a filled cell shows its own peers in blue. A second tap on that
 - [x] Every instance of the digit has the number-wide treatment
 - [x] The union of every matching digit’s peer set has the pink treatment
 - [x] The pink peer colour is visually distinct from the blue local peer colour
+- [x] The second tap leaves the browser zoom unchanged
 
 ## The third tap returns to the selected cell’s local blue peers
 
@@ -37,3 +39,12 @@ The first tap on a filled cell shows its own peers in blue. A second tap on that
 
 - [x] The 20 local peers are blue again
 - [x] No number-wide pink highlight remains
+
+## A rapid double tap remains an app gesture instead of zooming the browser
+
+![A rapid double tap remains an app gesture instead of zooming the browser](./screenshots/004-rapid-double-tap-no-zoom-phone-macos.png)
+
+**Verifications:**
+
+- [x] The visual viewport remains at its original scale
+- [x] Both taps reach the puzzle and return the highlight to its local state

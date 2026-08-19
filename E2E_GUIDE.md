@@ -271,6 +271,8 @@ screenshot.
 - Unbounded collections use fixed-size pagination or a compact latest-item
   projection; nested scrolling regions are not allowed.
 - Every visible non-board interactive target is at least 44×44 CSS px.
+- The document, body, and app shell use `touch-action: manipulation`, preventing
+  double-tap zoom without disabling deliberate pinch zoom.
 - The same rules apply at 200% zoom and in landscape; compact layouts may remove
   secondary chrome, but they keep the board and required actions available.
 
@@ -332,7 +334,7 @@ projection.
 | 014 | Checked puzzle URL | literal givens, local uniqueness/solution/rating, explicit consent, one import event |
 | 015 | QR progress transfer | puzzle-only link, paused checkpoint, pixel-decoded QR, fresh-device import, post-import undo, idempotency |
 | 016 | Replay-aware value erase | placement removes notes, erase restores every affected note, reload replay, notes-only clear |
-| 017 | Number-wide highlight | first tap local blue peers, second tap union of every matching digit's peers in pink, third tap toggle |
+| 017 | Number-wide highlight | real touch taps, first tap local blue peers, second tap union in pink without zoom, third tap toggle |
 | 018 | Notes default and All | preference event, new-game Notes mode, All after 9, one-event fill, individual toggle, undo |
 
 Phone, tablet, and desktop run every ordinary scenario. The accessibility

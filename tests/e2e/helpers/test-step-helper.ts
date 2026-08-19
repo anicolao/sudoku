@@ -48,6 +48,15 @@ export class TestStepHelper {
       const root = document.documentElement;
       const viewport = { width: window.innerWidth, height: window.innerHeight };
       const scrollingElement = document.scrollingElement ?? root;
+      for (const surface of [root, document.body, document.querySelector<HTMLElement>('.app-shell')]) {
+        if (surface && getComputedStyle(surface).touchAction !== 'manipulation') {
+          throw new Error(`${surface.tagName.toLowerCase()} permits double-tap zoom`);
+        }
+      }
+      const viewportPolicy = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')?.content ?? '';
+      if (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\.0+)?(?:\s|,|$)/i.test(viewportPolicy)) {
+        throw new Error('viewport policy disables deliberate user zoom');
+      }
       if (window.scrollX !== 0 || window.scrollY !== 0) {
         throw new Error(`page is scrolled to ${window.scrollX},${window.scrollY}`);
       }
