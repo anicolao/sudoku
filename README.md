@@ -23,7 +23,9 @@ cells, switch explicitly between Number and Notes modes, toggle pencil marks,
 enter and replace values, see peer and duplicate-conflict highlighting, inspect
 remaining number counts, and read a game log derived from the canonical stream.
 Erase, undo, and redo append compensating events instead of rewriting history;
-a new move after undo creates a visible branch and correctly retires redo. Pause
+erasing a placed value replays without that placement so its cleared cell notes
+and automatically removed peer notes return exactly. A new move after undo
+creates a visible branch and correctly retires redo. Pause
 freezes active elapsed time, covers the puzzle and log, and survives full-page
 reload; resume continues from the stored event snapshot without counting the
 interruption. Hints are cancellable, deterministic facts; completion

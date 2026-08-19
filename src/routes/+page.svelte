@@ -455,7 +455,11 @@
 
   async function eraseCell(): Promise<void> {
     if (!store || !currentGame || selectedCell === null || !canErase) return;
-    const result = await store.clearCell(currentGame.id, selectedCell, metadata());
+    const value = currentGame.values[selectedCell];
+    const sourceEventId = currentGame.valueSourceEventIds[selectedCell];
+    const result = value !== null && sourceEventId
+      ? await store.eraseValue(currentGame.id, selectedCell, value, sourceEventId, metadata())
+      : await store.clearCell(currentGame.id, selectedCell, metadata());
     applyCommit(result, `Erased row ${Math.floor(selectedCell / 9) + 1}, column ${(selectedCell % 9) + 1}`);
   }
 
@@ -463,7 +467,11 @@
     selectedCell = cell;
     if (!store || !currentGame || isReadOnly || currentGame.paused || currentGame.puzzle.givens[cell] !== '.') return;
     if (currentGame.values[cell] === null && currentGame.notes[cell].length === 0) return;
-    const result = await store.clearCell(currentGame.id, cell, metadata());
+    const value = currentGame.values[cell];
+    const sourceEventId = currentGame.valueSourceEventIds[cell];
+    const result = value !== null && sourceEventId
+      ? await store.eraseValue(currentGame.id, cell, value, sourceEventId, metadata())
+      : await store.clearCell(currentGame.id, cell, metadata());
     applyCommit(result, `Erased row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`);
   }
 

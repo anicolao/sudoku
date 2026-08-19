@@ -225,7 +225,8 @@ selected stream revision.
 | --- | --- | --- |
 | `game/started` | full immutable puzzle definition, `gameId`, settings snapshot | Start a replayable game |
 | `cell/value-entered` | `cell`, `value` | Place or replace one user value |
-| `cell/cleared` | `cell` | Clear one user value |
+| `cell/value-erased` | `cell`, `value`, `targetEventId` | Compensate one exact placement and replay without all of its effects |
+| `cell/cleared` | `cell` | Clear markings or a value without a local placement source |
 | `cell/note-toggled` | `cell`, `value`, `enabled` | Add/remove one explicit pencil mark |
 | `move/undone` | `targetEventId` | Negate the latest reversible active move |
 | `move/redone` | `targetEventId` | Reactivate the latest undone move |

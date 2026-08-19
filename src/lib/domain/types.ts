@@ -112,6 +112,11 @@ export interface CellClearedEvent extends EventEnvelope {
   payload: { cell: number };
 }
 
+export interface ValueErasedEvent extends EventEnvelope {
+  type: 'cell/value-erased';
+  payload: { cell: number; value: Digit; targetEventId: string };
+}
+
 export interface HintRevealedEvent extends EventEnvelope {
   type: 'hint/revealed';
   payload: { cell: number; value: Digit };
@@ -151,6 +156,7 @@ export type ReversibleEvent =
   | ValueEnteredEvent
   | NoteToggledEvent
   | CellClearedEvent
+  | ValueErasedEvent
   | HintRevealedEvent;
 export type SudokuEvent =
   | SettingsChangedEvent
@@ -170,6 +176,7 @@ export interface GameProjection {
   settings: GameSettings;
   startedAt: string;
   values: Array<Digit | null>;
+  valueSourceEventIds: Array<string | null>;
   notes: Digit[][];
   conflicts: number[];
   mistakeCells: number[];
