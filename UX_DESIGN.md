@@ -107,6 +107,10 @@ emphasized, along with the union of all of those instances' peers. A third tap,
 or selecting a different cell, returns to the ordinary local peer view. This is
 ephemeral inspection state and never appends an event.
 
+Every app surface uses `touch-action: manipulation`. Rapid successive taps
+must never invoke browser double-tap zoom, including on the grid and navigation,
+while deliberate pinch zoom remains available for accessibility.
+
 Given cells are dark and visually heavier. User values are indigo. Notes are a
 3×3 mini-grid in the cell and use charcoal by default; amber indicates that the
 global Notes mode is active, not that every note is an error or warning.
