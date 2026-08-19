@@ -135,10 +135,11 @@ enters/replaces a value; in Notes mode it toggles that note. A value entry clear
 notes in the same cell. Pressing a displayed number again does not erase it;
 Erase or Backspace/Delete is explicit.
 
-Each number button exposes its remaining count (`9 - occurrences on the
+Each number button exposes its remaining count (`9 - correct placements on the
 projected board`) as text available to assistive technology. A completed number
-is disabled only when nine correct placements are present; conflicts must not
-make a number appear complete.
+is disabled and explicitly grey only when nine correct placements are present;
+conflicts must not make a number appear complete. Erasing or undoing one of
+those placements immediately restores the key and its remaining count.
 
 ### 4. Correct, undo, and redo
 

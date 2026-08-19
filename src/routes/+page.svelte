@@ -7,7 +7,7 @@
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
   import { describeMove, formatGameLog } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
-  import { elapsedAt, formatElapsed } from '$lib/domain/selectors';
+  import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import { generateInWorker } from '$lib/generator/generation-service';
   import type { EventMetadata } from '$lib/storage/event-store';
@@ -445,6 +445,11 @@
 
   async function enterDigit(value: Digit, cellOverride: number | null = null): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
+    if (remaining(value) === 0) {
+      if (selectedDigit === value) selectedDigit = null;
+      announcement = `All ${value}s are already placed`;
+      return;
+    }
     const cell = cellOverride ?? selectedCell;
     if (cell === null) {
       if (currentGame.settings.numberFirst) {
@@ -470,11 +475,7 @@
   }
 
   function remaining(value: Digit): number {
-    if (!currentGame) return 9;
-    const board = [...currentGame.puzzle.givens].map((given, cell) =>
-      given === '.' ? currentGame.values[cell] : Number(given)
-    );
-    return 9 - board.filter((entry) => entry === value).length;
+    return currentGame ? remainingDigit(currentGame, value) : 9;
   }
 
   async function eraseCell(): Promise<void> {
@@ -737,8 +738,9 @@
             </div>
             <div class="number-pad" aria-label="Number pad">
               {#each digits as value}
-                <button type="button" disabled={currentGame.paused || isReadOnly} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
-                  <strong>{value}</strong><small>{remaining(value as Digit)}</small>
+                {@const count = remaining(value)}
+                <button type="button" disabled={currentGame.paused || isReadOnly || count === 0} class:complete-number={count === 0} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value)} aria-label={`${value}, ${count} remaining`}>
+                  <strong>{value}</strong><small>{count}</small>
                 </button>
               {/each}
               {#if inputMode === 'notes'}<button type="button" class="all-notes" onclick={fillAllNotes} disabled={!canFillAllNotes} aria-label="All notes"><strong>All</strong></button>{/if}
