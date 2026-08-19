@@ -15,7 +15,8 @@ export const DEFAULT_SETTINGS = {
   checkMistakes: false,
   autoRemoveNotes: true,
   showTimer: true,
-  numberFirst: true
+  numberFirst: true,
+  notesFirst: false
 } as const;
 
 export const emptyProjection = (): AppProjection => ({
@@ -25,6 +26,7 @@ export const emptyProjection = (): AppProjection => ({
 const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/value-entered' ||
   event.type === 'cell/note-toggled' ||
+  event.type === 'cell/notes-filled' ||
   event.type === 'cell/cleared' ||
   event.type === 'cell/value-erased' ||
   event.type === 'hint/revealed';
@@ -51,8 +53,11 @@ function deriveConflicts(game: GameProjection): number[] {
 }
 
 function validSettings(settings: GameSettings): boolean {
-  return Object.values(settings).length === 4 &&
-    Object.values(settings).every((value) => typeof value === 'boolean');
+  const record = settings as unknown as Record<string, unknown>;
+  return ['checkMistakes', 'autoRemoveNotes', 'showTimer', 'numberFirst']
+    .every((key) => typeof record[key] === 'boolean') &&
+    (record.notesFirst === undefined || typeof record.notesFirst === 'boolean') &&
+    Object.keys(record).every((key) => key in DEFAULT_SETTINGS);
 }
 
 function validImportedCheckpoint(
@@ -133,6 +138,14 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
     return;
   }
   if (event.type === 'cell/value-erased') return;
+  if (event.type === 'cell/notes-filled') {
+    if (game.values[event.payload.cell] !== null) {
+      diagnostics.push('notes-on-filled-cell');
+      return;
+    }
+    game.notes[event.payload.cell] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    return;
+  }
   if (game.values[event.payload.cell] !== null) {
     diagnostics.push('notes-on-filled-cell');
     return;
@@ -181,7 +194,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       state.games[event.gameId] = {
         id: event.gameId,
         puzzle: event.payload.puzzle,
-        settings: event.payload.settings,
+        settings: { ...DEFAULT_SETTINGS, ...event.payload.settings },
         startedAt: event.occurredAt,
         values: checkpoint ? structuredClone(checkpoint.values) : Array<Digit | null>(81).fill(null),
         valueSourceEventIds: Array<string | null>(81).fill(null),

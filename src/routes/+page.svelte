@@ -35,6 +35,8 @@
   type IncomingKind = 'puzzle' | 'transfer';
   type ShareStage = 'choose' | 'ready';
 
+  const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
   const version = import.meta.env.VITE_APP_VERSION;
   const revision = import.meta.env.VITE_GIT_HASH;
   let persistenceStatus = $state<PersistenceStatus>('checking');
@@ -99,6 +101,11 @@
   const canErase = $derived(
     !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
     (currentGame.values[selectedCell] !== null || currentGame.notes[selectedCell].length > 0)
+  );
+  const canFillAllNotes = $derived(
+    !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null &&
+    currentGame.puzzle.givens[selectedCell] === '.' && currentGame.values[selectedCell] === null &&
+    currentGame.notes[selectedCell].length < 9
   );
   const elapsedLabel = $derived(currentGame ? formatElapsed(elapsedAt(currentGame, timerNow)) : '00:00');
   const selectedLevel = $derived(DIFFICULTY_BY_ID[selectedDifficulty]);
@@ -195,7 +202,10 @@
 
   function selectTabGame(gameId: string | null): void {
     tabGameId = gameId;
-    if (gameId) sessionStorage.setItem('sudoku.tab-game', gameId);
+    if (gameId) {
+      sessionStorage.setItem('sudoku.tab-game', gameId);
+      inputMode = projection.games[gameId]?.settings.notesFirst ? 'notes' : 'number';
+    }
     else sessionStorage.removeItem('sudoku.tab-game');
   }
 
@@ -495,6 +505,11 @@
     announcement = `${inputMode === 'notes' ? 'Notes' : 'Number'} mode`;
   }
 
+  async function fillAllNotes(): Promise<void> {
+    if (!store || !currentGame || selectedCell === null || !canFillAllNotes) return;
+    applyCommit(await store.fillNotes(currentGame.id, selectedCell, metadata()), 'Filled all notes');
+  }
+
   function handleGlobalKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return;
     if (hintDialogOpen) hintDialogOpen = false;
@@ -653,6 +668,7 @@
           <button type="button" role="switch" aria-checked={projection.settings.autoRemoveNotes} onclick={() => changeSetting('autoRemoveNotes')}><span><strong>Remove matching notes</strong><small>Clear a digit from peers after placing it.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.showTimer} onclick={() => changeSetting('showTimer')}><span><strong>Show timer</strong><small>Display active solving time while you play.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.numberFirst} onclick={() => changeSetting('numberFirst')}><span><strong>Number-first input</strong><small>Allow choosing a number before choosing its cell.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.notesFirst} onclick={() => changeSetting('notesFirst')}><span><strong>Start in Notes mode</strong><small>Open new puzzles ready for pencil marks.</small></span><i aria-hidden="true"></i></button>
         </div>
         <section class="privacy-card" aria-labelledby="local-data-title"><div><h2 id="local-data-title">Local Sudoku data</h2><p>Delete every puzzle, event, preference, and recovery copy from this browser. This cannot be undone.</p></div><button type="button" onclick={() => clearDialogOpen = true}>Clear all local Sudoku data</button></section>
       </section>
@@ -720,11 +736,12 @@
               <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => inputMode = 'notes'}>Notes</button>
             </div>
             <div class="number-pad" aria-label="Number pad">
-              {#each [1,2,3,4,5,6,7,8,9] as value}
+              {#each digits as value}
                 <button type="button" disabled={currentGame.paused || isReadOnly} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value as Digit)} aria-label={`${value}, ${remaining(value as Digit)} remaining`}>
                   <strong>{value}</strong><small>{remaining(value as Digit)}</small>
                 </button>
               {/each}
+              {#if inputMode === 'notes'}<button type="button" class="all-notes" onclick={fillAllNotes} disabled={!canFillAllNotes} aria-label="All notes"><strong>All</strong></button>{/if}
             </div>
             <div class="utility-actions">
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>

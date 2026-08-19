@@ -333,6 +333,7 @@ projection.
 | 015 | QR progress transfer | puzzle-only link, paused checkpoint, pixel-decoded QR, fresh-device import, post-import undo, idempotency |
 | 016 | Replay-aware value erase | placement removes notes, erase restores every affected note, reload replay, notes-only clear |
 | 017 | Number-wide highlight | first tap local blue peers, second tap union of every matching digit's peers in pink, third tap toggle |
+| 018 | Notes default and All | preference event, new-game Notes mode, All after 9, one-event fill, individual toggle, undo |
 
 Phone, tablet, and desktop run every ordinary scenario. The accessibility
 journey additionally runs at 320 px, phone landscape, and a 200%-equivalent

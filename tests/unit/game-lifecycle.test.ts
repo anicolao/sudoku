@@ -11,7 +11,7 @@ describe('hint, completion, restart, and abandonment', () => {
       id: 'event-1', sequence: 1, gameId, type: 'game/started',
       payload: {
         gameId, puzzle,
-        settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true }
+        settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
       },
       occurredAt: '2026-08-16T12:00:00.000Z', elapsedMs: 0,
       schemaVersion: 1, reducerVersion: 1

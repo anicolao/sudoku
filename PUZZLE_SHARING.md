@@ -151,7 +151,7 @@ After the underlying puzzle passes, a progress checkpoint must also prove:
 - masks have no bits beyond cell 80 or digit 9;
 - hint and mistake counters are bounded non-negative integers;
 - elapsed active time is bounded, finite, and non-negative;
-- settings flags are known booleans and reserved bits are zero;
+- settings flags are known booleans and unknown reserved bits are zero;
 - the payload has no trailing bytes or unconsumed fields.
 
 Wrong values and conflicts are valid progress: they are reconstructed and
@@ -182,6 +182,10 @@ CRC-32
 Empty four-bit cells use zero; digits use `1`–`9`. Bit order and the CRC
 polynomial require golden vectors in the codec tests. Reserved header bits make
 incompatible future extensions reject cleanly.
+
+Version 1 assigns settings bit 5 to **Start in Notes mode**. Transfers produced
+before that preference existed leave the bit clear and therefore retain the
+original value-first behaviour. Bits 6 and 7 remain reserved and must be zero.
 
 The expected payload is roughly 220 bytes and the full URL remains well below
 500 characters. Version 1 imposes a hard 512-byte decoded limit and a

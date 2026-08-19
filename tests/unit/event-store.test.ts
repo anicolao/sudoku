@@ -85,7 +85,7 @@ describe('event store', () => {
     const values = Array(81).fill(null);
     const editable = [...puzzle.givens].findIndex((value) => value === '.');
     values[editable] = Number(puzzle.solution[editable]);
-    const settings = { checkMistakes: true, autoRemoveNotes: false, showTimer: false, numberFirst: false };
+    const settings = { checkMistakes: true, autoRemoveNotes: false, showTimer: false, numberFirst: false, notesFirst: true };
     const checkpoint = {
       values,
       notes: Array.from({ length: 81 }, () => []),
