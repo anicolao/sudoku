@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForStoredEvent } from '../helpers/event-store';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test.use({ hasTouch: true });
@@ -10,18 +11,10 @@ test('a second tap expands highlighting to every matching number peer set', asyn
     'The first tap on a filled cell shows its own peers in blue. A second tap on that cell shows every occurrence of its digit and the union of all their peer sets in pink; a third tap returns to the local view.'
   );
   const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
-  const startedPuzzle = () => page.evaluate(() => {
-    const raw = localStorage.getItem('sudoku.event-store.v1');
-    if (!raw) return null;
-    const event = JSON.parse(raw).events.find((candidate: { type: string }) => candidate.type === 'game/started');
-    return event?.payload?.puzzle ?? null;
-  });
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
-  await expect.poll(startedPuzzle).not.toBeNull();
-  const puzzle = await startedPuzzle();
-  if (!puzzle) throw new Error('No game/started puzzle was committed');
+  const { puzzle } = (await waitForStoredEvent(page, 'game/started')).payload;
   const choice = await page.evaluate((puzzle) => {
     for (let digit = 1; digit <= 9; digit += 1) {
       const cells = [...puzzle.givens].flatMap((value, cell) => Number(value) === digit ? [cell] : []);
