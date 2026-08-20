@@ -61,19 +61,22 @@ test('Notes can be the default and All fills every pencil mark at once', async (
     description: 'The player fills notes 1–9 with one All action',
     verifications: [
       { spec: 'The cell exposes every note in order', check: async () => await expect(cell(34)).toHaveAccessibleName(/notes 1 2 3 4 5 6 7 8 9/) },
-      { spec: 'Every visible note stays inside the selected cell at 200% zoom', check: async () => {
-        const overflowing = await cell(34).locator('.cell-notes i').evaluateAll((notes) => notes.flatMap((note, index) => {
-          const cellRect = note.closest<HTMLElement>('.sudoku-cell')?.getBoundingClientRect();
-          if (!cellRect) return [index + 1];
-          const range = document.createRange();
-          range.selectNodeContents(note);
-          const glyph = range.getBoundingClientRect();
-          return glyph.left < cellRect.left || glyph.right > cellRect.right ||
-            glyph.top < cellRect.top || glyph.bottom > cellRect.bottom
-            ? [index + 1]
-            : [];
+      { spec: 'Every visible note fills and stays inside its own 3×3 slot', check: async () => {
+        const violations = await cell(34).locator('.cell-notes i').evaluateAll((notes) => notes.flatMap((note, index) => {
+          const slot = note.getBoundingClientRect();
+          const style = getComputedStyle(note);
+          const fontSize = Number.parseFloat(style.fontSize);
+          const context = document.createElement('canvas').getContext('2d');
+          if (!context) return [index + 1];
+          context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+          const glyph = context.measureText(note.textContent ?? '');
+          const glyphWidth = glyph.actualBoundingBoxLeft + glyph.actualBoundingBoxRight;
+          const glyphHeight = glyph.actualBoundingBoxAscent + glyph.actualBoundingBoxDescent;
+          const slotSize = Math.min(slot.width, slot.height);
+          return fontSize < slotSize * .88 || fontSize > slotSize ||
+            glyphWidth > slot.width || glyphHeight > slot.height ? [index + 1] : [];
         }));
-        expect(overflowing).toEqual([]);
+        expect(violations).toEqual([]);
       } },
       { spec: 'One cell/notes-filled fact represents the action', check: async () => expect((await events()).at(-1)).toMatchObject({ type: 'cell/notes-filled', payload: { cell: 34 } }) },
       { spec: 'All is disabled while every note is already present', check: async () => await expect(page.getByRole('button', { name: 'All notes', exact: true })).toBeDisabled() }

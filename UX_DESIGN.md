@@ -111,10 +111,11 @@ Every app surface uses `touch-action: manipulation`. Rapid successive taps
 must never invoke browser double-tap zoom, including on the grid and navigation,
 while deliberate pinch zoom remains available for accessibility.
 
-Given cells are dark and visually heavier. User values are indigo. Notes are a
-3×3 mini-grid that scales from the cell's actual dimensions so every glyph
-remains inside it at 200% zoom. Notes use charcoal by default; amber indicates
-that the global Notes mode is active, not that every note is an error or warning.
+Given cells are dark and visually heavier. User values are indigo. Notes fill a
+stable 3×3 mini-grid, with each bold digit sized as close as possible to its
+one-third-cell slot while remaining wholly inside it at every supported zoom.
+Notes use charcoal by default; amber indicates that the global Notes mode is
+active, not that every note is an error or warning.
 
 ### 3. Enter a value or note
 

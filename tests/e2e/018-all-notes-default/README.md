@@ -51,6 +51,7 @@ The player enables the local Notes default, generates a puzzle, selects a cell, 
 **Verifications:**
 
 - [x] The cell exposes every note in order
+- [x] Every visible note fills and stays inside its own 3×3 slot
 - [x] One cell/notes-filled fact represents the action
 - [x] All is disabled while every note is already present
 
