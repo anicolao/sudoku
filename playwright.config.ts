@@ -65,7 +65,10 @@ export default defineConfig({
     },
     {
       name: 'zoom-200',
-      testMatch: '**/011-responsive-keyboard-accessibility/*.spec.ts',
+      testMatch: [
+        '**/011-responsive-keyboard-accessibility/*.spec.ts',
+        '**/018-all-notes-default/*.spec.ts'
+      ],
       use: { viewport: { width: 320, height: 450 } }
     }
   ],

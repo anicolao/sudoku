@@ -107,7 +107,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .paused-cover small { font-size: .9rem; }
 .sudoku-board { width: min(100%, 600px); height: auto; aspect-ratio: 1; align-self: start; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); border: 3px solid #343840; background: #fff; }
 .sudoku-row { display: contents; }
-.sudoku-cell { position: relative; min-width: 0; padding: 0; display: grid; place-items: center; border: 0; border-right: 1px solid #c8c7c2; border-bottom: 1px solid #c8c7c2; border-radius: 0; color: #4654a3; background: #fff; font-size: clamp(1.25rem, 5vw, 2.15rem); font-variant-numeric: tabular-nums; cursor: pointer; }
+.sudoku-cell { position: relative; container-type: size; min-width: 0; padding: 0; display: grid; place-items: center; border: 0; border-right: 1px solid #c8c7c2; border-bottom: 1px solid #c8c7c2; border-radius: 0; color: #4654a3; background: #fff; font-size: clamp(1.25rem, 5vw, 2.15rem); font-variant-numeric: tabular-nums; cursor: pointer; }
 .sudoku-cell.given { color: #20242b; font-weight: 700; background: #fffdf8; }
 .sudoku-cell.peer { background: #f1f2f7; }
 .sudoku-cell.matching { background: #e1e4f7; }
@@ -121,8 +121,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .sudoku-cell.box-bottom { border-bottom: 3px solid #343840; }
 .sudoku-cell.last-column { border-right: 0; }
 .sudoku-cell.last-row { border-bottom: 0; }
-.cell-notes { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); padding: 2px; color: #343840; font-size: clamp(.48rem, 1.5vw, .75rem); font-style: normal; }
-.cell-notes i { display: grid; place-items: center; font-style: normal; }
+.cell-notes { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); padding: 2px; color: #343840; font-size: min(clamp(.48rem, 1.5vw, .75rem), 22cqw, 22cqh); font-style: normal; }
+.cell-notes i { min-width: 0; min-height: 0; display: grid; place-items: center; font-style: normal; }
 .conflict-mark { position: absolute; top: 2px; right: 3px; font-size: .68rem; font-weight: 700; }
 .mistake-mark { position: absolute; top: 1px; right: 3px; color: #b42318; font-size: .8rem; font-weight: 700; }
 .hint-mark { position: absolute; left: 3px; bottom: 2px; color: #b7791f; font-size: .48rem; }
