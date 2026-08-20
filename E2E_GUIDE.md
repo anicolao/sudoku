@@ -112,7 +112,7 @@ The proposed core projects are:
 | `phone-landscape` | 852×393 | Responsive/accessibility scenario only |
 | `tablet` | 820×1180 | Start/input and responsive scenarios |
 | `desktop` | 1280×1000 | Start/input, keyboard, history, responsive scenarios |
-| `zoom-200` | 640×900 with browser zoom/text setup | Reflow scenario only |
+| `zoom-200` | 640×900 with browser zoom/text setup | Reflow and dense-note containment scenarios |
 | `offline` | 393×852 | Serial production-build service-worker journey |
 
 Every project uses the Playwright-bundled Chromium on macOS. Firefox, WebKit,
@@ -335,7 +335,7 @@ projection.
 | 015 | QR progress transfer | puzzle-only link, paused checkpoint, pixel-decoded QR, fresh-device import, post-import undo, idempotency |
 | 016 | Replay-aware value erase | placement removes notes, erase restores every affected note, reload replay, notes-only clear |
 | 017 | Number-wide highlight | real touch taps, first tap local blue peers, second tap union in pink without zoom, third tap toggle |
-| 018 | Notes default and All | preference event, new-game Notes mode, All after 9, one-event fill, individual toggle, undo |
+| 018 | Notes default and All | preference event, new-game Notes mode, All after 9, one-event fill, 200% zoom containment, individual toggle, undo |
 | 019 | Completed digit key | one correct copy remaining, final placement greys and disables key, erase restores it |
 
 Phone, tablet, and desktop run every ordinary scenario. The accessibility
