@@ -21,6 +21,7 @@ the complete puzzle definition as a `game/started` event, reconstruct it by
 replay, and render its givens as an accessible 9×9 grid. Players can now select
 cells, switch explicitly between Number and Notes modes, make Notes the default,
 fill all nine pencil marks with one reversible action, toggle individual marks,
+and independently choose bold and large note rendering (both on by default),
 enter and replace values, see peer and duplicate-conflict highlighting, expand
 a filled cell's second tap to every matching digit's peer set without triggering
 browser zoom, inspect remaining number counts, see completed digits become grey

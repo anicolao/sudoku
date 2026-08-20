@@ -1,6 +1,6 @@
-# Start in Notes mode and fill every pencil mark
+# Start in Notes mode, fill every pencil mark, and try four styles
 
-The player enables the local Notes default, generates a puzzle, selects a cell, and uses the All key after 9. One reversible event fills notes 1–9; individual notes still toggle normally.
+The player enables the local Notes default, fills notes 1–9 with one reversible event, and independently tries large and bold notes in all four combinations before continuing to toggle and undo notes.
 
 ## The player opens device-local Settings
 
@@ -52,12 +52,94 @@ The player enables the local Notes default, generates a puzzle, selects a cell, 
 
 - [x] The cell exposes every note in order
 - [x] Every visible note fills and stays inside its own 3×3 slot
+- [x] Bold and Large notes are both on by default
 - [x] One cell/notes-filled fact represents the action
 - [x] All is disabled while every note is already present
 
+## The player opens note appearance settings
+
+![The player opens note appearance settings](./screenshots/006-note-style-settings-opened-phone-macos.png)
+
+**Verifications:**
+
+- [x] Bold and Large are independent switches and both begin on
+
+## The player turns Bold notes off while leaving Large notes on
+
+![The player turns Bold notes off while leaving Large notes on](./screenshots/007-bold-notes-disabled-phone-macos.png)
+
+**Verifications:**
+
+- [x] The two switches show regular plus large
+- [x] One app-level event records the Bold change
+
+## The puzzle immediately shows large notes at regular weight
+
+![The puzzle immediately shows large notes at regular weight](./screenshots/008-large-regular-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] The first alternative combines not bold plus large
+
+## The player returns to Settings to try smaller notes
+
+![The player returns to Settings to try smaller notes](./screenshots/009-style-settings-reopened-for-small-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] The previous Bold choice remains off
+
+## The player restores Bold notes
+
+![The player restores Bold notes](./screenshots/010-bold-notes-enabled-phone-macos.png)
+
+**Verifications:**
+
+- [x] Bold is on again and its event is stored
+
+## The player turns Large notes off while keeping Bold notes on
+
+![The player turns Large notes off while keeping Bold notes on](./screenshots/011-large-notes-disabled-phone-macos.png)
+
+**Verifications:**
+
+- [x] The switches show bold plus not large and the event is stored
+
+## The puzzle immediately shows smaller bold notes
+
+![The puzzle immediately shows smaller bold notes](./screenshots/012-small-bold-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] The second alternative combines bold plus not large
+
+## The player returns to Settings for the final combination
+
+![The player returns to Settings for the final combination](./screenshots/013-style-settings-reopened-for-regular-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] Large remains off while Bold remains on
+
+## The player turns Bold notes off while Large notes stays off
+
+![The player turns Bold notes off while Large notes stays off](./screenshots/014-bold-notes-disabled-with-small-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] Both appearance switches are off and the event is stored
+
+## The puzzle immediately shows smaller notes at regular weight
+
+![The puzzle immediately shows smaller notes at regular weight](./screenshots/015-small-regular-notes-phone-macos.png)
+
+**Verifications:**
+
+- [x] The third alternative combines not bold plus not large
+
 ## The player removes note 4 normally
 
-![The player removes note 4 normally](./screenshots/006-one-note-removed-phone-macos.png)
+![The player removes note 4 normally](./screenshots/016-one-note-removed-phone-macos.png)
 
 **Verifications:**
 
@@ -66,7 +148,7 @@ The player enables the local Notes default, generates a puzzle, selects a cell, 
 
 ## The player uses All again to restore the missing note
 
-![The player uses All again to restore the missing note](./screenshots/007-all-notes-refilled-phone-macos.png)
+![The player uses All again to restore the missing note](./screenshots/017-all-notes-refilled-phone-macos.png)
 
 **Verifications:**
 
@@ -74,7 +156,7 @@ The player enables the local Notes default, generates a puzzle, selects a cell, 
 
 ## Undo reverses the one All action
 
-![Undo reverses the one All action](./screenshots/008-all-notes-undone-phone-macos.png)
+![Undo reverses the one All action](./screenshots/018-all-notes-undone-phone-macos.png)
 
 **Verifications:**
 

@@ -121,7 +121,9 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .sudoku-cell.box-bottom { border-bottom: 3px solid #343840; }
 .sudoku-cell.last-column { border-right: 0; }
 .sudoku-cell.last-row { border-bottom: 0; }
-.cell-notes { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); color: #343840; font-size: min(30cqw, 30cqh); font-weight: 700; line-height: 1; font-style: normal; }
+.cell-notes { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); color: #343840; font-size: min(22cqw, 22cqh); line-height: 1; font-style: normal; }
+.sudoku-board[data-notes-bold='true'] .cell-notes { font-weight: 700; }
+.sudoku-board[data-notes-large='true'] .cell-notes { font-size: min(30cqw, 30cqh); }
 .cell-notes i { min-width: 0; min-height: 0; display: grid; place-items: center; font-style: normal; }
 .conflict-mark { position: absolute; top: 2px; right: 3px; font-size: .68rem; font-weight: 700; }
 .mistake-mark { position: absolute; top: 1px; right: 3px; color: #b42318; font-size: .8rem; font-weight: 700; }
@@ -228,6 +230,10 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .privacy-card h2 { margin: 0 0 5px; font-size: 1.1rem; }
 .privacy-card p { max-width: 52ch; margin: 0; color: #62656b; font-size: .84rem; }
 .privacy-card button { flex: 0 0 auto; min-height: 44px; padding: 8px 12px; border: 1px solid #b42318; border-radius: 8px; color: #9b2c24; background: #fff; font-weight: 700; cursor: pointer; }
+.app-shell:has(.app-warning) .settings-view { gap: 10px; }
+.app-shell:has(.app-warning) .settings-list { gap: 5px; }
+.app-shell:has(.app-warning) .settings-list button { min-height: 60px; padding-block: 7px; }
+.app-shell:has(.app-warning) .privacy-card { padding: 10px; }
 
 .primary-nav { min-height: 66px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #dedcd4; background: #fffdf8; }
 .primary-nav button { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; color: #666970; background: transparent; font-size: .78rem; }
@@ -298,6 +304,9 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .history-card dl { justify-content: space-between; }
   .card-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .privacy-card { align-items: stretch; flex-direction: column; gap: 14px; }
+  .app-shell:has(.app-warning) .settings-view { gap: 7px; }
+  .app-shell:has(.app-warning) .settings-list button { min-height: 54px; }
+  .app-shell:has(.app-warning) .privacy-card { gap: 6px; }
 
   .primary-nav { min-height: 54px; }
   .primary-nav button { min-height: 52px; }
@@ -335,7 +344,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .share-qr { width: min(128px, 28svh); height: min(128px, 28svh); }
   .transfer-note { font-size: .72rem; }
   .library-view .library-heading { display: none; }
-  .settings-list { gap: 3px; }
+  .settings-view .settings-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
   .settings-list button { min-height: 44px; padding: 3px 10px; }
   .settings-list button small { display: none; }
   .privacy-card { display: block; padding: 4px; }

@@ -16,7 +16,7 @@ Malformed history is preserved before a clean start. Preferences are events snap
 
 **Verifications:**
 
-- [x] Four labelled switches and the clear-data action are available
+- [x] Seven labelled switches and the clear-data action are available
 
 ## The player enables immediate mistake checking
 
