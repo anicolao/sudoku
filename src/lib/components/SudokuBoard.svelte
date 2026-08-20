@@ -7,6 +7,8 @@
     game,
     selected,
     highlightAllNumberPeers,
+    notesBold,
+    notesLarge,
     onselect,
     onnumber,
     ontoggleNotes,
@@ -17,6 +19,8 @@
     game: GameProjection;
     selected: number | null;
     highlightAllNumberPeers: boolean;
+    notesBold: boolean;
+    notesLarge: boolean;
     onselect: (cell: number) => void;
     onnumber: (cell: number, value: Digit) => void;
     ontoggleNotes: () => void;
@@ -95,7 +99,7 @@
   }
 </script>
 
-<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board">
+<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
   {#each Array(9) as _, row}
     <div class="sudoku-row" role="row">
     {#each Array(9) as _, column}

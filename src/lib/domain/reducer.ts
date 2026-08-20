@@ -16,7 +16,9 @@ export const DEFAULT_SETTINGS = {
   autoRemoveNotes: true,
   showTimer: true,
   numberFirst: true,
-  notesFirst: false
+  notesFirst: false,
+  notesBold: true,
+  notesLarge: true
 } as const;
 
 export const emptyProjection = (): AppProjection => ({
@@ -57,6 +59,8 @@ function validSettings(settings: GameSettings): boolean {
   return ['checkMistakes', 'autoRemoveNotes', 'showTimer', 'numberFirst']
     .every((key) => typeof record[key] === 'boolean') &&
     (record.notesFirst === undefined || typeof record.notesFirst === 'boolean') &&
+    (record.notesBold === undefined || typeof record.notesBold === 'boolean') &&
+    (record.notesLarge === undefined || typeof record.notesLarge === 'boolean') &&
     Object.keys(record).every((key) => key in DEFAULT_SETTINGS);
 }
 

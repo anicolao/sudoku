@@ -50,6 +50,8 @@ export interface GameSettings {
   showTimer: boolean;
   numberFirst: boolean;
   notesFirst: boolean;
+  notesBold?: boolean;
+  notesLarge?: boolean;
 }
 
 interface EventEnvelope<GameId extends string | null = string> {

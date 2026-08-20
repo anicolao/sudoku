@@ -24,9 +24,9 @@ test('recover storage, choose settings, observe a mistake, and clear everything'
   await page.getByRole('button', { name: 'Settings' }).click();
   await steps.step('settings-opened', {
     description: 'The player opens local preferences',
-    verifications: [{ spec: 'Four labelled switches and the clear-data action are available', check: async () => {
+    verifications: [{ spec: 'Seven labelled switches and the clear-data action are available', check: async () => {
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-      await expect(page.getByRole('switch')).toHaveCount(5);
+      await expect(page.getByRole('switch')).toHaveCount(7);
       await expect(page.getByRole('button', { name: 'Clear all local Sudoku data' })).toBeEnabled();
     } }]
   });

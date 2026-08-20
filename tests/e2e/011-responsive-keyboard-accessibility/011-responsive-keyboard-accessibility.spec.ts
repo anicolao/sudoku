@@ -152,8 +152,8 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await steps.step('responsive-settings-view', {
     description: 'The player opens all local settings without scrolling',
-    verifications: [{ spec: 'All five preference switches and the local-data action remain available', check: async () => {
-      await expect(page.getByRole('switch')).toHaveCount(5);
+    verifications: [{ spec: 'All seven preference switches and the local-data action remain available', check: async () => {
+      await expect(page.getByRole('switch')).toHaveCount(7);
       await expect(page.getByRole('button', { name: 'Clear all local Sudoku data' })).toBeVisible();
     } }]
   });

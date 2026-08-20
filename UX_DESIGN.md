@@ -53,7 +53,7 @@ Primary destinations are:
 - **Puzzles** — choose a chapter level, generate a puzzle, and revisit prior
   generated puzzles;
 - **History** — review completed and abandoned games;
-- **Settings** — checking, note cleanup, timer visibility, motion, and local
+- **Settings** — checking, note cleanup, timer visibility, note appearance, and local
   data controls. On phone, Settings is available from the header menu; on wider
   layouts it may be a fourth navigation item.
 
@@ -124,7 +124,10 @@ uses `aria-pressed`, an amber border/tint, and the text label. It must not rely 
 colour or a pencil icon alone. It adds an **All** key immediately after 9; the
 key fills pencil marks 1–9 in the selected empty cell as one undoable action. A
 local **Start in Notes mode** setting makes Notes the initial mode for newly
-opened puzzles without changing existing game snapshots.
+opened puzzles without changing existing game snapshots. Device-local **Bold
+notes** and **Large notes** switches independently control pencil-mark weight
+and size. Both default on for maximum legibility and update the open puzzle
+immediately, so players can choose any of the four combinations.
 
 Both interaction orders work:
 
