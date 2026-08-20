@@ -25,7 +25,8 @@ and independently choose bold and large note rendering (both on by default),
 enter and replace values, see peer and duplicate-conflict highlighting, expand
 a filled cell's second tap to every matching digit's peer set without triggering
 browser zoom, inspect remaining number counts, see completed digits become grey
-and unavailable, and read a game log derived from the canonical stream.
+unless a selected note still needs erasing, keep completed digits out of All,
+and read a game log derived from the canonical stream.
 Erase, undo, and redo append compensating events instead of rewriting history;
 erasing a placed value replays without that placement so its cleared cell notes
 and automatically removed peer notes return exactly. A new move after undo

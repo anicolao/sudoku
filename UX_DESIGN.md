@@ -129,6 +129,12 @@ notes** and **Large notes** switches independently control pencil-mark weight
 and size. Both default on for maximum legibility and update the open puzzle
 immediately, so players can choose any of the four combinations.
 
+**All** adds only digits that still have a correct copy missing from the grid;
+it does not recreate a note for a completed digit. A completed digit key is
+normally grey and disabled. When the selected cell already contains that digit
+as a stale note, the key returns to its active treatment so the player can tap
+it once to erase the note, but it still cannot add a new completed-digit note.
+
 Both interaction orders work:
 
 - select a cell, then choose 1–9;

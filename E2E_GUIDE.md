@@ -336,7 +336,7 @@ projection.
 | 016 | Replay-aware value erase | placement removes notes, erase restores every affected note, reload replay, notes-only clear |
 | 017 | Number-wide highlight | real touch taps, first tap local blue peers, second tap union in pink without zoom, third tap toggle |
 | 018 | Notes default, All, and styles | preference events, new-game Notes mode, All after 9, one-event fill, default near-slot-max geometry, all four bold/large combinations, individual toggle, undo |
-| 019 | Completed digit key | one correct copy remaining, final placement greys and disables key, erase restores it |
+| 019 | Completed digit notes | final placement greys the key, All skips completed digits, a selected stale note re-enables its digit for erasure, value erase restores remaining count |
 
 Phone, tablet, and desktop run every ordinary scenario. The accessibility
 journey additionally runs at 320 px, phone landscape, and a 200%-equivalent

@@ -299,8 +299,8 @@ export class IndexedDbEventStore {
     return this.gameEvent(gameId, metadata, 'cell/note-toggled', { cell, value, enabled });
   }
 
-  fillNotes(gameId: string, cell: number, metadata: EventMetadata): Promise<CommitResult> {
-    return this.gameEvent(gameId, metadata, 'cell/notes-filled', { cell });
+  fillNotes(gameId: string, cell: number, values: Digit[], metadata: EventMetadata): Promise<CommitResult> {
+    return this.gameEvent(gameId, metadata, 'cell/notes-filled', { cell, values });
   }
 
   clearCell(gameId: string, cell: number, metadata: EventMetadata): Promise<CommitResult> {

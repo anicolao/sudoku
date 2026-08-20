@@ -249,13 +249,13 @@ export class EventStore {
     }));
   }
 
-  fillNotes(gameId: string, cell: number, metadata: EventMetadata): AppProjection {
+  fillNotes(gameId: string, cell: number, values: Digit[], metadata: EventMetadata): AppProjection {
     return this.append(metadata, (sequence) => ({
       id: metadata.id,
       sequence,
       gameId,
       type: 'cell/notes-filled',
-      payload: { cell },
+      payload: { cell, values },
       occurredAt: metadata.occurredAt.toISOString(),
       elapsedMs: metadata.elapsedMs ?? 0,
       schemaVersion: 1,
