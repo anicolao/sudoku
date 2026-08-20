@@ -112,7 +112,7 @@ export interface NoteToggledEvent extends EventEnvelope {
 
 export interface NotesFilledEvent extends EventEnvelope {
   type: 'cell/notes-filled';
-  payload: { cell: number };
+  payload: { cell: number; values?: Digit[] };
 }
 
 export interface CellClearedEvent extends EventEnvelope {

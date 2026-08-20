@@ -210,7 +210,7 @@ test('Notes can be the default, filled at once, and shown in four styles', async
     } }]
   });
 
-  await page.getByRole('button', { name: 'Undo Filled all notes in r4c8' }).click();
+  await page.getByRole('button', { name: 'Undo Filled available notes in r4c8' }).click();
   await steps.step('all-notes-undone', {
     description: 'Undo reverses the one All action',
     verifications: [{ spec: 'Replay returns to the exact prior notes with 4 absent', check: async () => {

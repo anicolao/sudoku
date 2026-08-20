@@ -147,7 +147,15 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
       diagnostics.push('notes-on-filled-cell');
       return;
     }
-    game.notes[event.payload.cell] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const values = event.payload.values ?? [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    if (!Array.isArray(values) || new Set(values).size !== values.length ||
+      values.some((value) => !Number.isInteger(value) || value < 1 || value > 9)) {
+      diagnostics.push('invalid-notes-filled');
+      return;
+    }
+    const notes = new Set(game.notes[event.payload.cell]);
+    values.forEach((value) => notes.add(value));
+    game.notes[event.payload.cell] = [...notes].sort();
     return;
   }
   if (game.values[event.payload.cell] !== null) {

@@ -13,7 +13,7 @@ export function describeMove(event: ReversibleEvent): string {
   if (event.type === 'cell/value-entered') return `Placed ${event.payload.value} in ${cellName(event.payload.cell)}`;
   if (event.type === 'cell/value-erased') return `Erased ${event.payload.value} from ${cellName(event.payload.cell)}`;
   if (event.type === 'cell/cleared') return `Erased ${cellName(event.payload.cell)}`;
-  if (event.type === 'cell/notes-filled') return `Filled all notes in ${cellName(event.payload.cell)}`;
+  if (event.type === 'cell/notes-filled') return `${event.payload.values ? 'Filled available notes' : 'Filled all notes'} in ${cellName(event.payload.cell)}`;
   if (event.type === 'hint/revealed') return `Revealed ${event.payload.value} in ${cellName(event.payload.cell)}`;
   return `${event.payload.enabled ? 'Added' : 'Removed'} note ${event.payload.value} ${event.payload.enabled ? 'to' : 'from'} ${cellName(event.payload.cell)}`;
 }

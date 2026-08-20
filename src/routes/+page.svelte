@@ -102,11 +102,14 @@
     !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
     (currentGame.values[selectedCell] !== null || currentGame.notes[selectedCell].length > 0)
   );
-  const canFillAllNotes = $derived(
-    !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null &&
-    currentGame.puzzle.givens[selectedCell] === '.' && currentGame.values[selectedCell] === null &&
-    currentGame.notes[selectedCell].length < 9
-  );
+  const notesToFill = $derived.by((): Digit[] => {
+    if (!currentGame || isReadOnly || currentGame.paused || selectedCell === null ||
+      currentGame.puzzle.givens[selectedCell] !== '.' || currentGame.values[selectedCell] !== null) return [];
+    return digits.filter((value) =>
+      remainingDigit(currentGame, value) > 0 && !currentGame.notes[selectedCell as number].includes(value)
+    );
+  });
+  const canFillAllNotes = $derived(notesToFill.length > 0);
   const elapsedLabel = $derived(currentGame ? formatElapsed(elapsedAt(currentGame, timerNow)) : '00:00');
   const selectedLevel = $derived(DIFFICULTY_BY_ID[selectedDifficulty]);
 
@@ -445,12 +448,15 @@
 
   async function enterDigit(value: Digit, cellOverride: number | null = null): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
-    if (remaining(value) === 0) {
+    const cell = cellOverride ?? selectedCell;
+    const canRemoveCompletedNote = inputMode === 'notes' && cell !== null &&
+      currentGame.puzzle.givens[cell] === '.' && currentGame.values[cell] === null &&
+      currentGame.notes[cell].includes(value);
+    if (remaining(value) === 0 && !canRemoveCompletedNote) {
       if (selectedDigit === value) selectedDigit = null;
       announcement = `All ${value}s are already placed`;
       return;
     }
-    const cell = cellOverride ?? selectedCell;
     if (cell === null) {
       if (currentGame.settings.numberFirst) {
         selectedDigit = value;
@@ -508,7 +514,7 @@
 
   async function fillAllNotes(): Promise<void> {
     if (!store || !currentGame || selectedCell === null || !canFillAllNotes) return;
-    applyCommit(await store.fillNotes(currentGame.id, selectedCell, metadata()), 'Filled all notes');
+    applyCommit(await store.fillNotes(currentGame.id, selectedCell, notesToFill, metadata()), 'Filled available notes');
   }
 
   function handleGlobalKeydown(event: KeyboardEvent): void {
@@ -741,7 +747,8 @@
             <div class="number-pad" aria-label="Number pad">
               {#each digits as value}
                 {@const count = remaining(value)}
-                <button type="button" disabled={currentGame.paused || isReadOnly || count === 0} class:complete-number={count === 0} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value)} aria-label={`${value}, ${count} remaining`}>
+                {@const removableNote = inputMode === 'notes' && selectedCell !== null && currentGame.notes[selectedCell].includes(value)}
+                <button type="button" disabled={currentGame.paused || isReadOnly || (count === 0 && !removableNote)} class:complete-number={count === 0} class:selected-number={selectedDigit === value} aria-pressed={selectedDigit === value} onclick={() => enterDigit(value)} aria-label={`${value}, ${count} remaining`}>
                   <strong>{value}</strong><small>{count}</small>
                 </button>
               {/each}

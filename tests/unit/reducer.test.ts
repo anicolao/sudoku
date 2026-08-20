@@ -134,6 +134,30 @@ describe('event replay for values and notes', () => {
     expect(replay(events).games['game-1'].notes[1]).toEqual([3]);
   });
 
+  it('records only available notes while legacy fill events retain their old meaning', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
+        }
+      },
+      ...[9, 18, 27, 36, 45, 54, 63, 72].map((cell, index) => ({
+        ...envelope(index + 2), type: 'cell/value-entered' as const, payload: { cell, value: 1 as const }
+      })),
+      { ...envelope(10), type: 'cell/note-toggled', payload: { cell: 1, value: 1, enabled: true } },
+      { ...envelope(11), type: 'cell/notes-filled', payload: { cell: 2, values: [2, 3, 4, 5, 6, 7, 8, 9] } }
+    ];
+
+    const replayed = replay(events).games['game-1'];
+    expect(replayed.notes[1]).toEqual([1]);
+    expect(replayed.notes[2]).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+
+    events.push({ ...envelope(12), type: 'cell/notes-filled', payload: { cell: 3 } });
+    expect(replay(events).games['game-1'].notes[3]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
   it('freezes elapsed time while paused and resumes from the event snapshot', () => {
     const events: SudokuEvent[] = [
       {
