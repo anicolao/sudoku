@@ -1,6 +1,6 @@
 # Restart and abandon an attempt
 
-Restart keeps one game history while resetting its mutable cells. Abandon closes the attempt, retains its final board for review, and permits a distinct start-over attempt.
+Restart keeps one game history, resets its mutable cells, and can be undone or redone. Abandon closes the attempt, retains its final board for review, and permits a distinct start-over attempt.
 
 ## The player generates an attempt that can be restarted or abandoned
 
@@ -26,14 +26,15 @@ Restart keeps one game history while resetting its mutable cells. Abandon closes
 
 - [x] The value and its placement event are visible
 
-## Restart resets mutable cells but preserves the attempt log
+## Restart resets mutable cells but remains reversible
 
-![Restart resets mutable cells but preserves the attempt log](./screenshots/003-puzzle-restarted-phone-macos.png)
+![Restart resets mutable cells but remains reversible](./screenshots/003-puzzle-restarted-phone-macos.png)
 
 **Verifications:**
 
 - [x] All 41 editable cells are empty again
 - [x] game/restarted follows the original value event
+- [x] Undo identifies the restart as its next reversible action
 
 ## The player selects the reset cell again
 

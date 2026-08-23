@@ -31,7 +31,8 @@ const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/notes-filled' ||
   event.type === 'cell/cleared' ||
   event.type === 'cell/value-erased' ||
-  event.type === 'hint/revealed';
+  event.type === 'hint/revealed' ||
+  event.type === 'game/restarted';
 
 function isEditable(game: GameProjection, cell: number): boolean {
   return Number.isInteger(cell) && cell >= 0 && cell < 81 && game.puzzle.givens[cell] === '.';
@@ -106,6 +107,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
 }
 
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
+  if (event.type === 'game/restarted') return;
   if (!isEditable(game, event.payload.cell)) {
     diagnostics.push('illegal-cell-edit');
     return;
@@ -254,11 +256,6 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     }
 
     if (event.type === 'game/paused' || event.type === 'game/resumed') continue;
-    if (event.type === 'game/restarted') {
-      active.splice(0);
-      redo.splice(0);
-      continue;
-    }
     if (event.type === 'game/abandoned') continue;
 
     if (event.type === 'move/undone') {
@@ -317,6 +314,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         continue;
       }
       if (event.type === 'game/restarted') {
+        if (inactive.has(event.id)) continue;
         game.values.fill(null);
         game.valueSourceEventIds.fill(null);
         game.notes = Array.from({ length: 81 }, () => []);

@@ -35,8 +35,9 @@ freezes active elapsed time, covers the puzzle and log, and survives full-page
 reload; resume continues from the stored event snapshot without counting the
 interruption. Hints are cancellable, deterministic facts; completion
 is derived from the solved board; completed and abandoned attempts appear in
-local History; Restart retains the event log; and Start over creates a distinct
-game ID over the same committed puzzle. App-level preference events are replayed
+local History; Restart retains the event log and can be undone; and Start over
+creates a distinct game ID over the same committed puzzle. App-level preference
+events are replayed
 and snapshotted into new games; optional mistake checking and timer visibility
 work from that snapshot. Malformed history is quarantined, V0 stores migrate
 atomically, failed persistence continues visibly in memory, Clear all physically
