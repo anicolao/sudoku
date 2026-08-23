@@ -42,8 +42,10 @@ work from that snapshot. Malformed history is quarantined, V0 stores migrate
 atomically, failed persistence continues visibly in memory, Clear all physically
 removes every local Sudoku record. Each puzzle has an independent event stream,
 so different tabs can keep different puzzles open and tabs viewing the same
-puzzle follow committed events through `BroadcastChannel`. A stream revision
-check discards the exceptional overlapping command and refreshes that tab. The
+puzzle follow committed events through `BroadcastChannel`. Hidden tabs defer
+their database refresh until focus so Mobile Safari cannot suspend an
+in-progress background transaction. A stream revision check discards the
+exceptional overlapping command and refreshes that tab. The
 board now uses semantic row/gridcell structure and roving focus; number-first input and Arrow, Home, End,
 digit, Notes, Delete, undo, redo, and Escape keyboard commands are covered by
 the same flip-book test at phone, 320 px, landscape, 200%-equivalent reflow,
