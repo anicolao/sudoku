@@ -8,7 +8,7 @@
     "prepare": "svelte-kit sync && husky",
     "dev": "vite dev --host 127.0.0.1 --port 5177 --strictPort",
     "build": "vite build",
-    "build:e2e": "VITE_GIT_HASH=e2e-test-commit VITE_E2E_MODE=1 vite build",
+    "build:e2e": "VITE_GIT_HASH=e2ehash VITE_E2E_MODE=1 vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4177 --strictPort",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4177 --strictPort",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

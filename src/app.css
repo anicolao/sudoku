@@ -48,7 +48,7 @@ footer { grid-row: 5; }
 .app-warning { z-index: 5; display: grid; gap: 2px; padding: 10px 18px; color: #754c16; background: #fff0cf; border-bottom: 1px solid #e6c77d; font-size: .84rem; }
 .app-warning strong { color: #5d3a0d; }
 
-main { min-width: 0; min-height: 0; display: grid; place-items: center; padding: 18px; overflow: hidden; }
+main { min-width: 0; min-height: 0; display: grid; align-items: start; justify-items: center; padding: 18px; overflow: hidden; }
 .hero-card { width: min(100%, 780px); display: grid; grid-template-columns: minmax(160px, .78fr) minmax(0, 1.22fr); gap: clamp(24px, 5vw, 52px); align-items: center; padding: clamp(24px, 5vw, 48px); border: 1px solid #d7d5cd; border-radius: 22px; background: #fffdf8; }
 .puzzle-preview { width: min(100%, 268px); aspect-ratio: 1; display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid #343840; background: #fff; }
 .puzzle-preview span { display: grid; place-items: center; min-width: 0; border-right: 1px solid #d4d5d8; border-bottom: 1px solid #d4d5d8; color: #30343a; font-weight: 700; }
@@ -196,7 +196,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .share-actions button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
 .share-actions:has(button:nth-child(3)) { grid-template-columns: repeat(3, 1fr); }
 
-.library-view { width: min(100%, 760px); max-height: 100%; align-self: center; display: grid; gap: 18px; padding-block: 18px; }
+.library-view { width: min(100%, 760px); max-height: 100%; align-self: start; display: grid; gap: 18px; padding-block: 18px; }
 .library-heading h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); }
 .library-heading > p:last-child { margin: 10px 0 0; color: #62656b; }
 .history-list { display: grid; gap: 10px; }
@@ -226,6 +226,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .settings-list button i::after { content: ''; display: block; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0004; }
 .settings-list button[aria-checked='true'] i { background: #4654a3; }
 .settings-list button[aria-checked='true'] i::after { margin-left: 20px; }
+.settings-view { position: relative; height: 100%; }
+.settings-build { position: absolute; right: 0; bottom: 0; margin: 0; color: #777a80; font-size: .68rem; line-height: 1; }
 .privacy-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px; border: 1px solid #e4b9b5; border-radius: 12px; background: #fff8f7; }
 .privacy-card h2 { margin: 0 0 5px; font-size: 1.1rem; }
 .privacy-card p { max-width: 52ch; margin: 0; color: #62656b; font-size: .84rem; }
@@ -248,7 +250,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .brand-mark { transform: scale(.9); }
   .device-status { font-size: .8rem; }
   .app-warning { padding: 6px 12px; font-size: .76rem; }
-  main { align-items: center; padding: 10px 12px; }
+  main { align-items: start; padding: 10px 12px; }
   footer { display: none; }
   .hero-card { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
   .puzzle-preview { width: min(120px, 22svh); margin-inline: auto; }
@@ -293,7 +295,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .completion-panel p { margin: 2px 0 5px; font-size: .75rem; }
   .completion-panel button { min-height: 44px; }
 
-  .library-view { align-self: center; gap: 10px; padding-block: 0; }
+  .library-view { align-self: start; gap: 10px; padding-block: 0; }
   .library-heading h1 { font-size: 2rem; }
   .library-heading > p:last-child { margin-top: 4px; font-size: .82rem; }
   .settings-list { gap: 5px; }

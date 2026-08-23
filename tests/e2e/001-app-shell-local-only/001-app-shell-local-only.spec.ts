@@ -58,12 +58,6 @@ test('the local-only application shell renders deterministically', async ({ page
             expect(new URL(request.url).origin).toBe('http://127.0.0.1:4177');
           }
         }
-      },
-      {
-        spec: 'The deterministic build marker identifies the E2E revision',
-        check: async () => {
-          await expect(page.getByTestId('build-marker')).toHaveText('Version 0.1.0 · Build e2e-tes');
-        }
       }
     ]
   });

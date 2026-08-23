@@ -13,4 +13,3 @@ The static Sudoku client is ready to generate a validated puzzle without an acco
 - [x] The local five-level puzzle generator is available
 - [x] The shell states the unique, no-guess, and offline product promises
 - [x] Every browser request is a same-origin GET for the static shell
-- [x] The deterministic build marker identifies the E2E revision

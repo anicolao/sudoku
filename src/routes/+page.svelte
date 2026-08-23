@@ -686,6 +686,7 @@
           <button type="button" role="switch" aria-checked={projection.settings.notesLarge !== false} onclick={() => changeSetting('notesLarge')}><span><strong>Large notes</strong><small>Fill each candidate slot for maximum legibility.</small></span><i aria-hidden="true"></i></button>
         </div>
         <section class="privacy-card" aria-labelledby="local-data-title"><div><h2 id="local-data-title">Local Sudoku data</h2><p>Delete every puzzle, event, preference, and recovery copy from this browser. This cannot be undone.</p></div><button type="button" onclick={() => clearDialogOpen = true}>Clear all local Sudoku data</button></section>
+        <p class="settings-build" data-testid="build-marker">{buildLabel(version, revision)}</p>
       </section>
     {:else if view === 'history'}
       <section class="library-view" aria-labelledby="history-title">
@@ -839,5 +840,5 @@
 
   <p class="sr-live" aria-live="polite">{announcement}</p>
   <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
-  <footer><span data-testid="build-marker">{buildLabel(version, revision)}</span><span>Private by design</span></footer>
+  <footer><span>Private by design</span></footer>
 </div>
