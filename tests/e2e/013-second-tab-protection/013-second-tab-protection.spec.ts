@@ -10,7 +10,7 @@ test('tabs follow the same stream and can keep different puzzles open', async ({
   const steps = new TestStepHelper(later, testInfo);
   steps.setMetadata(
     'Solve in more than one tab',
-    'Every puzzle has an independent IndexedDB event stream. Tabs viewing the same puzzle follow committed events and remain editable; opening another puzzle affects only that tab.'
+    'Every puzzle has an independent IndexedDB event stream. Visible tabs viewing the same puzzle follow committed events and remain editable, while hidden tabs defer database work until focus; opening another puzzle affects only that tab.'
   );
   await later.goto('/');
   await steps.step('second-tab-follows-puzzle', {
@@ -33,12 +33,21 @@ test('tabs follow the same stream and can keep different puzzles open', async ({
   await takeover.goto('/');
   await expect(takeover.getByRole('gridcell')).toHaveCount(81);
 
+  await later.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+  });
+
   await page.locator(`[data-cell="${firstCell}"]`).click();
   await page.getByRole('button', { name: new RegExp(`^${firstValue},`) }).click();
+  await expect(later.locator(`[data-cell="${firstCell}"]`)).not.toHaveAccessibleName(new RegExp(`editable, ${firstValue}`));
+  await later.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    window.dispatchEvent(new Event('focus'));
+  });
   await steps.step('first-tab-event-followed', {
-    description: 'The first tab commits a value to the shared puzzle stream',
+    description: 'The first tab commits a value and the second catches up when focused',
     verifications: [
-      { spec: 'The second tab follows the committed value without reloading', check: async () => await expect(later.locator(`[data-cell="${firstCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${firstValue}`)) },
+      { spec: 'A hidden tab defers its database refresh until focus, then follows the committed value without reloading', check: async () => await expect(later.locator(`[data-cell="${firstCell}"]`)).toHaveAccessibleName(new RegExp(`editable, ${firstValue}`)) },
       { spec: 'The observing tab remains writable', check: async () => await expect(later.locator('.number-pad button:enabled')).toHaveCount(9) }
     ]
   });

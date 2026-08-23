@@ -1,6 +1,6 @@
 # Solve in more than one tab
 
-Every puzzle has an independent IndexedDB event stream. Tabs viewing the same puzzle follow committed events and remain editable; opening another puzzle affects only that tab.
+Every puzzle has an independent IndexedDB event stream. Visible tabs viewing the same puzzle follow committed events and remain editable, while hidden tabs defer database work until focus; opening another puzzle affects only that tab.
 
 ## A second tab opens the same in-progress puzzle
 
@@ -11,13 +11,13 @@ Every puzzle has an independent IndexedDB event stream. Tabs viewing the same pu
 - [x] The complete board is reconstructed from IndexedDB
 - [x] Number input remains available in the second tab
 
-## The first tab commits a value to the shared puzzle stream
+## The first tab commits a value and the second catches up when focused
 
-![The first tab commits a value to the shared puzzle stream](./screenshots/001-first-tab-event-followed-phone-macos.png)
+![The first tab commits a value and the second catches up when focused](./screenshots/001-first-tab-event-followed-phone-macos.png)
 
 **Verifications:**
 
-- [x] The second tab follows the committed value without reloading
+- [x] A hidden tab defers its database refresh until focus, then follows the committed value without reloading
 - [x] The observing tab remains writable
 
 ## A background tab that missed the notification receives focus

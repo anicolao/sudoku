@@ -190,7 +190,13 @@
       }
       if ('BroadcastChannel' in window) {
         eventChannel = new BroadcastChannel(EVENT_CHANNEL_NAME);
-        eventChannel.onmessage = refresh;
+        eventChannel.onmessage = () => {
+          // A hidden Mobile Safari tab can be suspended before its IndexedDB
+          // transaction commits, blocking every other tab on this database.
+          // The focus listener above reloads the complete store when this tab
+          // becomes active again, so a hidden tab never needs to read here.
+          if (document.visibilityState === 'visible') refresh();
+        };
       }
       await inspectIncomingLink();
     })();
