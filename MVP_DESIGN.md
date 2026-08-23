@@ -234,7 +234,7 @@ selected stream revision.
 | `hint/revealed` | `cell`, `value` | Record the exact help supplied |
 | `game/paused` | no additional data | Freeze active elapsed time |
 | `game/resumed` | no additional data | Resume active elapsed time |
-| `game/restarted` | no additional data | Reset mutable cells within the same game history |
+| `game/restarted` | no additional data | Reversibly reset mutable cells within the same game history |
 | `game/abandoned` | no additional data | Close an unfinished game |
 | `settings/changed` | validated changed fields | Persist local preferences |
 

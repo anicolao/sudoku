@@ -166,7 +166,8 @@ export type ReversibleEvent =
   | NotesFilledEvent
   | CellClearedEvent
   | ValueErasedEvent
-  | HintRevealedEvent;
+  | HintRevealedEvent
+  | GameRestartedEvent;
 export type SudokuEvent =
   | SettingsChangedEvent
   | GameStartedEvent
@@ -176,7 +177,6 @@ export type SudokuEvent =
   | MoveRedoneEvent
   | GamePausedEvent
   | GameResumedEvent
-  | GameRestartedEvent
   | GameAbandonedEvent;
 
 export interface GameProjection {

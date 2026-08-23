@@ -87,6 +87,42 @@ describe('event replay for values and notes', () => {
     expect(events).toHaveLength(7);
   });
 
+  it('restores the complete pre-restart board through undo and resets it again through redo', () => {
+    const events: SudokuEvent[] = [
+      {
+        ...envelope(1), type: 'game/started',
+        payload: {
+          gameId: 'game-1', puzzle,
+          settings: { checkMistakes: false, autoRemoveNotes: true, showTimer: true, numberFirst: true, notesFirst: false }
+        }
+      },
+      { ...envelope(2), type: 'cell/note-toggled', payload: { cell: 2, value: 3, enabled: true } },
+      { ...envelope(3), type: 'cell/value-entered', payload: { cell: 1, value: 2 } },
+      { ...envelope(4), type: 'game/restarted', payload: {} }
+    ];
+
+    const restarted = replay(events).games['game-1'];
+    expect(restarted.values[1]).toBeNull();
+    expect(restarted.notes[2]).toEqual([]);
+    expect(restarted.undoTargetId).toBe('event-4');
+
+    events.push({ ...envelope(5), type: 'move/undone', payload: { targetEventId: 'event-4' } });
+    const restored = replay(events).games['game-1'];
+    expect(restored.values[1]).toBe(2);
+    expect(restored.notes[2]).toEqual([3]);
+    expect(restored.undoTargetId).toBe('event-3');
+    expect(restored.redoTargetId).toBe('event-4');
+
+    events.push({ ...envelope(6), type: 'move/redone', payload: { targetEventId: 'event-4' } });
+    const resetState = replay(events);
+    const resetAgain = resetState.games['game-1'];
+    expect(resetAgain.values[1]).toBeNull();
+    expect(resetAgain.notes[2]).toEqual([]);
+    expect(resetAgain.undoTargetId).toBe('event-4');
+    expect(resetAgain.redoTargetId).toBeNull();
+    expect(resetState.diagnostics).toEqual([]);
+  });
+
   it('replays value erasure as though the targeted placement never happened', () => {
     const events: SudokuEvent[] = [
       {

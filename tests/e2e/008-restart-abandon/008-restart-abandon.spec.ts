@@ -5,7 +5,7 @@ test('restart and abandon remain visible in history', async ({ page }, testInfo)
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Restart and abandon an attempt',
-    'Restart keeps one game history while resetting its mutable cells. Abandon closes the attempt, retains its final board for review, and permits a distinct start-over attempt.'
+    'Restart keeps one game history, resets its mutable cells, and can be undone or redone. Abandon closes the attempt, retains its final board for review, and permits a distinct start-over attempt.'
   );
   const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
   const digit = (value: number) => page.getByRole('button', { name: new RegExp(`^${value},`) });
@@ -42,13 +42,16 @@ test('restart and abandon remain visible in history', async ({ page }, testInfo)
 
   await page.getByRole('button', { name: 'Restart' }).click();
   await steps.step('puzzle-restarted', {
-    description: 'Restart resets mutable cells but preserves the attempt log',
+    description: 'Restart resets mutable cells but remains reversible',
     verifications: [
       { spec: 'All 41 editable cells are empty again', check: async () => await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(41) },
       { spec: 'game/restarted follows the original value event', check: async () => {
         const stream = await events();
         expect(stream.map((event: { type: string }) => event.type)).toEqual(['game/started', 'cell/value-entered', 'game/restarted']);
         await expect(page.locator('[data-event-type]').first()).toHaveText('Restarted puzzle');
+      } },
+      { spec: 'Undo identifies the restart as its next reversible action', check: async () => {
+        await expect(page.getByRole('button', { name: 'Undo Restarted puzzle' })).toBeEnabled();
       } }
     ]
   });
@@ -114,4 +117,29 @@ test('restart and abandon remain visible in history', async ({ page }, testInfo)
   });
 
   steps.generateDocs();
+});
+
+test('restart can be undone and redone', async ({ page }) => {
+  const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
+  await expect(page.getByRole('gridcell')).toHaveCount(81);
+
+  const correct = await page.evaluate(() => Number(
+    JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle.solution[34]
+  ));
+  await cell(34).click();
+  await page.getByRole('button', { name: new RegExp(`^${correct},`) }).click();
+  await page.getByRole('button', { name: 'Restart' }).click();
+  await expect(cell(34)).toHaveAccessibleName(/editable, empty/);
+
+  await page.getByRole('button', { name: 'Undo Restarted puzzle' }).click();
+  await expect(cell(34)).toHaveAccessibleName(new RegExp(`editable, ${correct}`));
+  await expect(page.locator('[data-event-type]').first()).toHaveText('Undid: Restarted puzzle');
+  await expect(page.getByRole('button', { name: 'Redo Restarted puzzle' })).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Redo Restarted puzzle' }).click();
+  await expect(cell(34)).toHaveAccessibleName(/editable, empty/);
+  await expect(page.locator('[data-event-type]').first()).toHaveText('Redid: Restarted puzzle');
+  await expect(page.getByRole('button', { name: 'Undo Restarted puzzle' })).toBeEnabled();
 });
