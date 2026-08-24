@@ -34,15 +34,15 @@ describe('event store', () => {
   it('replays app settings and snapshots them into the next game', () => {
     const storage = new MemoryStorage();
     const store = new EventStore(storage);
-    expect(store.getProjection().settings).toMatchObject({ notesBold: true, notesLarge: true });
-    store.changeSettings({ checkMistakes: true, showTimer: false, notesBold: false, notesLarge: false }, {
+    expect(store.getProjection().settings).toMatchObject({ notesBold: true, notesLarge: true, highlightMatchingNotes: true });
+    store.changeSettings({ checkMistakes: true, showTimer: false, notesBold: false, notesLarge: false, highlightMatchingNotes: false }, {
       occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'settings-1'
     });
     const puzzle = generateEasyPuzzle('settings-seed').puzzle;
     const projection = store.startGame(puzzle, {
       occurredAt: new Date('2026-08-16T12:01:00.000Z'), id: 'start-2'
     });
-    expect(projection.settings).toMatchObject({ checkMistakes: true, showTimer: false, notesBold: false, notesLarge: false });
+    expect(projection.settings).toMatchObject({ checkMistakes: true, showTimer: false, notesBold: false, notesLarge: false, highlightMatchingNotes: false });
     expect(projection.games[projection.activeGameId ?? ''].settings).toEqual(projection.settings);
     expect(store.getDocument().events[0]).toMatchObject({ type: 'settings/changed', gameId: null });
   });

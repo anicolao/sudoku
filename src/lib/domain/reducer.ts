@@ -18,7 +18,8 @@ export const DEFAULT_SETTINGS = {
   numberFirst: true,
   notesFirst: false,
   notesBold: true,
-  notesLarge: true
+  notesLarge: true,
+  highlightMatchingNotes: true
 } as const;
 
 export const emptyProjection = (): AppProjection => ({
@@ -62,6 +63,7 @@ function validSettings(settings: GameSettings): boolean {
     (record.notesFirst === undefined || typeof record.notesFirst === 'boolean') &&
     (record.notesBold === undefined || typeof record.notesBold === 'boolean') &&
     (record.notesLarge === undefined || typeof record.notesLarge === 'boolean') &&
+    (record.highlightMatchingNotes === undefined || typeof record.highlightMatchingNotes === 'boolean') &&
     Object.keys(record).every((key) => key in DEFAULT_SETTINGS);
 }
 

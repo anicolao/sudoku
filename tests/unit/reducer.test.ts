@@ -40,6 +40,7 @@ describe('event replay for values and notes', () => {
       { ...envelope(5), type: 'cell/value-entered', payload: { cell: 2, value: 1 } }
     ];
     const game = replay(events).games['game-1'];
+    expect(game.settings.highlightMatchingNotes).toBe(true);
     expect(game.values.slice(0, 3)).toEqual([null, 2, 1]);
     expect(game.notes[1]).toEqual([]);
     expect(game.notes[2]).toEqual([]);

@@ -24,9 +24,9 @@ test('recover storage, choose settings, observe a mistake, and clear everything'
   await page.getByRole('button', { name: 'Settings' }).click();
   await steps.step('settings-opened', {
     description: 'The player opens local preferences',
-    verifications: [{ spec: 'Seven labelled switches, the clear-data action, and deterministic build details are available', check: async () => {
+    verifications: [{ spec: 'Eight labelled switches, the clear-data action, and deterministic build details are available', check: async () => {
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-      await expect(page.getByRole('switch')).toHaveCount(7);
+      await expect(page.getByRole('switch')).toHaveCount(8);
       await expect(page.getByRole('button', { name: 'Clear all local Sudoku data' })).toBeEnabled();
       await expect(page.locator('.settings-view').getByTestId('build-marker')).toHaveText('Version 0.1.0 · Build e2ehash');
     } }]
