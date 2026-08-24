@@ -13,6 +13,7 @@
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4177 --strictPort",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:base": "node scripts/verify-base-paths.mjs",
+    "check:docs": "node scripts/verify-doc-links.mjs",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:privacy": "playwright test tests/e2e/010-local-only-privacy",

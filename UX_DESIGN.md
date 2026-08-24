@@ -1,425 +1,331 @@
 # UX design
 
-Document status: target interaction and visual requirements. The generated
-mockups establish hierarchy, density, and tone; they are not implementation or
-test evidence. Exact copy, Sudoku validity, semantics, and responsive behaviour
-in this document take precedence over pixels in a generated image.
+Document status: current interaction, responsive, visual, content, and
+accessibility contract. Generated concept mockups establish tone and hierarchy;
+the committed scenario screenshots under `tests/e2e/` are the visual evidence
+for the implemented interface.
 
-## Design objective
+## 1. Design objective
 
-Make the board the obvious centre of attention while keeping every common move
-within one action. A returning player should understand the selected cell,
-input mode, elapsed state, and available undo at a glance. The app should feel
-quiet enough for a long solve and explicit enough to survive an interruption.
+Make the board the obvious centre of attention while keeping common moves close
+and state changes explicit. A returning player should understand the selected
+cell, input mode, elapsed state, and available correction at a glance. The app
+should feel quiet during a long solve and remain understandable after an
+interruption.
 
-The base experience is optimized for a 393×852 phone, then recomposed for an
-820×1180 tablet and a 1280×1000 desktop. Responsive design means changing the
-control layout, not scaling one composition until text and targets become tiny.
+The interface is composed for a 393×852 phone, an 820×1180 tablet, and a
+1280×1000 desktop, with additional evidence at 320×640, 852×393 landscape, and
+a 320×450 200%-equivalent reflow viewport. Responsive design recomposes or
+removes secondary chrome; it does not shrink required controls below usable
+sizes.
 
-## Generated form-factor mockups
+## 2. Information architecture
 
-### Phone
+Four primary destinations remain visible in the navigation:
 
-![Generated phone mockup of an in-progress Sudoku game](./design/mockups/sudoku-phone-v2.png)
+- **Play** — open the tab-selected active puzzle or its read-only review;
+- **Puzzles** — select one of five levels and generate another puzzle;
+- **History** — page through every retained active, solved, and abandoned
+  attempt;
+- **Settings** — change local behaviour and appearance, inspect the build, or
+  clear every local Sudoku record.
 
-At phone width, metadata is compressed into one row, the board uses nearly the
-full safe width, number input is a single row, utility actions sit below it,
-and primary navigation stays at the bottom. The game log is closed by default
-and opens as a full-width sheet so it never competes with the board.
-
-### Tablet
-
-![Generated tablet mockup of an in-progress Sudoku game](./design/mockups/sudoku-tablet-v2.png)
-
-At tablet width, the board and a persistent control rail share the workspace.
-The number pad becomes 3×3 and the log can remain visible below the controls.
-Bottom navigation remains reachable in portrait; landscape may use the desktop
-sidebar when space permits.
-
-### Desktop
-
-![Generated desktop mockup of an in-progress Sudoku game](./design/mockups/sudoku-desktop-v2.png)
-
-At desktop width, primary navigation moves to a left sidebar, the board occupies
-the centre, and controls plus game log form a right inspector. Keyboard help is
-persistent but quiet. The app uses the viewport rather than stretching the
-board beyond a comfortable scan size.
-
-## Information architecture
-
-Primary destinations are:
-
-- **Play** — start or resume the current puzzle;
-- **Puzzles** — choose a chapter level, generate a puzzle, and revisit prior
-  generated puzzles;
-- **History** — review completed and abandoned games;
-- **Settings** — checking, note cleanup, timer visibility, note appearance, and local
-  data controls. On phone, Settings is available from the header menu; on wider
-  layouts it may be a fourth navigation item.
-
-The status phrase **On this device** appears in the shell and links or expands
-to: “Progress and history are stored only in this browser. They are not synced
-or backed up.” It must never be represented as a cloud-success indicator.
-
-An active puzzle also offers **Share** beside Restart and Abandon. Its compact
-dialog distinguishes a clean puzzle link from a progress transfer. Preparing
-progress pauses the source, shows a locally rendered QR code and Copy link
-fallback, and plainly says that the recipient receives an independent copy.
-Incoming links use a full-view checking/consent card rather than exposing an
-unvalidated board. The QR scales before required copy or close actions, so the
-same no-scroll and 44 px target rules hold on every supported form factor. The
-complete interaction and privacy contract is in
-[PUZZLE_SHARING.md](PUZZLE_SHARING.md).
-
-## Primary play flow
-
-### 1. Start or resume
-
-On first launch, Play explains fixed givens, number entry, and notes, then shows
-a five-option level picker and **Generate Foundations puzzle** by default.
-Changing a level immediately updates its short technique-family summary and the
-generation action. Generation runs on-device and shows a cancellable
-progress state without starting the game timer. The generated puzzle becomes a
-game only after it passes validity, uniqueness, and allowed-technique checks and
-the `game/started` event is safely appended.
-
-If the bounded generator attempt budget is exhausted, show: “Could not generate
-a puzzle yet.” Actions are **Retry** and **Cancel**. Never display or persist a
-partially generated or unvalidated grid.
-
-When an unfinished game exists, Play opens directly to its replayed state. A
-small message says “Resumed on this device” once; it does not block input.
-Starting another puzzle requires abandoning or finishing the current one in
-MVP, avoiding ambiguous active timers.
-
-### 2. Select and inspect a cell
-
-A cell may be selected by tap/click or keyboard navigation. Selection shows:
-
-- a two-pixel indigo outline inside the cell boundary;
-- a pale peer highlight on the same row, column, and 3×3 box;
-- a stronger but distinct highlight on matching values;
-- programmatic `aria-selected="true"` and a complete accessible label.
-
-Tapping the same filled cell a second time switches from that cell's blue peer
-set to a pink number-wide view: every instance of the selected digit is
-emphasized, along with the union of all of those instances' peers. A third tap,
-or selecting a different cell, returns to the ordinary local peer view. This is
-ephemeral inspection state and never appends an event.
-
-Every app surface uses `touch-action: manipulation`. Rapid successive taps
-must never invoke browser double-tap zoom, including on the grid and navigation,
-while deliberate pinch zoom remains available for accessibility.
-
-Given cells are dark and visually heavier. User values are indigo. Notes fill a
-stable 3×3 mini-grid, with each bold digit sized as close as possible to its
-one-third-cell slot while remaining wholly inside it at every supported zoom.
-Notes use charcoal by default; amber indicates that the global Notes mode is
-active, not that every note is an error or warning.
-
-### 3. Enter a value or note
-
-The mode control has two explicit states: **Number** and **Notes**. Notes mode
-uses `aria-pressed`, an amber border/tint, and the text label. It must not rely on
-colour or a pencil icon alone. It adds an **All** key immediately after 9; the
-key fills pencil marks 1–9 in the selected empty cell as one undoable action. A
-local **Start in Notes mode** setting makes Notes the initial mode for newly
-opened puzzles without changing existing game snapshots. Device-local **Bold
-notes** and **Large notes** switches independently control pencil-mark weight
-and size. Both default on for maximum legibility and update the open puzzle
-immediately, so players can choose any of the four combinations.
-
-**All** adds only digits that still have a correct copy missing from the grid;
-it does not recreate a note for a completed digit. A completed digit key is
-normally grey and disabled. When the selected cell already contains that digit
-as a stale note, the key returns to its active treatment so the player can tap
-it once to erase the note, but it still cannot add a new completed-digit note.
-
-Both interaction orders work:
-
-- select a cell, then choose 1–9;
-- choose a number, then select a cell (“number-first” mode), if the setting is
-  enabled.
-
-On desktop, typing 1–9 affects the selected editable cell. In Number mode it
-enters/replaces a value; in Notes mode it toggles that note. A value entry clears
-notes in the same cell. Pressing a displayed number again does not erase it;
-Erase or Backspace/Delete is explicit.
-
-Each number button exposes its remaining count (`9 - correct placements on the
-projected board`) as text available to assistive technology. A completed number
-is disabled and explicitly grey only when nine correct placements are present;
-conflicts must not make a number appear complete. Erasing or undoing one of
-those placements immediately restores the key and its remaining count.
-
-### 4. Correct, undo, and redo
-
-**Erase** clears the selected editable value or, in Notes mode, all notes in the
-selected cell after a second confirmation only if more than three notes would
-be removed. The exact threshold is a UX convenience, not domain semantics.
-
-**Undo** and **Redo** name the affected action in their accessible labels, for
-example “Undo placed 5 in row 5, column 5.” Undoing and redoing append events;
-the user-visible game log shows both the original action and compensation.
-
-Conflicting cells receive a red inset outline plus a conflict icon/label. When
-immediate mistake checking is enabled, a wrong value also gets “Does not match
-the solution” and increments the mistake count once. When checking is disabled,
-the app shows only rule conflicts until completion; it does not leak solution
-information.
-
-### 5. Ask for a hint
-
-Hint opens a short confirmation: “Reveal one cell? This will be recorded in
-your game summary.” Confirming reveals one deterministic eligible cell, marks it
-with a small hint glyph and accessible text, appends a `hint/revealed` event,
-and increments the hint count. Cancel changes nothing. Hints never fill several
-cells, mutate notes elsewhere, or claim to teach a technique in MVP.
-
-### 6. Pause and return
-
-Pause freezes the active elapsed time and replaces the board values with a
-neutral cover saying “Puzzle paused.” It leaves puzzle metadata and Resume
-available, while hiding the position visually and from the accessibility tree.
-The entire covered board is a labelled Resume control, so a tap anywhere in the
-puzzle area continues play; the compact header Resume button remains available
-as a second option and keyboard target.
-The game log is also unavailable until play resumes so it cannot reveal the
-covered position. Closing the app while active is treated as an interruption,
-not an automatic pause; elapsed time continues. Closing while paused preserves
-the frozen time.
-
-### 7. Complete
-
-When all values match the solution, game controls become read-only and a compact
-completion panel appears without covering the board. It says:
-
-```text
-Puzzle complete
-Advanced · 08:42 · 1 mistake · 0 hints
-```
-
-Actions are **View game log**, **Choose another puzzle**, and **Done**. Reduced
-motion gets no celebration animation. Standard motion may use a brief border
-wash under 400 ms, never confetti, sound, or forced delay.
-
-## Board specification
-
-- Always render exactly 81 cells in row-major order, with stronger boundaries
-  after rows and columns 3 and 6.
-- The outer board and 3×3 boundaries use at least 3:1 contrast against the
-  canvas; cell text meets WCAG 2.2 AA.
-- Use tabular numerals and a locally bundled humanist sans-serif. Digits should
-  be visually distinct at small sizes.
-- Do not encode cells as 81 independent tab stops. The board is one composite
-  grid with roving `tabindex`; arrow keys move the active cell.
-- The accessible cell name follows this order: position, fixed/editable, value
-  or empty, notes, conflict/mistake, selected. Example: “Row 4, column 7,
-  editable, empty, notes 2 3 8, selected.”
-- The selected cell and all required controls remain visible at 200% zoom; the
-  compact layout never relies on focus-induced document scrolling.
-- Never expose the solution through DOM attributes, hidden text, accessible
-  descriptions, or client-facing debug panels. The solution exists locally for
-  validation but is reachable only through domain commands.
-
-## Key states
-
-### No game
-
-Show a short explanation, the five chapter choices, a one-line summary of the
-selected technique family, and one calm **Generate [level] puzzle** action. Do
-not manufacture percentages when no puzzle has been played.
-
-### In progress
-
-Show difficulty, active elapsed time unless hidden, Pause, board, input mode,
-number pad, Undo/Redo/Erase/Hint, and optional log. Disable unavailable actions
-instead of hiding their stable positions.
-
-### Paused
-
-Hide board content and disable inputs. Keep both the full-board resume target
-and compact header Resume action available. Keep the log covered until play
-resumes.
-
-### Conflict or mistake
-
-Keep the entered value so the player can inspect and undo it. A polite live
-region announces one concise message. Do not shake the board, steal focus, or
-open a modal.
-
-### Complete
-
-Keep the solved board visible and read-only. Show summary values and next
-actions. The history card becomes available immediately from the replayed
-projection.
-
-### Storage unavailable
-
-Continue the current in-memory solve. Show a persistent but non-modal warning:
-“This browser cannot save progress. Keep this page open to continue.” Disable
-claims about resume/history; do not disable Sudoku input.
-
-### Corrupt or incompatible stream
-
-Do not partially render the affected game. Say: “This puzzle history cannot be
-opened safely.” Offer **Start a new puzzle**, **Clear local data**, and technical
-details with the diagnostic code. Other valid games remain visible.
-
-### More than one active tab
-
-Each tab keeps its selected puzzle locally. Tabs viewing the same puzzle remain
-editable and quietly follow committed events from one another. A tab may open
-or generate another puzzle without changing the puzzle shown elsewhere. If two
-commands overlap on the same stream revision, the later transaction is
-discarded, the board refreshes, and a live region says that the latest puzzle
-state is shown.
-
-### Offline
-
-A healthy installed app needs no alarm. “On this device” remains accurate. If
-the shell is not installed, the browser owns the initial network error; the app
-must not redirect to a remote fallback.
-
-## Puzzle browser
-
-The puzzle browser offers Foundations, Intermediate, Advanced, Expert, and
-Master. They map to the five cumulative curriculum chapters; clue count does
-not define the label. The primary action is **Generate [selected level]
-puzzle**. Below it, generated puzzle cards contain a stable friendly label
-derived from the short seed, status (In progress, Solved, or Abandoned), best
-local active time if solved, hint count, and a single clear action. Cards do not
-preview givens, expose the full seed by default, or imply that a level was
-inferred from clue count alone.
-
-Filtering and sorting are ephemeral; newest generated puzzle is the default.
-“Start over” on a completed puzzle creates a new game ID and event stream using
-the same committed puzzle definition; history retains both attempts. “Generate
-another” uses a new seed and commits a new definition only after validation.
-
-## History and game log
-
-History is newest first and groups attempts by local date. A card shows puzzle
-label, difficulty, state, active time, mistakes, hints, and completion time. It
-offers **Review board**, **View game log**, and **Share**. Sharing presents the
-same clean-puzzle or current-progress choice as the active game. A progress link
-contains the selected attempt's board checkpoint, not its event log or the rest
-of History. Reviewing never reopens a terminal game for edits.
-
-The game log is generated from events and shown newest-first in the compact
-panel, with an option for chronological order in the full view. Each row has a
-local elapsed timestamp, icon, readable action, and machine-stable
-`data-event-type` for testing. Pencil-note activity may collapse into a summary
-after ten consecutive note events, but accessible expansion must reveal every
-event and its original order.
-
-The UI does not offer individual history deletion in MVP because silently
-removing one stream weakens the simple append-only model. Settings offers one
-real privacy operation: **Clear all local Sudoku data**. Confirmation says:
-“Delete every puzzle, move, preference, and history item from this browser?
-This cannot be undone.” On success, the store key and quarantined copies are
-physically removed and the app returns to first launch.
-
-## Responsive layouts
-
-### Phone: 320–599 CSS px
-
-- Header and puzzle metadata use two compact rows at 320 px and one at 393 px.
-- Board width is `min(100vw - 24px, available-height allocation)`.
-- Number pad is one row at 360 px and above; at 320 px it may wrap to a 5+4 grid
-  to preserve usable targets.
-- Undo, Redo, Erase, and Hint use a two-by-two grid at 320 px and may use one row
-  at 393 px if each target stays at least 44 px.
-- Bottom navigation respects safe-area insets.
-- The log opens as a modal sheet with an explicit close button and trapped focus.
-
-### Tablet: 600–1023 CSS px
-
-- Portrait uses a board plus right control rail when the board remains at least
-  540 px; otherwise controls move below.
-- The number pad is 3×3. Utility actions form a vertical or two-column group.
-- The game log can remain expanded below the number pad without moving the
-  board.
-- Landscape may use a left navigation rail and desktop inspector.
-
-### Desktop: 1024 CSS px and above
-
-- Left navigation is 224–256 px, the board is capped near 720 px, and the right
-  inspector is 280–320 px.
-- The workspace is centred and fits the 1280×1000 reference viewport without
-  document scrolling at default text size.
-- Keyboard help is persistent. Hover styles supplement rather than replace focus.
-- Large monitors gain whitespace, not an oversized board.
-
-## Visual system
+On phone and tablet the destinations form bottom navigation. At 900 px and
+above, the brand, device status, destinations, and privacy footer become a left
+rail. **On this device** means browser-local persistence; it is never styled or
+described as cloud synchronization or backup.
+
+## 3. First launch and generation
+
+With no selected game, Play presents the local-only promise, five level choices,
+the selected level's technique summary, and **Generate [level] puzzle**.
+Foundations is the default.
+
+Generation runs in a worker. While it is pending, the primary button is disabled
+and exposes a busy state. The timer and event history do not start until a fully
+validated puzzle has been committed. A bounded failure reports the error and
+changes the action to **Retry [level]**; no partial grid is shown or stored.
+
+Generating another puzzle does not destroy an active attempt. It starts a new
+game stream, selects it in that tab, and leaves the earlier attempt available in
+History.
+
+## 4. Play header and board
+
+The play header shows the level, a calm state heading, optional active time, and
+Pause or Resume for editable active attempts. The board column contains:
+
+- exactly 81 row-major gridcells with strong 3×3 boundaries;
+- a **Unique solution** validation badge;
+- generated/validated provenance and a short stable puzzle identifier.
+
+Fixed givens use dark, heavier text. Player values use indigo. Notes occupy a
+stable 3×3 mini-grid. Hint, conflict, and mistake markers supplement text and
+accessible labels rather than relying on colour.
+
+Each cell's accessible name reports row, column, fixed/editable state, value or
+empty state, notes, hint origin, conflict, mistake, and selection when present.
+The board uses one roving tab stop instead of 81 entries in the page tab order.
+
+## 5. Selection and inspection
+
+Selecting any cell shows an indigo inset boundary and highlights its row,
+column, and box peers. Cells with the same displayed value receive a stronger
+local match treatment. Matching notes may also be highlighted when the local
+setting is enabled.
+
+Selecting the same filled cell again toggles number-wide inspection. Every copy
+of that number and the union of their peers receives the pink treatment. A third
+selection of the same cell returns to local peer highlighting. Selecting a
+different cell also resets the number-wide mode.
+
+Selection and highlighting are ephemeral. They never append events. All
+surfaces use `touch-action: manipulation` to prevent rapid taps from invoking
+double-tap zoom while leaving deliberate pinch zoom available.
+
+## 6. Number and note input
+
+The explicit **Number** and **Notes** buttons expose pressed state. Notes mode
+uses amber as well as shape/text treatment and adds an **All** key after 9.
+
+Both orders are supported when number-first input is enabled:
+
+- select a cell, then select or type a number;
+- select a number, then select an editable cell.
+
+Entering a number replaces the current player value and clears notes in that
+cell. It does not toggle the value off; Erase is explicit. In Notes mode, a
+number toggles only that mark. **All** adds the currently eligible digits to the
+selected empty cell as one reversible action.
+
+Each number key announces its remaining correct-placement count. A completed
+digit becomes grey and unavailable, except when the selected cell contains that
+digit as a stale note; in that case the key remains available only to remove the
+note. **All** never recreates notes for completed digits.
+
+Local settings control:
+
+- mistake checking;
+- automatic matching-note removal after a value placement;
+- timer visibility;
+- number-first input;
+- starting newly selected games in Notes mode;
+- matching-note highlighting;
+- bold and large note rendering.
+
+Bold, large, and matching-note appearance update the open board immediately.
+Behavioural settings are captured in game origins so old play is not silently
+reinterpreted.
+
+## 7. Correction, hint, and lifecycle
+
+**Erase** removes the selected editable value or its notes. When a value can be
+traced to a placement event, erase targets that exact event so replay restores
+all notes affected by the original placement.
+
+**Undo** and **Redo** expose the affected move in accessible labels. Both append
+events. A new reversible action after undo retires the previous redo branch.
+**Restart** is itself reversible and clears mutable progress inside the same
+attempt. **Start over** from History creates a distinct game stream over the
+same immutable puzzle.
+
+Hint opens a confirmation dialog: **Reveal one cell?** Cancelling changes
+nothing. Confirming reveals the first eligible empty cell, adds a visible and
+programmatic hint mark, records the exact value, and increments the hint count.
+
+**Abandon** closes an unfinished attempt and opens History. The final board
+remains available for read-only review and sharing.
+
+## 8. Pause and completion
+
+Pause freezes active elapsed time, clears selection, replaces the board with a
+neutral full-board resume target, and covers the game log. Resume is available
+from both the header and the board cover. Closing while active is an
+interruption, not an implicit pause; active elapsed time continues. Closing
+while paused preserves the frozen value.
+
+Completion is derived when the projected board matches the committed solution.
+The board remains visible and read-only. The completion panel reports level,
+active time, mistakes, and hints, then offers **View history** and
+**Choose another puzzle**. Completion adds no artificial event, animation,
+sound, or delay.
+
+## 9. Conflicts and mistakes
+
+A Sudoku-rule duplicate marks every participating cell with red text, an inset
+outline, a symbol, and the word “conflict” in the accessible name. The entered
+value remains available for inspection and correction.
+
+When mistake checking is enabled for the game, an entered value that differs
+from the solution increments the mistake count and remains marked until fixed.
+When it is disabled, the interface does not reveal non-conflicting wrong values.
+
+Live announcements are short and factual: selection, entry, conflict, note
+change, erase, undo/redo, pause/resume, hint, completion, sharing, storage, and
+overlapping-tab results. Highlight changes are announced only when the user
+explicitly toggles number-wide inspection.
+
+## 10. Game log
+
+The game log is a human-readable newest-first projection of the selected game
+stream. Its header reports the total entry count, and the compact UI shows the
+newest row. Rows expose stable `data-event-type` values for testing. A derived
+**Solved puzzle** row appears for complete games even though there is no stored
+completion event.
+
+The paused cover hides the newest entry so the concealed board cannot be
+inferred. Reviewing a terminal History attempt displays its log beside the
+read-only board.
+
+## 11. History
+
+History is ordered newest first and mounts one card at a time to keep every
+supported viewport scroll-free. **Newer** and **Older** page through retained
+attempts.
+
+A card reports state, level and short puzzle ID, active time, mistakes, and
+hints. Active attempts offer **Open puzzle** and **Share**. Solved or abandoned
+attempts offer **Review board**, **Start over**, and **Share**.
+
+Share presents the same clean-puzzle or current-progress choice used during
+play. A progress transfer contains the selected attempt's current checkpoint,
+not its event log or the rest of History. Preparing an active checkpoint pauses
+that attempt; sharing a terminal attempt adds no event.
+
+There is no individual history deletion. Settings provides the explicit
+privacy operation **Clear all local Sudoku data**, whose confirmation states
+that every puzzle, move, preference, and recovery copy will be permanently
+deleted.
+
+## 12. Incoming links and sharing dialogs
+
+Incoming puzzle and transfer links use a full-view checking state before any
+board or data is trusted. A valid result shows a factual summary and waits for
+consent. When an active game is selected, opening the incoming copy requires an
+explicit choice to keep it or abandon it first.
+
+The Share dialog distinguishes:
+
+- **Share puzzle only** — clean givens for a fresh board;
+- **Prepare progress transfer** — current values, notes, time, hints, mistakes,
+  and transferable settings.
+
+QR generation is local. Copy link is always the accessible alternative, and
+native Web Share appears only when supported. The dialog states that the other
+device receives an independent copy. See
+[PUZZLE_SHARING.md](PUZZLE_SHARING.md) for validation and privacy details.
+
+## 13. Storage and multi-tab states
+
+A successful persistent load shows **On this device**. When IndexedDB is
+unavailable, the status changes to **Memory only** and a persistent warning
+explains that the session will continue but cannot be recovered after closing.
+Sudoku input remains available.
+
+Unreadable legacy data is preserved under a recovery key when possible, then a
+clean store opens with a notice. The interface never renders a guessed partial
+board from unreadable text.
+
+Each tab may select a different active puzzle. Tabs showing the same puzzle
+quietly follow committed changes. If two commands overlap on one stream
+revision, one is discarded, the tab refreshes from IndexedDB, and the live
+announcement says the latest state is shown.
+
+## 14. Responsive composition
+
+### Phone: below 600 px
+
+- Primary navigation stays at the bottom.
+- The shell header is removed during play to give the board priority.
+- The board is capped by both available width and height.
+- The number pad uses five columns; utility actions use four columns.
+- The game log remains a compact newest-entry panel.
+- History cards stack and actions use a two-column grid.
+
+### Tablet: 600–899 px
+
+- The board and a 230 px control rail share the workspace when height permits.
+- Primary navigation remains at the bottom.
+- Short-height landscape switches the number pad to five columns and utility
+  actions to four columns.
+
+### Desktop: 900 px and above
+
+- A 226 px left rail owns brand, device status, navigation, and footer.
+- Main content uses the remaining viewport; play is capped at a 600 px board
+  plus a 250–290 px inspector.
+- Large monitors gain surrounding space rather than an oversized board.
+
+### Short-height layouts
+
+At 650 px and below, secondary headings, provenance, management actions, and the
+compact log may be hidden so the board and required solving controls remain in
+one viewport. Incoming and sharing surfaces reduce spacing and QR size before
+required text or actions disappear.
+
+## 15. Visual system
 
 - Canvas: warm ivory `#f7f5ef`.
 - Primary surface: near-white `#fffdf8`.
-- Ink: charcoal `#20242b`.
-- Primary/focus/user value: indigo `#4654a3`.
-- Selection fill: pale indigo `#eceefa`.
-- Notes-mode accent: amber `#b7791f` plus border and text.
-- Conflict: deep red `#b42318` plus outline/icon/text.
-- Muted border: `#c8c7c2`; strong grid: `#343840`.
-- Minimum body text: 16 CSS px; condensed metadata: 14 px; cell values scale
-  with the board but never below 20 px at the 320 px viewport.
-- Minimum non-board target: 44×44 CSS px with visible focus and 8 px preferred
-  separation.
-- Borders and spacing define structure; shadow is never the only boundary.
+- Ink and strong grid: charcoal `#20242b` / `#343840`.
+- Primary, selection, focus family, and player values: indigo `#4654a3`.
+- Notes-mode and global focus accent: amber `#b7791f`.
+- Conflict and mistake: deep red `#b42318` with symbol and text.
+- Number-wide inspection: pale and strong pink.
+- Muted borders: `#c8c7c2` and `#d7d5cd`.
+- Atkinson Hyperlegible is bundled locally at regular and bold weights.
+- Non-board targets are at least 44×44 CSS px; board cells are the documented
+  narrow-layout exception.
 
-## Content rules
+## 16. Content rules
 
 - Use “puzzle,” “number,” “note,” “row,” “column,” “box,” “hint,” and “game log.”
-- Use sentence case. Avoid “candidate” in primary UI unless help explains it.
-- Say “conflict” for a Sudoku-rule duplicate and “mistake” only when checking
-  against the solution is enabled.
-- Do not claim progress is saved without adding “on this device.”
-- Do not say “perfect” when a solve used no hints/mistakes; report facts.
-- Use a fixed-width `r4c7` form only in compact visual logs. Accessible text and
-  help spell out “row 4, column 7.”
+- Use sentence case and factual status language.
+- Say “conflict” for a duplicate and “mistake” only for a checked solution
+  mismatch.
+- Never claim local progress is synchronized or backed up.
+- Never say “perfect”; report time, mistakes, and hints.
+- Use compact `r4c7` notation only in readable log text where space matters;
+  cell accessible names spell out row and column.
+- Call a transferred game a copy, not a move or synchronization.
 
-## Accessibility and usability acceptance
+## 17. Accessibility acceptance
 
-- Meet WCAG 2.2 AA semantics, contrast, focus, reflow, target-size, error, and
-  status-message requirements.
-- Complete a puzzle using keyboard only and touch only.
-- At 200% zoom and 320 CSS px, retain the board and all required controls in one
-  viewport with no document or nested scrolling.
-- At every supported viewport, keep each state within one screen. Compact
-  layouts may hide secondary chrome and paginate unbounded history, but never
-  hide required controls behind scrolling or hover.
-- Honour reduced motion and forced-colour modes.
-- Test screen-reader announcements with VoiceOver in Chromium on macOS. Safari,
-  Firefox, WebKit, Windows, and other platform/browser combinations are outside
-  the MVP test matrix.
-- Avoid focus movement after value/note input; selection remains in the board.
-- Dialogs and sheets restore focus to their invoker.
+- One labelled grid contains exactly 81 labelled gridcells and a roving tab
+  stop.
+- Arrow keys move within the board; Home and End move within a row; digits enter
+  or toggle values; `N` switches mode; Backspace/Delete erases; `Z` and
+  Shift+`Z` undo and redo.
+- Required state has text, shape, symbol, focus, or ARIA support in addition to
+  colour.
+- Dialogs expose modal semantics, close with Escape, and retain 44 px actions.
+- The board and required controls fit without document or nested scrolling at
+  every supported project size.
+- Rapid taps do not invoke browser double-tap zoom; deliberate browser zoom is
+  not prohibited.
+- The main playable view passes the automated WCAG A/AA axe scan used by
+  scenario 011. Automated evidence supplements manual assistive-technology
+  review rather than claiming universal browser coverage.
 
-Formative tasks for representative players:
+## 18. Concept mockups
 
-1. inspect every chapter option, generate a Master puzzle, and distinguish a
-   given from an editable value;
-2. add and remove several notes without accidentally committing a number;
-3. identify and correct a row conflict;
-4. undo, redo, then create a new branch and explain why redo is unavailable;
-5. pause, close, reopen, and resume at the same board and elapsed time;
-6. request a hint and find its effect in the game summary and log;
-7. finish a puzzle using only the keyboard;
-8. find a completed attempt in History;
-9. explain what “On this device” does and does not promise;
-10. clear all local data and understand that it cannot be recovered.
+The pre-implementation form-factor mockups remain useful records of the intended
+tone and composition:
 
-## Mockup generation record
+### Phone
 
-The three PNGs were generated with the built-in image-generation tool using the
-`ui-mockup` use case. The shared prompt requested a high-fidelity, flat,
-device-free Sudoku interface; 9×9 board with 3×3 dividers; ivory, charcoal,
-indigo, and amber palette; accessible selection; responsive control changes;
-local-only status; number/notes modes; undo, erase, hint, navigation, and a
-human-readable event log. Form-factor prompts then specified phone stacked,
-tablet two-column, and desktop sidebar/inspector compositions. Generated board
-digits and small labels are illustrative and must not be used as puzzle fixtures
-or visual-regression baselines. A second precise-edit pass changed only the
-difficulty and corresponding log labels from Medium to Easy for the original
-MVP. These concept mockups predate the compact five-level picker; executable
-scenario 002 screenshots are the current visual contract for level selection.
+![Generated phone Sudoku concept](./design/mockups/sudoku-phone-v2.png)
+
+### Tablet
+
+![Generated tablet Sudoku concept](./design/mockups/sudoku-tablet-v2.png)
+
+### Desktop
+
+![Generated desktop Sudoku concept](./design/mockups/sudoku-desktop-v2.png)
+
+They were generated with the built-in image tool using a high-fidelity
+`ui-mockup` brief for an ivory, charcoal, indigo, and amber local-only Sudoku
+interface. Their digits and small labels are illustrative. Committed scenario
+screenshots, exact copy, Sudoku validity, semantics, and current responsive
+behaviour take precedence.
