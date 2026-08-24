@@ -69,10 +69,10 @@ never overwrites or abandons anything.
 After a successful import, `history.replaceState` removes `p` from the address
 bar. Reload then replays the stored game rather than importing a duplicate.
 
-### Prepare an in-progress transfer
+### Prepare a progress transfer
 
-An active or paused game has a **Share** action. Selecting it opens a compact
-dialog with two choices:
+An active or paused game has a **Share** action, and every retained attempt has
+the same action in History. Selecting it opens a compact dialog with two choices:
 
 - **Share puzzle only** creates the readable `?p=` URL and starts a fresh board
   for its recipient;
@@ -90,6 +90,9 @@ The transfer dialog contains:
 Preparing the QR does not append a speculative “shared” event. If the game was
 active, the ordinary `game/paused` event is the only state change. Closing the
 dialog leaves the source paused so the shown checkpoint remains stable.
+Sharing a completed or abandoned History entry adds no event. Its progress
+payload is the attempt's current board checkpoint, not its event-by-event game
+log or any other History entry.
 
 The app cannot know that another device successfully opened a fragment-only
 link. It therefore must not delete the source, claim that ownership moved, or

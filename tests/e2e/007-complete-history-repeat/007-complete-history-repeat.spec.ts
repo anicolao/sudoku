@@ -111,9 +111,21 @@ test('the final moves derive completion, history, review, and a repeated attempt
         await expect(card).toContainText('Solved');
         await expect(card).toContainText('Mistakes0');
         await expect(card).toContainText('Hints0');
+        await expect(card.getByRole('button', { name: 'Share' })).toBeVisible();
       } }
     ]
   });
+
+  const completedEventCount = (await stream()).events.length;
+  await page.locator('.history-card').getByRole('button', { name: 'Share' }).click();
+  const historyShareDialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+  await expect(historyShareDialog.getByRole('button', { name: /Share puzzle only/ })).toBeVisible();
+  await expect(historyShareDialog.getByRole('button', { name: /Prepare progress transfer/ })).toContainText('Copies the saved values, notes, and time.');
+  await historyShareDialog.getByRole('button', { name: /Prepare progress transfer/ }).click();
+  const completedTransferLink = await page.getByTestId('share-link').getAttribute('data-link') ?? '';
+  expect(new URL(completedTransferLink).hash).toMatch(/^#t=/);
+  expect((await stream()).events).toHaveLength(completedEventCount);
+  await page.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('button', { name: 'Review board' }).click();
   await steps.step('completed-board-reviewed', {
