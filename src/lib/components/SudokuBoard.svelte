@@ -7,6 +7,7 @@
     game,
     selected,
     highlightAllNumberPeers,
+    highlightMatchingNotes,
     notesBold,
     notesLarge,
     onselect,
@@ -19,6 +20,7 @@
     game: GameProjection;
     selected: number | null;
     highlightAllNumberPeers: boolean;
+    highlightMatchingNotes: boolean;
     notesBold: boolean;
     notesLarge: boolean;
     onselect: (cell: number) => void;
@@ -141,7 +143,12 @@
           <span class="cell-value">{value}</span>
         {:else if game.notes[cell].length}
           <span class="cell-notes" aria-hidden="true">
-            {#each Array(9) as _, note}<i>{game.notes[cell].includes((note + 1) as Digit) ? note + 1 : ''}</i>{/each}
+            {#each Array(9) as _, note}
+              {@const noteValue = (note + 1) as Digit}
+              {@const noteIsPresent = game.notes[cell].includes(noteValue)}
+              {@const noteMatches = highlightMatchingNotes && selectedValue === noteValue && noteIsPresent}
+              <i class:matching-note={noteMatches} data-highlight={noteMatches ? 'matching-note' : undefined}>{noteIsPresent ? noteValue : ''}</i>
+            {/each}
           </span>
         {/if}
         {#if game.conflicts.includes(cell)}<span class="conflict-mark" aria-hidden="true">!</span>{/if}

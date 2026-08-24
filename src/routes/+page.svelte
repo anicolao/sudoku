@@ -682,6 +682,7 @@
           <button type="button" role="switch" aria-checked={projection.settings.showTimer} onclick={() => changeSetting('showTimer')}><span><strong>Show timer</strong><small>Display active solving time while you play.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.numberFirst} onclick={() => changeSetting('numberFirst')}><span><strong>Number-first input</strong><small>Allow choosing a number before choosing its cell.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.notesFirst} onclick={() => changeSetting('notesFirst')}><span><strong>Start in Notes mode</strong><small>Open new puzzles ready for pencil marks.</small></span><i aria-hidden="true"></i></button>
+          <button type="button" role="switch" aria-checked={projection.settings.highlightMatchingNotes !== false} onclick={() => changeSetting('highlightMatchingNotes')}><span><strong>Highlight matching notes</strong><small>Emphasize candidates for the selected digit.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.notesBold !== false} onclick={() => changeSetting('notesBold')}><span><strong>Bold notes</strong><small>Use heavier pencil-mark digits.</small></span><i aria-hidden="true"></i></button>
           <button type="button" role="switch" aria-checked={projection.settings.notesLarge !== false} onclick={() => changeSetting('notesLarge')}><span><strong>Large notes</strong><small>Fill each candidate slot for maximum legibility.</small></span><i aria-hidden="true"></i></button>
         </div>
@@ -740,7 +741,7 @@
                 <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
               </button>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
+              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
             <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>

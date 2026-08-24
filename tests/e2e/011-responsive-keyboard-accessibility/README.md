@@ -153,4 +153,4 @@ The same semantic grid reflows from a 320 px viewport through landscape, tablet,
 
 **Verifications:**
 
-- [x] All seven preference switches and the local-data action remain available
+- [x] All eight preference switches and the local-data action remain available

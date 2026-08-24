@@ -52,6 +52,7 @@ export interface GameSettings {
   notesFirst: boolean;
   notesBold?: boolean;
   notesLarge?: boolean;
+  highlightMatchingNotes?: boolean;
 }
 
 interface EventEnvelope<GameId extends string | null = string> {
