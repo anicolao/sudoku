@@ -1,216 +1,205 @@
-# Puzzle links and device-to-device transfer
+# Puzzle links and progress transfers
 
-Document status: implemented contract. Scenarios 014 and 015 retain the
-reviewable phone, tablet, and desktop evidence.
+Document status: implemented sharing and import contract. This document defines
+the two link formats, their validation and privacy boundaries, and the rules a
+future format version must preserve.
 
-## 1. Product promise
+## 1. Product contract
 
-Sudoku should open a valid classic puzzle from a URL and should let a player
-carry an in-progress puzzle to another device by scanning a QR code. Both paths
-remain local-first:
+Sharing remains local-first:
 
-- no sharing server, account, database, URL shortener, analytics endpoint, or
-  QR-image service;
+- no sharing server, account, URL shortener, analytics endpoint, hosted QR API,
+  or remote puzzle database;
 - no solution embedded in a URL or QR code;
-- all parsing, solving, uniqueness checking, rating, encoding, and QR rendering
-  happen in the browser;
-- an incoming puzzle becomes canonical only after it validates and the player
-  explicitly accepts it;
+- all parsing, solving, uniqueness checking, logical rating, encoding,
+  checksum handling, and QR rendering happen in the browser;
+- incoming data remains ephemeral until it validates and the user explicitly
+  accepts it;
 - existing local games are never silently replaced.
 
-There are two related link contracts:
+There are two formats:
 
-| Purpose | URL form | Contents | Network visibility |
+| Purpose | URL form | Contents | HTTP visibility |
 | --- | --- | --- | --- |
-| Start a puzzle from its givens | `?p=<81 cells>` | Digits and dots only | The static host can see the query string |
-| Continue an in-progress puzzle | `#t=<versioned payload>` | Givens plus a compact progress checkpoint | The fragment is not sent in HTTP requests |
+| Start a clean puzzle | `?p=<81 cells>` | Literal givens only | Query is visible to the static host |
+| Copy current progress | `#t=<versioned payload>` | Givens and one compact board checkpoint | Fragment is not sent in requests |
 
-Puzzle givens are not treated as private. In-progress values, notes, timing,
-settings, and counts are more personal, so the QR transfer uses a fragment.
-The app also keeps its `Referrer-Policy: no-referrer` boundary. It must never
-convert a transfer fragment into a query parameter.
+Puzzle givens are not treated as private. Values, notes, time, hints, mistakes,
+and settings are more personal, so progress uses a fragment and the application
+keeps `Referrer-Policy: no-referrer`. Neither format represents synchronization:
+the recipient creates an independent local attempt.
 
-## 2. User-visible flows
+## 2. Puzzle-only links
 
-### Open a puzzle URL
-
-A canonical puzzle URL looks like:
+A puzzle URL contains exactly one `p` query parameter whose value is 81 ASCII
+characters in row-major order. Digits `1`–`9` are givens and `.` is empty.
 
 ```text
 https://anicolao.github.io/sudoku/?p=53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79
 ```
 
-The `p` value is exactly 81 ASCII characters in row-major order. `1`–`9` are
-givens and `.` is an empty cell. A literal format is deliberate: it is easy to
-inspect, reproduce, type, and test, and it fits comfortably in a URL. There is
-no separate solution or claimed difficulty in the link.
+Literal givens are deliberately readable and small. The URL does not claim a
+solution, ID, level, seed, technique, or clue count.
 
-On navigation the app:
+Opening a link:
 
-1. shows **Checking shared puzzle…** without writing an event;
-2. parses and validates the givens in a Web Worker;
-3. derives the unique solution locally;
-4. rates the logical solve path when the current solver can do so;
-5. shows a compact preview summary: clue count, uniqueness, and rated level or
-   **Custom**;
-6. waits for **Start this puzzle** before appending one canonical import event.
+1. renders **Checking shared puzzle…** without writing an event;
+2. validates and solves the givens in a worker with a two-second default
+   deadline;
+3. shows level, clue count, and a short local fingerprint only after success;
+4. waits for **Start this puzzle**;
+5. appends one `game/imported` origin and removes `p` with
+   `history.replaceState` after consent.
 
-An exhaustive solver proving uniqueness is sufficient for a shared puzzle to
-be playable. If the logical solver cannot complete it within the current
-curriculum, the app labels it **Custom** rather than rejecting it or inventing a
-level. Generated puzzles keep the stronger requirement that their solve path
-must match their requested level.
+A puzzle that is unique but beyond the implemented logical curriculum is
+accepted as **Custom**. Uniqueness, not curriculum classification, is the
+playability boundary for an imported puzzle.
 
-If an active game already exists, the confirmation shows **Keep current
-puzzle** and **Abandon current and open shared puzzle**. The second action
-appends the normal abandonment fact before importing. Merely visiting a link
-never overwrites or abandons anything.
+If the tab-selected game is active, the consent card offers **Keep current
+puzzle** or **Abandon current and open shared puzzle**. The latter appends the
+ordinary abandonment event before the import. Merely visiting a link never
+abandons anything.
 
-After a successful import, `history.replaceState` removes `p` from the address
-bar. Reload then replays the stored game rather than importing a duplicate.
+## 3. Progress-transfer flow
 
-### Prepare a progress transfer
+Share is available during active play and from every History card. The dialog
+always offers:
 
-An active or paused game has a **Share** action, and every retained attempt has
-the same action in History. Selecting it opens a compact dialog with two choices:
+- **Share puzzle only** — prepare clean givens without changing the source;
+- **Prepare progress transfer** — freeze the selected attempt's current
+  checkpoint.
 
-- **Share puzzle only** creates the readable `?p=` URL and starts a fresh board
-  for its recipient;
-- **Prepare progress transfer** records a pause when necessary and freezes a
-  checkpoint for the QR code.
+Preparing progress for an unpaused active attempt appends the ordinary
+`game/paused` event first. The source remains paused after the dialog closes so
+the link continues to describe a stable checkpoint. Preparing a solved or
+abandoned History attempt adds no event.
 
-The transfer dialog contains:
+The ready dialog contains a locally rendered QR, **Copy link**, optional native
+**Share link…**, and **Done**. Active transfers state:
 
-- a locally rendered QR code;
-- **Copy transfer link** as an accessible alternative to the visual code;
-- optional **Share link…** through `navigator.share` when available;
-- the exact statement: “This creates a copy on the other device. Your game
-  stays paused here until you resume or abandon it.”
+> This creates a copy on the other device. Your game stays paused here until
+> you resume or abandon it.
 
-Preparing the QR does not append a speculative “shared” event. If the game was
-active, the ordinary `game/paused` event is the only state change. Closing the
-dialog leaves the source paused so the shown checkpoint remains stable.
-Sharing a completed or abandoned History entry adds no event. Its progress
-payload is the attempt's current board checkpoint, not its event-by-event game
-log or any other History entry.
+Terminal History transfers state that the saved board and its local history
+remain on this device. In either case, the link contains only the current board
+checkpoint—not the source event log, undo/redo stacks, or any other History
+entry.
 
-The app cannot know that another device successfully opened a fragment-only
-link. It therefore must not delete the source, claim that ownership moved, or
-prevent the two copies from diverging. True move acknowledgement, live sync,
-and merge require coordination infrastructure and are non-goals.
+## 4. Receiving progress
 
-### Continue on the receiving device
-
-Scanning the QR asks the browser to open a URL like:
+The recipient opens a URL such as:
 
 ```text
-https://anicolao.github.io/sudoku/#t=AQ...
+https://anicolao.github.io/sudoku/#t=U0QB...
 ```
 
-The recipient sees **Checking transferred puzzle…**, followed by a summary of
-the level, filled cells, notes, hints, mistakes, and elapsed active time. The
-state remains ephemeral until **Continue on this device** is selected.
+The app shows **Checking transferred puzzle…**, validates the payload in a
+worker with a four-second default deadline, independently validates the
+underlying puzzle, and then presents a summary of level, filled cells, noted
+cells, time, hints, and mistakes.
 
-Acceptance appends one `game/imported` event containing the validated puzzle
-and checkpoint. The resulting game starts paused, giving the player a stable
-chance to inspect the handoff before selecting **Resume**. The fragment is then
-removed with `history.replaceState`.
+Nothing is persisted until **Continue on this device** is selected. Acceptance
+appends one `game/imported` event containing the checked puzzle and paused
+checkpoint, removes the fragment, and displays the paused game. An incomplete
+or abandoned source checkpoint can be resumed as a new active attempt. A solved
+checkpoint is immediately derived as complete and remains read-only.
 
-Scanning the same transfer twice is idempotent. A transfer ID already present
-in a local `game/imported` event opens that game instead of creating another.
+Transfer IDs are 96 random bits represented as 24 lowercase hexadecimal
+characters. If the receiving browser already contains a `game/imported` event
+with that ID, another scan opens the existing local game instead of adding a
+duplicate import.
 
-## 3. Validation contract
+## 5. Puzzle validation
 
-Incoming data is hostile until proven otherwise. A checksum detects accidental
-QR corruption, but it is not authentication and never replaces domain checks.
+Incoming givens are accepted only when:
 
-### Puzzle validation
-
-The worker accepts a puzzle only when:
-
-- the decoded value has exactly 81 cells and contains only `1`–`9` or `.`;
+- the string is exactly 81 characters containing only `1`–`9` and `.`;
 - it contains 17–80 givens;
-- no row, column, or 3×3 box contains duplicate givens;
-- every candidate and cell index is within the classic 9×9 domain;
-- the exhaustive solver finds exactly one solution, stopping at two;
+- no row, column, or 3×3 box has duplicate givens;
+- the exhaustive solver finds exactly one solution, stopping after two;
 - the derived solution is a valid solved grid and agrees with every given.
 
-The worker returns the derived solution, clue count, stable puzzle fingerprint,
-and optional logical rating. It never trusts a solution, ID, level, technique,
-or clue count supplied by the URL.
+After exhaustive validation, the logical solver rates the puzzle up to Master.
+If it cannot reach the same solution within that curriculum, the rating is
+`custom` rather than a rejection.
 
-Validation runs off the UI thread with a bounded deadline. The main thread may
-terminate the worker, after which the UI says **This puzzle could not be checked
-safely**. It must never fall back to accepting an unvalidated grid.
+The worker returns a derived solution, clue count, full SHA-256 fingerprint, and
+rating. The persisted puzzle ID uses the first 12 fingerprint characters; the
+UI displays a shorter prefix. The fingerprint identifies equal givens but is
+not a signature and proves no authorship.
 
-### Checkpoint validation
+## 6. Checkpoint validation
 
-After the underlying puzzle passes, a progress checkpoint must also prove:
+After the underlying puzzle passes, the progress record must also satisfy:
 
 - exactly 81 value slots, each empty or a digit `1`–`9`;
-- givens have no user value or notes attached;
-- notes are unique digits `1`–`9` and occur only on empty editable cells;
-- every hinted cell contains its derived solution value;
-- masks have no bits beyond cell 80 or digit 9;
-- hint and mistake counters are bounded non-negative integers;
-- elapsed active time is bounded, finite, and non-negative;
-- settings flags are known booleans and unknown reserved bits are zero;
-- the payload has no trailing bytes or unconsumed fields.
+- exactly 81 note sets containing unique digits `1`–`9`;
+- no value or note attached to a given;
+- no notes on a filled editable cell;
+- each hinted cell is in range and contains its derived solution value;
+- the hinted-cell mask has no duplicate or out-of-range cells;
+- hint and mistake counts are bounded non-negative safe integers;
+- hint count equals the hinted-cell mask size;
+- elapsed time is an integer from zero through 365 days;
+- only known settings flags are used and reserved bits are zero;
+- the record is paused, checksum-valid, fully consumed, and contains no trailing
+  bytes.
 
-Wrong values and conflicts are valid progress: they are reconstructed and
-visibly marked on the receiving device. Candidate-inconsistent pencil notes are
-also retained because notes belong to the player. Derived conflicts,
-completion, and current mistake cells are recomputed instead of trusted.
+Wrong values, conflicts, and candidate-inconsistent notes are valid player
+progress. The receiver reconstructs them, then derives conflicts, mistake cells,
+completion, and future undo availability rather than trusting those projections.
 
-## 4. Transfer encoding
+## 7. Version 1 binary format
 
-`t` is base64url without padding over a fixed, versioned binary record. The
-first implementation uses no general-purpose compression, avoiding
-decompression bombs and platform-dependent output.
+`t` is unpadded base64url over this binary record:
 
 ```text
-magic/version
-transfer ID (96 random bits)
-givens (81 four-bit cells)
-values (81 four-bit cells)
-notes (81 nine-bit masks)
-hinted-cell mask (81 bits)
-elapsed milliseconds (unsigned varint)
-hint count (unsigned varint)
-mistake count (unsigned varint)
-settings and paused flags
-CRC-32
+magic: ASCII S D, version 1
+transfer ID: 12 bytes
+givens: 81 × 4 bits
+values: 81 × 4 bits
+notes: 81 × 9-bit masks
+hinted cells: 81-bit mask
+elapsed milliseconds: unsigned varint
+hint count: unsigned varint
+mistake count: unsigned varint
+settings/marker flags: 1 byte
+CRC-32: 4 bytes
 ```
 
-Empty four-bit cells use zero; digits use `1`–`9`. Bit order and the CRC
-polynomial require golden vectors in the codec tests. Reserved header bits make
-incompatible future extensions reject cleanly.
+Four-bit cells use zero for empty and `1`–`9` for digits. CRC-32 detects
+accidental corruption; it is not authentication. The implementation has a
+512-byte decoded limit and 768-character encoded limit before allocation.
 
-Version 1 assigns settings bit 5 to **Start in Notes mode**. Transfers produced
-before that preference existed leave the bit clear and therefore retain the
-original value-first behaviour. Bits 6 and 7 remain reserved and must be zero.
+Flags currently encode:
 
-The expected payload is roughly 220 bytes and the full URL remains well below
-500 characters. Version 1 imposes a hard 512-byte decoded limit and a
-768-character encoded limit before allocation. A payload outside those limits
-is invalid rather than partially decoded.
+| Bit | Meaning |
+| ---: | --- |
+| 0 | Check mistakes |
+| 1 | Automatically remove matching peer notes |
+| 2 | Show timer |
+| 3 | Number-first input |
+| 4 | Required format marker |
+| 5 | Start in Notes mode |
+| 6–7 | Reserved; must be zero |
 
-The checkpoint deliberately omits:
+Bold notes, large notes, and matching-note highlighting are device appearance
+preferences and are not transferred in version 1.
+
+The format deliberately omits:
 
 - the solution, which the recipient derives;
-- source event IDs, clock timestamps, device details, and game ID;
-- the source move log and pre-transfer undo/redo stacks;
-- selected cell, input mode, open dialogs, and other ephemeral UI state.
+- source event IDs, sequence numbers, timestamps, and game ID;
+- the source event log and undo/redo stacks;
+- selected cell, selected digit, current input mode, navigation, and dialogs;
+- device, browser, or account identity.
 
-The receiver can undo only moves made after import. The game log begins with
-**Continued transferred puzzle at 12:34** rather than fabricating the source
-player’s prior actions.
+The recipient's readable log begins with the import origin. Undo affects only
+moves made after import.
 
-## 5. Event-sourced import
+## 8. Event-sourced import
 
-The existing `game/started` event remains the origin for locally generated
-puzzles. Sharing adds one new origin event rather than synthesizing dozens of
-historical moves:
+Both link forms use the same origin event:
 
 ```ts
 interface GameImportedEvent extends EventEnvelope {
@@ -221,184 +210,94 @@ interface GameImportedEvent extends EventEnvelope {
     transferId: string | null;
     puzzle: PuzzleDefinition;
     settings: GameSettings;
-    checkpoint: null | {
-      values: Array<Digit | null>;
-      notes: Digit[][];
-      hintedCells: number[];
-      elapsedMs: number;
-      hints: number;
-      mistakes: number;
-      paused: true;
-    };
+    checkpoint: ImportedCheckpoint | null;
   };
 }
 ```
 
-Replay validates the import event again before constructing a projection. A
-bad stored import produces a diagnostic and no playable game. Later moves use
-the existing event types, elapsed-time rules, undo stack, completion derivation,
-history, and game-log projection.
+Puzzle-link imports require a null transfer ID and checkpoint plus puzzle-link
+provenance. Progress imports require a valid transfer ID, a checkpoint, and
+progress-transfer provenance. Replay validates the stored import again before
+constructing the game.
 
-`PuzzleDefinition` needs explicit provenance instead of pretending imported
-puzzles came from generator version 2:
+The persisted puzzle contains the locally derived solution so future replay is
+independent of solver changes. Provenance distinguishes generated puzzles,
+puzzle links, and progress transfers instead of pretending an import came from
+the generator.
 
-```ts
-type PuzzleRating = PuzzleDifficulty | 'custom';
+## 9. QR, URL, and privacy rules
 
-type PuzzleProvenance =
-  | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
-  | { kind: 'puzzle-link'; formatVersion: 1; fingerprint: string }
-  | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
-```
+The bundled `qrcode` dependency renders a 224 px data URL with error correction
+level Q, a four-module quiet zone, and local black-on-white output. Short-height
+layouts reduce the displayed dimensions while retaining the full matrix.
 
-The persisted puzzle still includes its exact givens and derived solution so
-replay never depends on a later solver version. Existing version-1 and
-version-2 generated puzzle definitions remain readable through a pure schema
-migration or a backwards-compatible decoder.
+Links are constructed from the current application URL, so root and subpath
+deployments remain valid. Puzzle URLs clear prior search and fragment data before
+adding `p`. Transfer URLs clear the search before adding `t` to the fragment.
 
-The fingerprint is a locally computed SHA-256 digest of canonical givens,
-truncated only for display. It identifies equal puzzles; it is not a signature
-and conveys no authorship.
+Transfer links are bearer data, not encryption. Anyone who can read the QR or
+fragment can reconstruct the checkpoint. The application does not intentionally
+write generated links to its event stream, IndexedDB, localStorage, console,
+service-worker cache, or an HTTP request. Copy and native Web Share failures keep
+the dialog and QR available while reporting a local error.
 
-## 6. QR generation and privacy
+The QR is supplementary. Its accessible alternative is the Copy link button;
+the application does not request camera permission or implement a scanner.
 
-The QR matrix is produced by a bundled, deterministic encoder with a
-GPL-compatible license. It renders to SVG or canvas locally; no URL, puzzle, or
-image is sent to a third party. Error correction should default to level Q and
-the dialog must retain a four-module quiet zone and sufficient contrast.
+## 10. Parameter and failure handling
 
-Links are constructed from the configured application base path, not a
-hard-coded production hostname. Creating a transfer link removes unrelated
-query parameters and fragments before adding `#t=`, so a prior `?p=` value can
-never make a transfer URL ambiguous.
-
-The implementation may use a small audited dependency, but it must not use a
-remote script, font, image, analytics hook, dynamic import, or hosted QR API.
-The dependency and license are recorded in the repository.
-
-Transfer links are bearer data, not encryption. Anyone who sees the QR or
-copied fragment can inspect the checkpoint and open a copy. The dialog states
-this plainly. The app does not put transfer URLs in its own event log,
-IndexedDB, `localStorage`, console, error reports, service-worker cache, or accessible
-hidden text after the dialog closes.
-
-The service worker caches only application assets. Request instrumentation must
-prove that neither a query puzzle nor fragment transfer causes an off-origin
-request and that the fragment is absent from every observed HTTP request.
-
-## 7. Responsive and accessible interaction
-
-Sharing inherits the application-wide no-scroll contract. Every checkpoint
-must fit phone, tablet, desktop, 320 px, landscape, and 200%-equivalent reflow
-without document scrolling, nested scrolling, or clipping.
-
-- Share, copy, close, continue, keep-current, and abandon/open controls retain
-  at least 44×44 CSS px targets.
-- The QR is supplementary. Its accessible name describes its purpose, while a
-  real button copies the same link.
-- Copy success is announced in a polite live region and does not move focus.
-- Validation failures use a heading, a concise reason, **Return to Sudoku**, and
-  **Copy invalid value** for debugging when safe.
-- At short heights the QR scales down before text or required actions disappear.
-- The incoming confirmation traps focus only while modal, closes with Escape,
-  and restores focus when there is an in-app invoker.
-- Native Web Share is progressive enhancement; copy always works without it.
-
-No camera permission is needed because this release generates QR codes but does
-not implement an in-app scanner. The receiving device’s camera or browser owns
-scanning.
-
-## 8. Failure and edge cases
-
-| Situation | Required behaviour |
+| Situation | Behaviour |
 | --- | --- |
-| Missing, empty, repeated, or unknown sharing parameter | Show a safe invalid-link state; append nothing |
-| Both `p` and `t` are present | Reject as ambiguous; do not choose one silently |
-| Structurally invalid or non-unique puzzle | Explain that it cannot be played; append nothing |
-| Valid unique puzzle beyond the logical curriculum | Accept as Custom |
-| Transfer checksum or version fails | Explain that the QR/link is damaged or unsupported |
-| Validation times out | Terminate the worker and append nothing |
-| Active local game exists | Require explicit keep-current or abandon/open choice |
-| Duplicate transfer ID | Open the already imported local game |
-| IndexedDB is unavailable | Allow an explicit memory-only import with the existing warning |
-| Recipient is offline with the app installed | Decode, validate, import, and play normally |
-| Recipient lacks the installed app while offline | The browser owns the load failure; no remote fallback |
-| Clipboard or Web Share fails | Keep the dialog open, retain the QR, and report the local failure |
+| More than one `p`/`t`, or both forms | Reject as ambiguous and append nothing |
+| Empty, malformed, or unsupported value | Show an invalid-link reason and append nothing |
+| Duplicate givens, no solution, or multiple solutions | Reject and append nothing |
+| Unique puzzle beyond the curriculum | Accept as Custom |
+| Transfer checksum, flags, padding, version, or bounds fail | Reject and append nothing |
+| Worker timeout or error | Terminate it, report a safe failure, and append nothing |
+| Active local game is selected | Require keep-current or abandon/open consent |
+| Existing transfer ID | Remove the fragment and open the existing import |
+| IndexedDB unavailable | Permit explicit memory-only acceptance with the existing warning |
+| Installed recipient is offline | Decode, validate, and import locally |
+| First-ever recipient visit is offline | Browser owns the load failure; no remote fallback |
+| Clipboard or native share fails | Keep the ready link and QR visible and report the error |
 
-## 9. Verification contract
+The application removes a consumed parameter only after a successful import or
+idempotent transfer match. Dismissing an incoming card removes it without
+altering local games.
 
-Pure tests cover:
+## 11. Verification
 
-- canonical `p` parsing and every structural rejection;
-- zero, one, and multiple-solution puzzles;
-- worker timeout/cancellation and bounded input sizes;
-- rating to each known level and fallback to Custom;
-- binary codec round trips, golden vectors, bit order, CRC, reserved bits,
-  truncation, trailing bytes, and every field bound;
-- arbitrary valid checkpoint property tests;
-- puzzle and checkpoint tampering followed by full revalidation;
-- deterministic fingerprinting and transfer-ID idempotency;
-- `game/imported` replay, diagnostics, elapsed time, conflicts, completion,
-  history, and post-import undo boundaries;
-- backwards replay of all existing generated puzzle events;
-- QR encoder output decoded by an independent standards-compliant decoder.
+Unit tests cover structural puzzle errors, unique/no/multiple solutions,
+logical rating, worker timeouts, fingerprints, codec round trips and the golden
+vector, checksum and field tampering, hint consistency, imported replay,
+idempotency, URL construction, and base-path handling.
 
-Playwright Chromium on macOS covers puzzle URLs in scenario 014 and progress
-transfer in scenario 015, with one screenshot after every user action:
+Browser scenario 014 proves a literal-givens URL remains ephemeral until
+consent, then creates one imported stream with the locally derived solution and
+cleans the address. Scenario 015 proves both Share choices, source pause,
+pixel-decoded QR equality, clipboard equality, fragment privacy, fresh-context
+validation and import, post-import undo boundary, and duplicate-scan
+idempotency. Scenario 007 covers progress sharing from a completed History card
+without adding an event.
 
-1. navigate to a valid `?p=` URL and see its checked summary;
-2. start it and verify one `game/imported` event plus the exact board;
-3. return to a generated puzzle, enter a value, add notes, and request a hint;
-4. select Share, then Prepare progress transfer;
-5. verify the source is paused and the QR/copy fallback represent the same URL;
-6. open that exact URL in a fresh browser context representing another device;
-7. accept the transfer and compare values, notes, hint marks, settings, counters,
-   elapsed time, givens, and derived solution;
-8. resume and make a new move whose undo boundary begins after import;
-9. reopen the same transfer and prove it does not create a duplicate;
-10. exercise invalid, non-unique, ambiguous, and active-game conflict states.
+The privacy suite enforces same-origin requests, and the installed-offline suite
+proves that puzzle state and History remain outside the application-shell cache.
 
-The independent E2E QR check decodes pixels from the rendered matrix; reading a
-convenient DOM attribute alone is not proof that a phone can scan it. The normal
-step helper continues to enforce no scrolling, no clipping, target sizes,
-semantic assertions, zero-diff screenshots, and generated flip-book README
-files.
+## 12. Versioning rules
 
-The privacy journey additionally asserts no off-origin request, no transfer
-fragment in requests or caches, and no solution in either link form. The
-installed-offline journey transfers into a fresh offline context after both
-contexts have installed the shell online.
+Future sharing work must:
 
-## 10. Implementation slices
+1. allocate a new format version or reserved bit rather than changing version 1
+   meaning;
+2. retain strict decoded and encoded bounds before allocation;
+3. derive and validate the solution locally;
+4. reject unknown fields or flags instead of partially applying them;
+5. keep progress in a fragment unless the privacy model is deliberately
+   redesigned;
+6. preserve explicit consent and independent-copy language;
+7. add a golden vector, tamper tests, replay tests, QR evidence, and updated
+   failure documentation.
 
-Each slice is one logical commit with unit tests, a user-level E2E continuation,
-screenshots, and generated walkthrough updates where it changes visible state.
-
-1. **Puzzle-link codec and validator** — parse `?p=`, derive a solution in the
-   worker, rate or mark Custom, enforce bounds, and add pure validation tests.
-2. **Incoming puzzle experience** — add checking, invalid, confirmation, active
-   game conflict, import event, URL cleanup, and the first scenario-014 steps.
-3. **Checkpoint import** — add the versioned binary codec, `game/imported`
-   replay, provenance migration, duplicate IDs, and post-import undo boundary.
-4. **Share and QR** — add puzzle-only and progress choices, explicit pause,
-   local QR rendering, copy/native-share fallbacks, and the two-context transfer
-   flip book.
-5. **Release hardening** — add independent QR decoding, privacy instrumentation,
-   installed-offline transfer, corruption/time-budget cases, accessibility,
-   documentation, and full viewport evidence.
-
-## 11. Definition of done
-
-- Every accepted puzzle is structurally valid and has exactly one locally
-  derived solution.
-- No incoming URL field is trusted merely because its checksum parses.
-- The QR transfers the visible playable checkpoint without a backend or
-  solution disclosure.
-- Source history remains intact and the UI accurately calls the handoff a copy.
-- The recipient gets one explainable import origin event and normal events from
-  that point forward.
-- Existing local games and old event streams replay unchanged.
-- Duplicate scans are idempotent and active games require an explicit choice.
-- All visible sharing states satisfy the no-scroll/no-clipping helper.
-- Unit, Chromium macOS E2E, privacy, offline, build, and zero-diff screenshot
-  checks are green.
+A future “full replay” export should be a separate versioned transport. It must
+not serialize raw stored origins because those contain the local solution and
+internal event IDs.
