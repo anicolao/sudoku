@@ -58,12 +58,13 @@ cache contains no event-store data.
 
 Puzzle sharing is local-first too. A `?p=` link contains only 81 literal
 givens; the receiving browser independently validates uniqueness, derives the
-solution, and asks for consent before storing one import event. The Share action
-can instead freeze a paused checkpoint into a versioned `#t=` fragment and
-render a QR code entirely in-browser. Values, notes, time, counts, and settings
-move to a fresh device without a server or embedded solution. The receiver
-revalidates every field, duplicate scans are idempotent, and the source remains
-paused as an explicit independent copy.
+solution, and asks for consent before storing one import event. The Share action,
+including the one on each History card, can instead freeze the selected attempt's
+current checkpoint into a versioned `#t=` fragment and render a QR code entirely
+in-browser. Values, notes, time, counts, and settings move to a fresh device
+without a server, embedded solution, or event-by-event history. The receiver
+revalidates every field, duplicate scans are idempotent, and an active source
+remains paused as an explicit independent copy.
 
 ## Design documents
 

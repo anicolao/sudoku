@@ -301,8 +301,10 @@ another” uses a new seed and commits a new definition only after validation.
 
 History is newest first and groups attempts by local date. A card shows puzzle
 label, difficulty, state, active time, mistakes, hints, and completion time. It
-offers **Review board** and **View game log**. Reviewing never reopens a terminal
-game for edits.
+offers **Review board**, **View game log**, and **Share**. Sharing presents the
+same clean-puzzle or current-progress choice as the active game. A progress link
+contains the selected attempt's board checkpoint, not its event log or the rest
+of History. Reviewing never reopens a terminal game for edits.
 
 The game log is generated from events and shown newest-first in the compact
 panel, with an option for chronological order in the full view. Each row has a

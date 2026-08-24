@@ -64,6 +64,7 @@
   let incomingKind = $state<IncomingKind>('puzzle');
   let incomingError = $state('');
   let shareDialogOpen = $state(false);
+  let shareGameId = $state<string | null>(null);
   let shareStage = $state<ShareStage>('choose');
   let shareLink = $state('');
   let shareQr = $state('');
@@ -77,6 +78,7 @@
 
   const activeGame = $derived(tabGameId ? projection.games[tabGameId] : undefined);
   const currentGame = $derived(reviewedGameId ? projection.games[reviewedGameId] : activeGame);
+  const shareGame = $derived(shareGameId ? projection.games[shareGameId] : undefined);
   const isReadOnly = $derived(
     !currentGame || currentGame.status !== 'active' || reviewedGameId !== null
   );
@@ -334,8 +336,9 @@
     dismissIncoming();
   }
 
-  function openShareDialog(): void {
-    if (!currentGame || isReadOnly) return;
+  function openShareDialog(gameId: string): void {
+    if (!projection.games[gameId]) return;
+    shareGameId = gameId;
     shareDialogOpen = true;
     shareStage = 'choose';
     shareLink = '';
@@ -364,22 +367,24 @@
   }
 
   async function sharePuzzleOnly(): Promise<void> {
-    if (!currentGame) return;
-    await showShareLink(puzzleUrl(window.location.href, currentGame.puzzle.givens), false);
+    if (!shareGame) return;
+    await showShareLink(puzzleUrl(window.location.href, shareGame.puzzle.givens), false);
   }
 
   async function prepareProgressTransfer(): Promise<void> {
-    if (!store || !currentGame || isReadOnly || currentGame.status !== 'active') return;
-    let pausedGame = currentGame;
-    if (!pausedGame.paused) {
-      const result = await store.pause(pausedGame.id, metadata());
+    if (!store || !shareGame) return;
+    let snapshotGame = shareGame;
+    if (snapshotGame.status === 'active' && !snapshotGame.paused) {
+      const result = await store.pause(snapshotGame.id, metadata(true, snapshotGame));
       if (!applyCommit(result, 'Puzzle paused for transfer')) return;
-      pausedGame = projection.games[pausedGame.id];
+      snapshotGame = projection.games[snapshotGame.id];
       selectedCell = null;
     }
-    const record = { ...checkpointFromGame(pausedGame), transferId: newTransferId() };
+    const record = { ...checkpointFromGame(snapshotGame), transferId: newTransferId() };
     await showShareLink(transferUrl(window.location.href, encodeTransfer(record)), true);
-    announcement = 'Progress transfer ready. The source puzzle remains paused.';
+    announcement = snapshotGame.status === 'active'
+      ? 'Progress transfer ready. The source puzzle remains paused.'
+      : 'Saved progress transfer ready.';
   }
 
   async function copyShareLink(): Promise<void> {
@@ -398,14 +403,14 @@
     catch (error) { if ((error as DOMException).name !== 'AbortError') shareError = 'System sharing is unavailable.'; }
   }
 
-  function metadata(trackElapsed = true): EventMetadata {
+  function metadata(trackElapsed = true, game = currentGame): EventMetadata {
     if (!store) throw new Error('Puzzle storage is not ready');
     const sequence = store.getDocument().nextSequence;
     const occurredAt = import.meta.env.VITE_E2E_MODE === '1' ? timerNow : new Date();
     return {
       id: import.meta.env.VITE_E2E_MODE === '1' ? `event-${sequence}` : crypto.randomUUID(),
       occurredAt,
-      elapsedMs: trackElapsed && currentGame ? elapsedAt(currentGame, occurredAt) : 0
+      elapsedMs: trackElapsed && game ? elapsedAt(game, occurredAt) : 0
     };
   }
 
@@ -700,7 +705,7 @@
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}</div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button></div>
               </article>
             {/each}
           </div>
@@ -768,7 +773,7 @@
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
               <button type="button" onclick={() => hintDialogOpen = true} disabled={currentGame.paused || isReadOnly}>Hint</button>
             </div>
-            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={openShareDialog}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
+            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
               <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
@@ -807,15 +812,15 @@
           <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Start a clean copy, or carry this exact progress to another device.</p>
           <div class="share-choices">
             <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
-            <button type="button" class="confirm" onclick={prepareProgressTransfer}><strong>Prepare progress transfer</strong><small>Pauses and copies values, notes, and time.</small></button>
+            <button type="button" class="confirm" onclick={prepareProgressTransfer}><strong>Prepare progress transfer</strong><small>{shareGame?.status === 'active' ? 'Pauses and copies values, notes, and time.' : 'Copies the saved values, notes, and time.'}</small></button>
           </div>
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
         {:else}
           <p class="eyebrow">{shareIsProgress ? 'Progress transfer' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
-          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareIsProgress ? 'QR code for transferring this paused puzzle' : 'QR code for opening this puzzle'} />
+          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareIsProgress ? (shareGame?.status === 'active' ? 'QR code for transferring this paused puzzle' : 'QR code for transferring this saved board') : 'QR code for opening this puzzle'} />
           <p class="share-link-status" data-testid="share-link" data-link={shareLink}>Local link ready · {shareLink.length} characters</p>
-          {#if shareIsProgress}<p class="transfer-note">This creates a copy on the other device. Your game stays paused here until you resume or abandon it.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
+          {#if shareIsProgress}<p class="transfer-note">{shareGame?.status === 'active' ? 'This creates a copy on the other device. Your game stays paused here until you resume or abandon it.' : 'This creates a copy of the saved board on the other device. This attempt and its history stay on this device.'}</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
         {/if}

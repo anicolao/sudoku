@@ -261,7 +261,7 @@ export async function validateTransfer(encoded: string): Promise<ValidatedTransf
 }
 
 export function checkpointFromGame(game: GameProjection): TransferRecord {
-  if (!game.paused || game.status !== 'active') throw new Error('Pause an active puzzle before preparing a transfer.');
+  if (game.status === 'active' && !game.paused) throw new Error('Pause an active puzzle before preparing a transfer.');
   return {
     transferId: '',
     givens: game.puzzle.givens,
