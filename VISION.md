@@ -85,7 +85,8 @@ aspirational.
 The maintained release includes:
 
 1. on-device generation and logical rating at five cumulative levels;
-2. number and pencil-note play with undo, redo, erase, restart, pause, and hint;
+2. number and pencil-note play, plus ephemeral peer Stripes for inspecting
+   advanced patterns, with undo, redo, erase, restart, pause, and hint;
 3. exact reload reconstruction, active-time accounting, and local History;
 4. accessible responsive layouts for phone, tablet, landscape, zoom, and
    desktop use;

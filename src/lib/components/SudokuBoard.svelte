@@ -10,7 +10,11 @@
     highlightMatchingNotes,
     notesBold,
     notesLarge,
+    stripeMode,
+    evenStripeOrigin,
+    oddStripeOrigin,
     onselect,
+    onfocuscell,
     onnumber,
     ontoggleNotes,
     onerase,
@@ -23,7 +27,11 @@
     highlightMatchingNotes: boolean;
     notesBold: boolean;
     notesLarge: boolean;
+    stripeMode: boolean;
+    evenStripeOrigin: number | null;
+    oddStripeOrigin: number | null;
     onselect: (cell: number) => void;
+    onfocuscell: (cell: number) => void;
     onnumber: (cell: number, value: Digit) => void;
     ontoggleNotes: () => void;
     onerase: (cell: number) => void;
@@ -32,9 +40,11 @@
   } = $props();
 
   const rovingCell = $derived(selected ?? 0);
+  const evenStripeCells = $derived(new Set(evenStripeOrigin === null ? [] : PEERS[evenStripeOrigin]));
+  const oddStripeCells = $derived(new Set(oddStripeOrigin === null ? [] : PEERS[oddStripeOrigin]));
 
   const selectedValue = $derived(
-    selected === null
+    selected === null || stripeMode
       ? null
       : game.puzzle.givens[selected] === '.'
         ? game.values[selected]
@@ -61,12 +71,16 @@
       game.hintedCells.includes(cell) ? 'revealed by hint' : '',
       game.conflicts.includes(cell) ? 'conflict' : '',
       game.mistakeCells.includes(cell) ? 'mistake' : '',
-      selected === cell ? 'selected' : ''
+      evenStripeCells.has(cell) ? 'even stripe' : '',
+      oddStripeCells.has(cell) ? 'odd stripe' : '',
+      evenStripeOrigin === cell ? 'even stripe source' : '',
+      oddStripeOrigin === cell ? 'odd stripe source' : '',
+      !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
   }
 
   function moveFocus(cell: number): void {
-    onselect(cell);
+    onfocuscell(cell);
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[data-cell="${cell}"]`)?.focus();
     });
@@ -87,13 +101,13 @@
     }
     if (/^[1-9]$/.test(event.key)) {
       event.preventDefault();
-      onnumber(cell, Number(event.key) as Digit);
+      if (!stripeMode) onnumber(cell, Number(event.key) as Digit);
     } else if (event.key.toLowerCase() === 'n') {
       event.preventDefault();
       ontoggleNotes();
     } else if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
-      onerase(cell);
+      if (!stripeMode) onerase(cell);
     } else if (event.key.toLowerCase() === 'z') {
       event.preventDefault();
       if (event.shiftKey) onredo(); else onundo();
@@ -108,15 +122,15 @@
       {@const cell = row * 9 + column}
       {@const given = game.puzzle.givens[cell]}
       {@const value = given === '.' ? game.values[cell] : Number(given)}
-      {@const isPeer = !highlightAllNumberPeers && selected !== null && PEERS[selected].includes(cell)}
-      {@const matches = !highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
+      {@const isPeer = !stripeMode && !highlightAllNumberPeers && selected !== null && PEERS[selected].includes(cell)}
+      {@const matches = !stripeMode && !highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
       {@const isNumberPeer = highlightAllNumberPeers && matchingPeers.has(cell)}
       {@const isNumberMatch = highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
       <button
         type="button"
         class="sudoku-cell"
         class:given={given !== '.'}
-        class:selected={selected === cell}
+        class:selected={!stripeMode && selected === cell}
         class:peer={isPeer}
         class:matching={matches}
         class:number-peer={isNumberPeer}
@@ -124,21 +138,27 @@
         class:conflict={game.conflicts.includes(cell)}
         class:mistake={game.mistakeCells.includes(cell)}
         class:hinted={game.hintedCells.includes(cell)}
+        class:stripe-even={evenStripeCells.has(cell)}
+        class:stripe-odd={oddStripeCells.has(cell)}
         class:box-right={column === 2 || column === 5}
         class:box-bottom={row === 2 || row === 5}
         class:last-column={column === 8}
         class:last-row={row === 8}
         role="gridcell"
         aria-label={label(cell)}
-        aria-selected={selected === cell}
+        aria-selected={stripeMode ? undefined : selected === cell}
         aria-readonly={given !== '.'}
         tabindex={rovingCell === cell ? 0 : -1}
         data-cell={cell}
+        data-stripes={`${evenStripeCells.has(cell) ? 'even' : ''}${evenStripeCells.has(cell) && oddStripeCells.has(cell) ? ' ' : ''}${oddStripeCells.has(cell) ? 'odd' : ''}` || undefined}
+        data-stripe-source={evenStripeOrigin === cell && oddStripeOrigin === cell ? 'even odd' : evenStripeOrigin === cell ? 'even' : oddStripeOrigin === cell ? 'odd' : undefined}
         data-highlight={isNumberMatch ? 'number-match' : isNumberPeer ? 'number-peer' : matches ? 'matching' : isPeer ? 'peer' : undefined}
         data-e2e-board-cell
         onclick={() => onselect(cell)}
         onkeydown={(event) => handleKeydown(event, cell)}
       >
+        {#if evenStripeOrigin === cell}<span class="stripe-source-mark even" aria-hidden="true">E</span>{/if}
+        {#if oddStripeOrigin === cell}<span class="stripe-source-mark odd" aria-hidden="true">O</span>{/if}
         {#if value}
           <span class="cell-value">{value}</span>
         {:else if game.notes[cell].length}

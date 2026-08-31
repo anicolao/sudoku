@@ -29,7 +29,8 @@
 
   type PersistenceStatus = 'checking' | 'local' | 'memory-only';
   type GenerationStatus = 'idle' | 'generating' | 'failed';
-  type InputMode = 'number' | 'notes';
+  type InputMode = 'number' | 'notes' | 'stripes';
+  type StripeType = 'even' | 'odd';
   type View = 'play' | 'puzzles' | 'history' | 'settings';
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingKind = 'puzzle' | 'transfer';
@@ -48,6 +49,9 @@
   let highlightAllNumberPeers = $state(false);
   let selectedDigit = $state<Digit | null>(null);
   let inputMode = $state<InputMode>('number');
+  let evenStripeOrigin = $state<number | null>(null);
+  let oddStripeOrigin = $state<number | null>(null);
+  let nextStripeType = $state<StripeType>('even');
   let announcement = $state('');
   let view = $state<View>('play');
   let reviewedGameId = $state<string | null>(null);
@@ -101,7 +105,7 @@
       : undefined
   );
   const canErase = $derived(
-    !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
+    inputMode !== 'stripes' && !!currentGame && !isReadOnly && !currentGame.paused && selectedCell !== null && currentGame.puzzle.givens[selectedCell] === '.' &&
     (currentGame.values[selectedCell] !== null || currentGame.notes[selectedCell].length > 0)
   );
   const notesToFill = $derived.by((): Digit[] => {
@@ -212,6 +216,7 @@
   });
 
   function selectTabGame(gameId: string | null): void {
+    if (tabGameId !== gameId) resetStripes();
     tabGameId = gameId;
     if (gameId) {
       sessionStorage.setItem('sudoku.tab-game', gameId);
@@ -435,6 +440,18 @@
 
   function selectCell(cell: number): void {
     if (currentGame?.paused) return;
+    if (inputMode === 'stripes') {
+      selectedCell = cell;
+      highlightAllNumberPeers = false;
+      const stripeType = nextStripeType;
+      if (stripeType === 'even') evenStripeOrigin = cell;
+      else oddStripeOrigin = cell;
+      nextStripeType = stripeType === 'even' ? 'odd' : 'even';
+      const row = Math.floor(cell / 9) + 1;
+      const column = (cell % 9) + 1;
+      announcement = `${stripeType === 'even' ? 'Even' : 'Odd'} stripes mark the peers of row ${row}, column ${column}. ${nextStripeType === 'even' ? 'Even' : 'Odd'} stripes are next`;
+      return;
+    }
     const value = currentGame
       ? currentGame.puzzle.givens[cell] === '.'
         ? currentGame.values[cell]
@@ -458,7 +475,7 @@
   }
 
   async function enterDigit(value: Digit, cellOverride: number | null = null): Promise<void> {
-    if (!store || !currentGame || isReadOnly || currentGame.paused) return;
+    if (!store || !currentGame || isReadOnly || currentGame.paused || inputMode === 'stripes') return;
     const cell = cellOverride ?? selectedCell;
     const canRemoveCompletedNote = inputMode === 'notes' && cell !== null &&
       currentGame.puzzle.givens[cell] === '.' && currentGame.values[cell] === null &&
@@ -507,7 +524,7 @@
 
   async function eraseCellAt(cell: number): Promise<void> {
     selectedCell = cell;
-    if (!store || !currentGame || isReadOnly || currentGame.paused || currentGame.puzzle.givens[cell] !== '.') return;
+    if (!store || !currentGame || isReadOnly || currentGame.paused || inputMode === 'stripes' || currentGame.puzzle.givens[cell] !== '.') return;
     if (currentGame.values[cell] === null && currentGame.notes[cell].length === 0) return;
     const value = currentGame.values[cell];
     const sourceEventId = currentGame.valueSourceEventIds[cell];
@@ -519,8 +536,32 @@
 
   function toggleNotesMode(): void {
     if (isReadOnly || currentGame?.paused) return;
-    inputMode = inputMode === 'number' ? 'notes' : 'number';
+    inputMode = inputMode === 'notes' ? 'number' : 'notes';
     announcement = `${inputMode === 'notes' ? 'Notes' : 'Number'} mode`;
+  }
+
+  function setInputMode(mode: InputMode): void {
+    if (isReadOnly || currentGame?.paused) return;
+    inputMode = mode;
+    if (mode === 'stripes') {
+      selectedDigit = null;
+      highlightAllNumberPeers = false;
+    }
+    announcement = `${mode === 'number' ? 'Number' : mode === 'notes' ? 'Notes' : 'Stripes'} mode`;
+  }
+
+  function focusCell(cell: number): void {
+    if (inputMode === 'stripes') {
+      selectedCell = cell;
+      highlightAllNumberPeers = false;
+    } else selectCell(cell);
+  }
+
+  function resetStripes(announce = false): void {
+    evenStripeOrigin = null;
+    oddStripeOrigin = null;
+    nextStripeType = 'even';
+    if (announce) announcement = 'Stripes cleared. Even stripes are next';
   }
 
   async function fillAllNotes(): Promise<void> {
@@ -573,6 +614,7 @@
     if (!store || !currentGame || isReadOnly) return;
     if (!applyCommit(await store.restart(currentGame.id, metadata()), 'Puzzle restarted')) return;
     selectedCell = null;
+    resetStripes();
   }
 
   async function abandonGame(): Promise<void> {
@@ -617,6 +659,7 @@
   }
 
   function reviewGame(gameId: string): void {
+    resetStripes();
     if (projection.games[gameId].status === 'active') {
       selectTabGame(gameId);
       reviewedGameId = null;
@@ -746,7 +789,7 @@
                 <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
               </button>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} onselect={selectCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
+              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
             <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
@@ -754,9 +797,19 @@
 
           <aside class="play-controls" aria-label="Puzzle controls">
             <div class="mode-switch" aria-label="Input mode">
-              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => inputMode = 'number'}>Number</button>
-              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => inputMode = 'notes'}>Notes</button>
+              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => setInputMode('number')}>Number</button>
+              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => setInputMode('notes')}>Notes</button>
+              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'stripes'} aria-pressed={inputMode === 'stripes'} onclick={() => setInputMode('stripes')}>Stripes</button>
             </div>
+            {#if inputMode === 'stripes'}
+              <div class="stripe-tools" aria-label="Stripe controls">
+                <div class="stripe-status">
+                  <span class:even={nextStripeType === 'even'} class:odd={nextStripeType === 'odd'} aria-hidden="true"></span>
+                  <p><strong>{nextStripeType === 'even' ? 'Even' : 'Odd'} stripes next</strong><small>Tap a cell to mark all 20 peers.</small></p>
+                </div>
+                <button type="button" onclick={() => resetStripes(true)} disabled={evenStripeOrigin === null && oddStripeOrigin === null}>Clear stripes</button>
+              </div>
+            {:else}
             <div class="number-pad" aria-label="Number pad">
               {#each digits as value}
                 {@const count = remaining(value)}
@@ -767,6 +820,7 @@
               {/each}
               {#if inputMode === 'notes'}<button type="button" class="all-notes" onclick={fillAllNotes} disabled={!canFillAllNotes} aria-label="All notes"><strong>All</strong></button>{/if}
             </div>
+            {/if}
             <div class="utility-actions">
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
               <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>

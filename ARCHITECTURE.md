@@ -28,7 +28,7 @@ service-worker.ts ──→ static application-shell cache only
 ```
 
 Canonical game state is event-sourced. UI state such as selection, highlighted
-peers, input mode, navigation, and open dialogs is ephemeral. Components render
+peers, stripe sources, input mode, navigation, and open dialogs is ephemeral. Components render
 projections and call repository commands; they do not write IndexedDB records
 directly.
 
@@ -132,8 +132,8 @@ Current vocabulary:
 | `game/restarted` | empty | Reversibly clear mutable progress within the attempt |
 | `game/abandoned` | empty | Close an unfinished attempt |
 
-Selection, focus, highlighted peers, selected input mode, navigation, dialogs,
-QR state, and tab-local puzzle choice are not events. Conflicts, mistake cells,
+Selection, focus, highlighted peers, even/odd stripe sources, selected input
+mode, navigation, dialogs, QR state, and tab-local puzzle choice are not events. Conflicts, mistake cells,
 completion, remaining-number counts, History cards, and game-log rows are
 derived rather than stored as duplicate facts.
 

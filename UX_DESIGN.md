@@ -64,7 +64,8 @@ stable 3×3 mini-grid. Hint, conflict, and mistake markers supplement text and
 accessible labels rather than relying on colour.
 
 Each cell's accessible name reports row, column, fixed/editable state, value or
-empty state, notes, hint origin, conflict, mistake, and selection when present.
+empty state, notes, hint origin, conflict, mistake, selection, and stripe or
+stripe-source state when present.
 The board uses one roving tab stop instead of 81 entries in the page tab order.
 
 ## 5. Selection and inspection
@@ -83,10 +84,11 @@ Selection and highlighting are ephemeral. They never append events. All
 surfaces use `touch-action: manipulation` to prevent rapid taps from invoking
 double-tap zoom while leaving deliberate pinch zoom available.
 
-## 6. Number and note input
+## 6. Number, note, and stripe input
 
-The explicit **Number** and **Notes** buttons expose pressed state. Notes mode
-uses amber as well as shape/text treatment and adds an **All** key after 9.
+The explicit **Number**, **Notes**, and **Stripes** buttons expose pressed state.
+Notes mode uses amber as well as shape/text treatment and adds an **All** key
+after 9.
 
 Both orders are supported when number-first input is enabled:
 
@@ -102,6 +104,20 @@ Each number key announces its remaining correct-placement count. A completed
 digit becomes grey and unavailable, except when the selected cell contains that
 digit as a stale note; in that case the key remains available only to remove the
 note. **All** never recreates notes for completed digits.
+
+Stripes mode replaces the number pad with the next stripe type and a clear
+action. The first board tap marks all 20 peers of its cell with indigo even
+stripes; the next marks the tapped cell's peers with amber odd stripes. Later
+taps alternate and replace only the older set of the same type, so cells reached
+by both of the two latest sources are crosshatched. Source cells carry labelled
+**E** and **O** markers and programmatic source state. Stripe overlays remain
+visible while the player temporarily returns to Number or Notes mode, until
+cleared, restarted, or another puzzle is opened.
+
+Stripe sources, overlays, alternation, and clearing are ephemeral and append no
+event. Digits and erase keys do not edit the puzzle in Stripes mode. Arrow,
+Home, and End keys move the roving focus without drawing a stripe; activating a
+focused cell lays the next set.
 
 Local settings control:
 
@@ -270,6 +286,8 @@ required text or actions disappear.
 - Ink and strong grid: charcoal `#20242b` / `#343840`.
 - Primary, selection, focus family, and player values: indigo `#4654a3`.
 - Notes-mode and global focus accent: amber `#b7791f`.
+- Even stripes: indigo diagonal; odd stripes: amber counter-diagonal; overlap:
+  both directions plus the **E**/**O** source symbols.
 - Conflict and mistake: deep red `#b42318` with symbol and text.
 - Number-wide inspection: pale and strong pink.
 - Muted borders: `#c8c7c2` and `#d7d5cd`.
@@ -294,8 +312,8 @@ required text or actions disappear.
 - One labelled grid contains exactly 81 labelled gridcells and a roving tab
   stop.
 - Arrow keys move within the board; Home and End move within a row; digits enter
-  or toggle values; `N` switches mode; Backspace/Delete erases; `Z` and
-  Shift+`Z` undo and redo.
+  or toggle values outside Stripes mode; `N` switches to or from Notes mode;
+  Backspace/Delete erases outside Stripes mode; `Z` and Shift+`Z` undo and redo.
 - Required state has text, shape, symbol, focus, or ARIA support in addition to
   colour.
 - Dialogs expose modal semantics, close with Escape, and retain 44 px actions.
