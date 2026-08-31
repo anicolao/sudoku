@@ -149,6 +149,7 @@
         aria-selected={stripeMode ? undefined : selected === cell}
         aria-readonly={given !== '.'}
         tabindex={rovingCell === cell ? 0 : -1}
+        style={`--stripe-column: ${column}; --stripe-row: ${row}`}
         data-cell={cell}
         data-stripes={`${evenStripeCells.has(cell) ? 'even' : ''}${evenStripeCells.has(cell) && oddStripeCells.has(cell) ? ' ' : ''}${oddStripeCells.has(cell) ? 'odd' : ''}` || undefined}
         data-stripe-source={evenStripeOrigin === cell && oddStripeOrigin === cell ? 'even odd' : evenStripeOrigin === cell ? 'even' : oddStripeOrigin === cell ? 'odd' : undefined}

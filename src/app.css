@@ -131,9 +131,9 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .hint-mark { position: absolute; left: 3px; bottom: 2px; color: #b7791f; font-size: .48rem; }
 .sudoku-cell.hinted { background: #fff8e8; }
 .sudoku-cell.stripe-even::before,
-.sudoku-cell.stripe-odd::after { content: ''; position: absolute; z-index: 1; inset: 0; pointer-events: none; }
-.sudoku-cell.stripe-even::before { background: repeating-linear-gradient(135deg, #4654a3 0 2px, transparent 2px 16px); }
-.sudoku-cell.stripe-odd::after { background: repeating-linear-gradient(135deg, transparent 0 8px, #b7791f 8px 10px, transparent 10px 16px); }
+.sudoku-cell.stripe-odd::after { content: ''; position: absolute; z-index: 1; inset: 0; background-position: calc(var(--stripe-column) * 12.5%) calc(var(--stripe-row) * 12.5%); background-repeat: no-repeat; background-size: 900% 900%; pointer-events: none; }
+.sudoku-cell.stripe-even::before { background-image: repeating-linear-gradient(135deg, rgb(70 84 163 / .55) 0 1px, transparent 1px 16px); }
+.sudoku-cell.stripe-odd::after { background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgb(183 121 31 / .55) 8px 9px, transparent 9px 16px); }
 .cell-value,
 .cell-notes { position: relative; z-index: 2; }
 .conflict-mark,
@@ -163,8 +163,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .stripe-tools { display: grid; gap: 6px; }
 .stripe-status { min-height: 58px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid #c8c7c2; border-radius: 9px; background: #fffdf8; }
 .stripe-status > span { flex: 0 0 34px; height: 34px; border: 1px solid #d7d5cd; border-radius: 7px; background-color: #fff; }
-.stripe-status > span.even { background-image: repeating-linear-gradient(135deg, #4654a3 0 2px, transparent 2px 16px); }
-.stripe-status > span.odd { background-image: repeating-linear-gradient(135deg, transparent 0 8px, #b7791f 8px 10px, transparent 10px 16px); }
+.stripe-status > span.even { background-image: repeating-linear-gradient(135deg, rgb(70 84 163 / .55) 0 1px, transparent 1px 16px); }
+.stripe-status > span.odd { background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgb(183 121 31 / .55) 8px 9px, transparent 9px 16px); }
 .stripe-status p { min-width: 0; margin: 0; display: grid; color: #343840; font-size: .86rem; }
 .stripe-status small { color: #62656b; font-size: .72rem; }
 .stripe-tools button { min-height: 44px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; font-weight: 700; cursor: pointer; }

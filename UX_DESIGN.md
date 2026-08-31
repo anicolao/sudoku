@@ -287,9 +287,10 @@ required text or actions disappear.
 - Ink and strong grid: charcoal `#20242b` / `#343840`.
 - Primary, selection, focus family, and player values: indigo `#4654a3`.
 - Notes-mode and global focus accent: amber `#b7791f`.
-- Even stripes: sparse thin indigo diagonals; odd stripes: sparse thin amber
-  diagonals offset between them; overlap: one dense interleaved parallel pattern
-  plus the **E**/**O** source symbols.
+- Even stripes: subtle 1 px indigo diagonals; odd stripes: subtle 1 px amber
+  diagonals offset between them. Both are aligned to one global pattern so lines
+  continue through cell boundaries; overlap forms one dense interleaved parallel
+  pattern plus the **E**/**O** source symbols.
 - Conflict and mistake: deep red `#b42318` with symbol and text.
 - Number-wide inspection: pale and strong pink.
 - Muted borders: `#c8c7c2` and `#d7d5cd`.
