@@ -198,6 +198,7 @@ and every changed PNG. Normal test runs must leave the worktree unchanged.
 | 017 | Number-wide highlight | real taps, local/number-wide toggle, matching-note option, no double-tap zoom |
 | 018 | Notes default, All, and styles | preference snapshot, one-event fill, all note appearance combinations |
 | 019 | Completed digit key | grey completion, All exclusion, stale-note erasure, count restoration |
+| 020 | Alternating Stripes | exact peer sets, crosshatched intersections, replacement, clearing, keyboard safety |
 
 The generated README inside each directory is the readable step-by-step record;
 the spec is the executable source of truth.

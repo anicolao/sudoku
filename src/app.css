@@ -130,13 +130,26 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .mistake-mark { position: absolute; top: 1px; right: 3px; color: #b42318; font-size: .8rem; font-weight: 700; }
 .hint-mark { position: absolute; left: 3px; bottom: 2px; color: #b7791f; font-size: .48rem; }
 .sudoku-cell.hinted { background: #fff8e8; }
+.sudoku-cell.stripe-even::before,
+.sudoku-cell.stripe-odd::after { content: ''; position: absolute; z-index: 1; inset: 0; pointer-events: none; }
+.sudoku-cell.stripe-even::before { background: linear-gradient(135deg, transparent 45%, #4654a3 46%, #4654a3 54%, transparent 55%); }
+.sudoku-cell.stripe-odd::after { background: linear-gradient(45deg, transparent 45%, #b7791f 46%, #b7791f 54%, transparent 55%); }
+.cell-value,
+.cell-notes { position: relative; z-index: 2; }
+.conflict-mark,
+.mistake-mark,
+.hint-mark { z-index: 2; }
+.stripe-source-mark { position: absolute; z-index: 3; bottom: 2px; width: 1.05rem; height: 1.05rem; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; background: #fffdf8e6; font-size: .58rem; font-weight: 700; line-height: 1; }
+.stripe-source-mark.even { left: 2px; color: #4654a3; }
+.stripe-source-mark.odd { right: 2px; color: #8a5818; }
 .board-caption { margin: 0; color: #62656b; font-size: .84rem; text-align: center; }
 .board-validation { display: inline-flex; align-items: center; min-height: 28px; margin-bottom: -6px; padding: 4px 9px; border: 1px solid #d8daf0; border-radius: 999px; color: #3f477d; background: #f0f1fa; font-size: .76rem; font-weight: 700; }
 .play-controls { min-width: 0; display: grid; gap: 12px; }
-.mode-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid #c8c7c2; border-radius: 10px; background: #efeee9; }
+.mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border: 1px solid #c8c7c2; border-radius: 10px; background: #efeee9; }
 .mode-switch button { min-height: 44px; border: 0; border-radius: 7px; color: #62656b; background: transparent; font-weight: 700; cursor: pointer; }
 .mode-switch button.active { color: #4654a3; background: #fffdf8; box-shadow: 0 1px 3px #0002; }
-.mode-switch button:last-child.active { color: #8a5818; box-shadow: inset 0 0 0 2px #b7791f; }
+.mode-switch button:nth-child(2).active { color: #8a5818; box-shadow: inset 0 0 0 2px #b7791f; }
+.mode-switch button:nth-child(3).active { color: #2b6f6a; box-shadow: inset 0 0 0 2px #438d86; }
 .mode-switch button:disabled, .number-pad button:disabled { cursor: not-allowed; opacity: .55; }
 .number-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .number-pad button { min-width: 44px; min-height: 52px; display: grid; place-items: center; padding: 3px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; cursor: pointer; }
@@ -147,6 +160,15 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .number-pad button.all-notes { color: #8a5818; border-color: #d3a157; background: #fff8e8; font-weight: 700; }
 .number-pad strong { font-size: 1.35rem; line-height: 1; }
 .number-pad small { color: #666970; font-size: .66rem; line-height: 1; }
+.stripe-tools { display: grid; gap: 6px; }
+.stripe-status { min-height: 58px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid #c8c7c2; border-radius: 9px; background: #fffdf8; }
+.stripe-status > span { flex: 0 0 34px; height: 34px; border: 1px solid #d7d5cd; border-radius: 7px; background-color: #fff; }
+.stripe-status > span.even { background-image: linear-gradient(135deg, transparent 45%, #4654a3 46%, #4654a3 54%, transparent 55%); }
+.stripe-status > span.odd { background-image: linear-gradient(45deg, transparent 45%, #b7791f 46%, #b7791f 54%, transparent 55%); }
+.stripe-status p { min-width: 0; margin: 0; display: grid; color: #343840; font-size: .86rem; }
+.stripe-status small { color: #62656b; font-size: .72rem; }
+.stripe-tools button { min-height: 44px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; font-weight: 700; cursor: pointer; }
+.stripe-tools button:disabled { color: #999; background: #f1f0ec; cursor: not-allowed; }
 .utility-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .utility-actions button { min-height: 44px; border: 1px solid #d7d5cd; border-radius: 8px; background: #fffdf8; }
 .utility-actions button:disabled { color: #999; background: #f1f0ec; }
