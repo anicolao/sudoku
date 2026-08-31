@@ -107,9 +107,10 @@ note. **All** never recreates notes for completed digits.
 
 Stripes mode replaces the number pad with the next stripe type and a clear
 action. The first board tap marks all 20 peers of its cell with indigo even
-stripes; the next marks the tapped cell's peers with amber odd stripes. Later
-taps alternate and replace only the older set of the same type, so cells reached
-by both of the two latest sources are crosshatched. Source cells carry labelled
+stripes; the next marks the tapped cell's peers with amber odd stripes offset
+between them. Later taps alternate and replace only the older set of the same
+type, so cells reached by both of the two latest sources have a denser sequence
+of interleaved parallel stripes. Source cells carry labelled
 **E** and **O** markers and programmatic source state. Stripe overlays remain
 visible while the player temporarily returns to Number or Notes mode, until
 cleared, restarted, or another puzzle is opened.
@@ -286,8 +287,9 @@ required text or actions disappear.
 - Ink and strong grid: charcoal `#20242b` / `#343840`.
 - Primary, selection, focus family, and player values: indigo `#4654a3`.
 - Notes-mode and global focus accent: amber `#b7791f`.
-- Even stripes: indigo diagonal; odd stripes: amber counter-diagonal; overlap:
-  both directions plus the **E**/**O** source symbols.
+- Even stripes: sparse thin indigo diagonals; odd stripes: sparse thin amber
+  diagonals offset between them; overlap: one dense interleaved parallel pattern
+  plus the **E**/**O** source symbols.
 - Conflict and mistake: deep red `#b42318` with symbol and text.
 - Number-wide inspection: pale and strong pink.
 - Muted borders: `#c8c7c2` and `#d7d5cd`.

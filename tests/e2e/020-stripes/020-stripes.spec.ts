@@ -16,7 +16,7 @@ test('Stripes alternates two peer overlays and reveals their intersections', asy
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Find shared peers with alternating Stripes',
-    'Stripes keeps the latest even and odd peer sets on the board. Cells reached by both taps are crosshatched, making shared y-wing and coloring targets visible without changing the saved puzzle.'
+    'Stripes keeps the latest even and odd peer sets on the board. Each set uses sparse parallel lines of alternating parity, so cells reached by both taps become densely striped without changing the saved puzzle.'
   );
   const cell = (index: number): Locator => page.locator(`[data-cell="${index}"]`);
   const striped = (kind: 'even' | 'odd'): Locator => page.locator(`[data-stripes~="${kind}"]`);
@@ -42,7 +42,7 @@ test('Stripes alternates two peer overlays and reveals their intersections', asy
   const evenOrigin = 0;
   await cell(evenOrigin).click();
   await steps.step('even-peers-marked', {
-    description: 'The first tap lays even diagonal stripes across its row, column, and box peers',
+    description: 'The first tap lays sparse even stripes across its row, column, and box peers',
     verifications: [
       { spec: 'Exactly the 20 peers of r1c1 carry even stripes', check: async () => {
         await expect(striped('even')).toHaveCount(20);
@@ -62,8 +62,8 @@ test('Stripes alternates two peer overlays and reveals their intersections', asy
   const oddOrigin = 40;
   const sharedPeers = peers(evenOrigin).filter((candidate) => peers(oddOrigin).includes(candidate));
   await cell(oddOrigin).click();
-  await steps.step('shared-peers-crosshatched', {
-    description: 'The second tap adds odd stripes so shared peers become crosshatched',
+  await steps.step('shared-peers-densely-striped', {
+    description: 'The second tap interleaves odd stripes so shared peers become densely striped',
     verifications: [
       { spec: 'The latest odd source also marks exactly 20 peers', check: async () => await expect(striped('odd')).toHaveCount(20) },
       { spec: 'Only cells seen by both sources carry both stripe types', check: async () => {

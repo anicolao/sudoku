@@ -1,6 +1,6 @@
 # Find shared peers with alternating Stripes
 
-Stripes keeps the latest even and odd peer sets on the board. Cells reached by both taps are crosshatched, making shared y-wing and coloring targets visible without changing the saved puzzle.
+Stripes keeps the latest even and odd peer sets on the board. Each set uses sparse parallel lines of alternating parity, so cells reached by both taps become densely striped without changing the saved puzzle.
 
 ## The player opens the ephemeral Stripes input mode
 
@@ -12,9 +12,9 @@ Stripes keeps the latest even and odd peer sets on the board. Cells reached by b
 - [x] The number pad is replaced by stripe guidance
 - [x] Changing modes records no puzzle event
 
-## The first tap lays even diagonal stripes across its row, column, and box peers
+## The first tap lays sparse even stripes across its row, column, and box peers
 
-![The first tap lays even diagonal stripes across its row, column, and box peers](./screenshots/001-even-peers-marked-phone-macos.png)
+![The first tap lays sparse even stripes across its row, column, and box peers](./screenshots/001-even-peers-marked-phone-macos.png)
 
 **Verifications:**
 
@@ -22,9 +22,9 @@ Stripes keeps the latest even and odd peer sets on the board. Cells reached by b
 - [x] The tapped cell is identified as the even source but is not its own peer
 - [x] The next tap switches to odd stripes without saving an event
 
-## The second tap adds odd stripes so shared peers become crosshatched
+## The second tap interleaves odd stripes so shared peers become densely striped
 
-![The second tap adds odd stripes so shared peers become crosshatched](./screenshots/002-shared-peers-crosshatched-phone-macos.png)
+![The second tap interleaves odd stripes so shared peers become densely striped](./screenshots/002-shared-peers-densely-striped-phone-macos.png)
 
 **Verifications:**
 
