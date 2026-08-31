@@ -55,10 +55,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      const cache = await caches.open(cacheName);
+      try {
+        const response = await fetch(request);
+        if (response.ok) await cache.put(new Request(scopeUrl), response.clone());
+        return response;
+      } catch (error) {
+        const cached = await cache.match(new Request(scopeUrl));
+        if (cached) return cached;
+        throw error;
+      }
+    })());
+    return;
+  }
+
   event.respondWith(
     caches.open(cacheName).then((cache) => {
-      const cacheKey = request.mode === 'navigate' ? new Request(scopeUrl) : request;
-      return cache.match(cacheKey).then((cached) => cached ?? fetch(request));
+      return cache.match(request).then((cached) => cached ?? fetch(request));
     })
   );
 });
