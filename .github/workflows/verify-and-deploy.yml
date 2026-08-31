@@ -77,6 +77,17 @@ jobs:
         env:
           PUBLIC_BASE_PATH: ${{ steps.deployment.outputs.base }}
           VITE_GIT_HASH: ${{ steps.deployment.outputs.revision }}
+      - name: Verify embedded revision
+        shell: bash
+        env:
+          EXPECTED_REVISION: ${{ steps.deployment.outputs.revision }}
+        run: |
+          expected="${EXPECTED_REVISION:0:7}"
+          actual="$(node -p "JSON.parse(require('fs').readFileSync('build/version.json', 'utf8')).revision")"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Built revision $actual does not match expected revision $expected"
+            exit 1
+          fi
       - name: Verify deployment base paths
         run: npm run check:base
         env:
