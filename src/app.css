@@ -105,7 +105,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .paused-cover .pause-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #4654a3; background: #e1e4f7; font-size: 1.4rem; font-weight: 700; }
 .paused-cover strong { color: #20242b; font-size: 1.35rem; }
 .paused-cover small { font-size: .9rem; }
-.sudoku-board { width: min(100%, 600px); height: auto; aspect-ratio: 1; align-self: start; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); border: 3px solid #343840; background: #fff; }
+.sudoku-board { position: relative; width: min(100%, 600px); height: auto; aspect-ratio: 1; align-self: start; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); border: 3px solid #343840; background: #fff; }
 .sudoku-row { display: contents; }
 .sudoku-cell { position: relative; container-type: size; min-width: 0; padding: 0; display: grid; place-items: center; border: 0; border-right: 1px solid #c8c7c2; border-bottom: 1px solid #c8c7c2; border-radius: 0; color: #4654a3; background: #fff; font-size: clamp(1.25rem, 5vw, 2.15rem); font-variant-numeric: tabular-nums; cursor: pointer; }
 .sudoku-cell.given { color: #20242b; font-weight: 700; background: #fffdf8; }
@@ -130,10 +130,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .mistake-mark { position: absolute; top: 1px; right: 3px; color: #b42318; font-size: .8rem; font-weight: 700; }
 .hint-mark { position: absolute; left: 3px; bottom: 2px; color: #b7791f; font-size: .48rem; }
 .sudoku-cell.hinted { background: #fff8e8; }
-.sudoku-cell.stripe-even::before,
-.sudoku-cell.stripe-odd::after { content: ''; position: absolute; z-index: 1; inset: 0; background-position: calc(var(--stripe-column) * 12.5%) calc(var(--stripe-row) * 12.5%); background-repeat: no-repeat; background-size: 900% 900%; pointer-events: none; }
-.sudoku-cell.stripe-even::before { background-image: repeating-linear-gradient(135deg, rgb(70 84 163 / .55) 0 1px, transparent 1px 16px); }
-.sudoku-cell.stripe-odd::after { background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgb(183 121 31 / .55) 8px 9px, transparent 9px 16px); }
+.stripe-overlay { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .cell-value,
 .cell-notes { position: relative; z-index: 2; }
 .conflict-mark,
