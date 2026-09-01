@@ -30,6 +30,7 @@ Stripes keeps the latest even and odd peer sets on the board. Each set uses spar
 
 - [x] The latest odd source also marks exactly 20 peers
 - [x] Only cells seen by both sources carry both stripe types
+- [x] Both stripe types share one board-wide coordinate system
 - [x] Both source cells and stripe types are announced accessibly
 
 ## A third tap replaces only the older even set and keeps the odd set

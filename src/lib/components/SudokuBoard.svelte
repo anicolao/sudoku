@@ -149,7 +149,6 @@
         aria-selected={stripeMode ? undefined : selected === cell}
         aria-readonly={given !== '.'}
         tabindex={rovingCell === cell ? 0 : -1}
-        style={`--stripe-column: ${column}; --stripe-row: ${row}`}
         data-cell={cell}
         data-stripes={`${evenStripeCells.has(cell) ? 'even' : ''}${evenStripeCells.has(cell) && oddStripeCells.has(cell) ? ' ' : ''}${oddStripeCells.has(cell) ? 'odd' : ''}` || undefined}
         data-stripe-source={evenStripeOrigin === cell && oddStripeOrigin === cell ? 'even odd' : evenStripeOrigin === cell ? 'even' : oddStripeOrigin === cell ? 'odd' : undefined}
@@ -179,4 +178,24 @@
     {/each}
     </div>
   {/each}
+  <svg class="stripe-overlay" data-testid="stripe-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <pattern id="sudoku-even-stripes" width=".24" height=".24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="-.24" x2="0" y2=".48" stroke="#4654a3" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" />
+      </pattern>
+      <pattern id="sudoku-odd-stripes" width=".24" height=".24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1=".12" y1="-.24" x2=".12" y2=".48" stroke="#b7791f" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" />
+      </pattern>
+    </defs>
+    {#each Array(81) as _, cell}
+      {@const row = Math.floor(cell / 9)}
+      {@const column = cell % 9}
+      {#if evenStripeCells.has(cell)}
+        <rect x={column} y={row} width="1" height="1" fill="url(#sudoku-even-stripes)" data-stripe-cell={cell} data-stripe-kind="even" />
+      {/if}
+      {#if oddStripeCells.has(cell)}
+        <rect x={column} y={row} width="1" height="1" fill="url(#sudoku-odd-stripes)" data-stripe-cell={cell} data-stripe-kind="odd" />
+      {/if}
+    {/each}
+  </svg>
 </div>

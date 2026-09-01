@@ -71,6 +71,14 @@ test('Stripes alternates two peer overlays and reveals their intersections', asy
         await expect(overlap).toHaveCount(sharedPeers.length);
         expect(await overlap.evaluateAll((cells) => cells.map((item) => Number(item.getAttribute('data-cell'))).sort((a, b) => a - b))).toEqual(sharedPeers);
       } },
+      { spec: 'Both stripe types share one board-wide coordinate system', check: async () => {
+        const overlay = page.getByTestId('stripe-overlay');
+        await expect(overlay).toHaveCount(1);
+        await expect(overlay.locator('pattern')).toHaveCount(2);
+        await expect(overlay.locator('pattern').first()).toHaveAttribute('patternUnits', 'userSpaceOnUse');
+        await expect(overlay.locator('rect[data-stripe-kind="even"]')).toHaveCount(20);
+        await expect(overlay.locator('rect[data-stripe-kind="odd"]')).toHaveCount(20);
+      } },
       { spec: 'Both source cells and stripe types are announced accessibly', check: async () => {
         await expect(cell(evenOrigin)).toHaveAccessibleName(/even stripe source/);
         await expect(cell(oddOrigin)).toHaveAccessibleName(/odd stripe source/);
