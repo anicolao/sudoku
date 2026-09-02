@@ -7,6 +7,7 @@ export interface LogicalStep {
   cell?: number;
   value?: Digit;
   eliminated?: Array<{ cell: number; value: Digit }>;
+  relatedCells?: number[];
 }
 
 export interface LogicalResult {
@@ -99,7 +100,7 @@ function tryNakedSingle(state: SolverState): LogicalStep | null {
     const values = candidatesIn(state, cell);
     if (values.length !== 1) continue;
     place(state, cell, values[0]);
-    return { technique: 'naked-single', cell, value: values[0] };
+    return { technique: 'naked-single', cell, value: values[0], relatedCells: PEERS[cell] };
   }
   return null;
 }
@@ -111,7 +112,7 @@ function tryHiddenSingle(state: SolverState): LogicalStep | null {
       const cells = unit.filter((cell) => candidatesIn(state, cell).includes(digit));
       if (cells.length !== 1) continue;
       place(state, cells[0], digit);
-      return { technique: 'hidden-single', cell: cells[0], value: digit };
+      return { technique: 'hidden-single', cell: cells[0], value: digit, relatedCells: unit.filter((cell) => cell !== cells[0]) };
     }
   }
   return null;
@@ -132,7 +133,7 @@ function tryNakedSubset(state: SolverState, size: 2 | 3): LogicalStep | null {
           ? []
           : [...values].map((value) => ({ cell, value }))
       ));
-      if (removals.length) return { technique, eliminated: removals };
+      if (removals.length) return { technique, eliminated: removals, relatedCells: cells };
     }
   }
   return null;
@@ -153,7 +154,7 @@ function tryHiddenSubset(state: SolverState, size: 2 | 3): LogicalStep | null {
           .filter((value) => !values.includes(value))
           .map((value) => ({ cell, value }))
       ));
-      if (removals.length) return { technique, eliminated: removals };
+      if (removals.length) return { technique, eliminated: removals, relatedCells: [...cells] };
     }
   }
   return null;
@@ -174,7 +175,7 @@ function tryPointing(state: SolverState): LogicalStep | null {
         .filter((cell) => !box.includes(cell))
         .map((cell) => ({ cell, value: digit }))
       );
-      if (removals.length) return { technique: 'pointing-pair', eliminated: removals };
+      if (removals.length) return { technique: 'pointing-pair', eliminated: removals, relatedCells: cells };
     }
   }
   return null;
@@ -190,7 +191,7 @@ function tryBoxLineReduction(state: SolverState): LogicalStep | null {
         .filter((cell) => !line.includes(cell))
         .map((cell) => ({ cell, value: digit }))
       );
-      if (removals.length) return { technique: 'box-line-reduction', eliminated: removals };
+      if (removals.length) return { technique: 'box-line-reduction', eliminated: removals, relatedCells: cells };
     }
   }
   return null;
@@ -219,7 +220,12 @@ function tryFish(state: SolverState, size: 2 | 3): LogicalStep | null {
             orientation === 'row' ? rowOf(cell) : columnOf(cell)
           ))
         ));
-        if (removals.length) return { technique, eliminated: removals };
+        if (removals.length) {
+          const relatedCells = baseSet.flatMap((base) => base.covers.map((cover) =>
+            orientation === 'row' ? base.index * 9 + cover : cover * 9 + base.index
+          ));
+          return { technique, eliminated: removals, relatedCells };
+        }
       }
     }
   }
@@ -245,7 +251,7 @@ function tryYWing(state: SolverState): LogicalStep | null {
         .filter((cell) => PEERS[right].includes(cell) && cell !== pivot)
         .map((cell) => ({ cell, value: leftOuter }))
       );
-      if (removals.length) return { technique: 'y-wing', eliminated: removals };
+      if (removals.length) return { technique: 'y-wing', eliminated: removals, relatedCells: [pivot, left, right] };
     }
   }
   return null;
@@ -264,7 +270,7 @@ function tryUniqueRectangle(state: SolverState): LogicalStep | null {
         if (pairCells.some((values) => values[0] !== pair[0] || values[1] !== pair[1])) continue;
         if (!pair.every((value) => sets[extraIndex].includes(value)) || sets[extraIndex].length <= 2) continue;
         const removals = removeCandidates(state, pair.map((value) => ({ cell: cells[extraIndex], value })));
-        if (removals.length) return { technique: 'unique-rectangle', eliminated: removals };
+        if (removals.length) return { technique: 'unique-rectangle', eliminated: removals, relatedCells: cells };
       }
     }
   }
@@ -302,7 +308,7 @@ function trySimpleColors(state: SolverState): LogicalStep | null {
         const cells = [...colors].filter(([, value]) => value === color).map(([cell]) => cell);
         if (!cells.some((cell) => cells.some((peer) => peer !== cell && PEERS[cell].includes(peer)))) continue;
         const removals = removeCandidates(state, cells.map((cell) => ({ cell, value: digit })));
-        if (removals.length) return { technique: 'simple-colors', eliminated: removals };
+        if (removals.length) return { technique: 'simple-colors', eliminated: removals, relatedCells: [...colors.keys()] };
       }
       const colorZero = [...colors].filter(([, color]) => color === 0).map(([cell]) => cell);
       const colorOne = [...colors].filter(([, color]) => color === 1).map(([cell]) => cell);
@@ -312,7 +318,7 @@ function trySimpleColors(state: SolverState): LogicalStep | null {
           colorOne.some((peer) => PEERS[cell].includes(peer)))
         .map((cell) => ({ cell, value: digit }))
       );
-      if (removals.length) return { technique: 'simple-colors', eliminated: removals };
+      if (removals.length) return { technique: 'simple-colors', eliminated: removals, relatedCells: [...colors.keys()] };
     }
   }
   return null;
@@ -339,7 +345,7 @@ function tryForcingChain(state: SolverState): LogicalStep | null {
     const invalid = branches.filter((branch) => !branch.valid);
     if (invalid.length === 1) {
       const removals = removeCandidates(state, [{ cell: pivot, value: invalid[0].value }]);
-      if (removals.length) return { technique: 'single-digit-chain', eliminated: removals };
+      if (removals.length) return { technique: 'single-digit-chain', eliminated: removals, relatedCells: [pivot] };
     }
     if (invalid.length || branches.some((branch) => !branch.valid)) continue;
     for (let cell = 0; cell < 81; cell += 1) {
@@ -347,10 +353,49 @@ function tryForcingChain(state: SolverState): LogicalStep | null {
       const value = branches[0].state.grid[cell];
       if (!value || branches[1].state.grid[cell] !== value) continue;
       place(state, cell, value as Digit);
-      return { technique: 'xy-chain', cell, value: value as Digit };
+      return { technique: 'xy-chain', cell, value: value as Digit, relatedCells: [pivot] };
     }
   }
   return null;
+}
+
+function findLogicalStep(state: SolverState, maxDifficulty: PuzzleDifficulty): LogicalStep | null {
+  const allowed = (technique: SolveTechnique): boolean =>
+    DIFFICULTY_RANK[TECHNIQUE_DIFFICULTY[technique]] <= DIFFICULTY_RANK[maxDifficulty];
+  const finders: Array<[SolveTechnique, () => LogicalStep | null]> = [
+    ['naked-single', () => tryNakedSingle(state)],
+    ['hidden-single', () => tryHiddenSingle(state)],
+    ['naked-pair', () => tryNakedSubset(state, 2)],
+    ['hidden-pair', () => tryHiddenSubset(state, 2)],
+    ['pointing-pair', () => tryPointing(state)],
+    ['box-line-reduction', () => tryBoxLineReduction(state)],
+    ['naked-triple', () => tryNakedSubset(state, 3)],
+    ['hidden-triple', () => tryHiddenSubset(state, 3)],
+    ['x-wing', () => tryFish(state, 2)],
+    ['swordfish', () => tryFish(state, 3)],
+    ['y-wing', () => tryYWing(state)],
+    ['unique-rectangle', () => tryUniqueRectangle(state)],
+    ['simple-colors', () => trySimpleColors(state)],
+    ['single-digit-chain', () => tryForcingChain(state)]
+  ];
+  for (const [technique, find] of finders) {
+    if (!allowed(technique)) continue;
+    const step = find();
+    if (step) return step;
+  }
+  return null;
+}
+
+export function nextLogicalStep(
+  givens: string,
+  options: LogicalSolveOptions = {}
+): LogicalStep | null {
+  const state: SolverState = {
+    grid: parseGrid(givens),
+    eliminated: Array.from({ length: 81 }, () => new Set<Digit>())
+  };
+  if (hasContradiction(state) || !state.grid.includes(0)) return null;
+  return findLogicalStep(state, options.maxDifficulty ?? 'master');
 }
 
 function difficultyFromSteps(steps: readonly LogicalStep[]): PuzzleDifficulty {
@@ -375,36 +420,13 @@ export function solveLogically(
   const steps: LogicalStep[] = [];
   const maxDifficulty = options.maxDifficulty ?? 'master';
   let hardest: SolveTechnique = 'naked-single';
-  const allowed = (technique: SolveTechnique): boolean =>
-    DIFFICULTY_RANK[TECHNIQUE_DIFFICULTY[technique]] <= DIFFICULTY_RANK[maxDifficulty];
   const record = (step: LogicalStep): void => {
     steps.push(step);
     if (TECHNIQUE_RANK[step.technique] > TECHNIQUE_RANK[hardest]) hardest = step.technique;
   };
 
   while (state.grid.includes(0) && !hasContradiction(state)) {
-    const finders: Array<[SolveTechnique, () => LogicalStep | null]> = [
-      ['naked-single', () => tryNakedSingle(state)],
-      ['hidden-single', () => tryHiddenSingle(state)],
-      ['naked-pair', () => tryNakedSubset(state, 2)],
-      ['hidden-pair', () => tryHiddenSubset(state, 2)],
-      ['pointing-pair', () => tryPointing(state)],
-      ['box-line-reduction', () => tryBoxLineReduction(state)],
-      ['naked-triple', () => tryNakedSubset(state, 3)],
-      ['hidden-triple', () => tryHiddenSubset(state, 3)],
-      ['x-wing', () => tryFish(state, 2)],
-      ['swordfish', () => tryFish(state, 3)],
-      ['y-wing', () => tryYWing(state)],
-      ['unique-rectangle', () => tryUniqueRectangle(state)],
-      ['simple-colors', () => trySimpleColors(state)],
-      ['single-digit-chain', () => tryForcingChain(state)]
-    ];
-    let step: LogicalStep | null = null;
-    for (const [technique, find] of finders) {
-      if (!allowed(technique)) continue;
-      step = find();
-      if (step) break;
-    }
+    const step = findLogicalStep(state, maxDifficulty);
     if (!step) break;
     record(step);
   }
