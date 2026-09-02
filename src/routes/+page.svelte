@@ -9,6 +9,7 @@
   import { emptyProjection } from '$lib/domain/reducer';
   import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
+  import { buildSolveWalkthrough } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
@@ -31,7 +32,7 @@
   type GenerationStatus = 'idle' | 'generating' | 'failed';
   type InputMode = 'number' | 'notes' | 'stripes';
   type StripeType = 'even' | 'odd';
-  type View = 'play' | 'puzzles' | 'history' | 'settings';
+  type View = 'play' | 'puzzles' | 'history' | 'walkthrough' | 'settings';
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingKind = 'puzzle' | 'transfer';
   type ShareStage = 'choose' | 'ready';
@@ -58,6 +59,8 @@
   let hintDialogOpen = $state(false);
   let clearDialogOpen = $state(false);
   let historyPage = $state(0);
+  let walkthroughGameId = $state<string | null>(null);
+  let walkthroughIndex = $state(0);
   let storageWarning = $state('');
   let tabGameId = $state<string | null>(null);
   let eventChannel: BroadcastChannel | null = null;
@@ -94,6 +97,10 @@
     void projection;
     return store ? store.getDocument().events : [];
   });
+  const walkthrough = $derived(
+    walkthroughGameId ? buildSolveWalkthrough(events, walkthroughGameId) : null
+  );
+  const walkthroughStep = $derived(walkthrough?.steps[walkthroughIndex]);
   const undoMove = $derived(
     currentGame?.undoTargetId
       ? events.find((event) => event.id === currentGame.undoTargetId) as ReversibleEvent | undefined
@@ -634,10 +641,36 @@
     view = 'play';
   }
 
+  function openWalkthrough(gameId: string): void {
+    walkthroughGameId = gameId;
+    walkthroughIndex = 0;
+    reviewedGameId = null;
+    view = 'walkthrough';
+    announcement = 'Solve walkthrough opened at the starting position';
+  }
+
+  function moveWalkthrough(offset: number): void {
+    if (!walkthrough) return;
+    walkthroughIndex = Math.max(0, Math.min(walkthrough.steps.length - 1, walkthroughIndex + offset));
+    const step = walkthrough.steps[walkthroughIndex];
+    if (step) announcement = `Walkthrough step ${walkthroughIndex + 1} of ${walkthrough.steps.length}: ${step.ruleLabel}`;
+  }
+
+  function closeWalkthrough(): void {
+    walkthroughGameId = null;
+    walkthroughIndex = 0;
+    view = 'history';
+    announcement = 'Returned to History';
+  }
+
   function showView(next: View): void {
     view = next;
     if (next === 'history') historyPage = 0;
     if (next !== 'play') reviewedGameId = null;
+    if (next !== 'walkthrough') {
+      walkthroughGameId = null;
+      walkthroughIndex = 0;
+    }
   }
 
   async function changeSetting(key: keyof GameSettings): Promise<void> {
@@ -678,7 +711,7 @@
 
 <svelte:head><title>Sudoku — Local puzzle play</title></svelte:head>
 
-<div class="app-shell" class:playing={currentGame} data-e2e-layout data-app-ready={persistenceStatus !== 'checking'} data-persistence-status={persistenceStatus}>
+<div class="app-shell" class:playing={currentGame || view === 'walkthrough'} data-e2e-layout data-app-ready={persistenceStatus !== 'checking'} data-persistence-status={persistenceStatus}>
   <header class="shell-header">
     <a class="brand" href="./" aria-label="Sudoku home">
       <span class="brand-mark" aria-hidden="true">{#each Array(9) as _}<i></i>{/each}</span>
@@ -748,7 +781,7 @@
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button></div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
               </article>
             {/each}
           </div>
@@ -760,6 +793,53 @@
             </nav>
           {/if}
         {/if}
+      </section>
+    {:else if view === 'walkthrough' && walkthrough && walkthroughStep}
+      <section class="walkthrough-view" aria-labelledby="walkthrough-title">
+        <div class="walkthrough-heading">
+          <div><p class="eyebrow">Solve walkthrough</p><h1 id="walkthrough-title">Learn from this solve</h1></div>
+          <button type="button" onclick={closeWalkthrough}>Back to History</button>
+        </div>
+        <div class="walkthrough-workspace">
+          <div class="walkthrough-board">
+            <SudokuBoard
+              game={walkthroughStep.game}
+              selected={null}
+              highlightAllNumberPeers={false}
+              highlightMatchingNotes={walkthroughStep.game.settings.highlightMatchingNotes !== false}
+              notesBold={walkthroughStep.game.settings.notesBold !== false}
+              notesLarge={walkthroughStep.game.settings.notesLarge !== false}
+              stripeMode={false}
+              evenStripeOrigin={null}
+              oddStripeOrigin={null}
+              walkthroughTarget={walkthroughStep.targetCell}
+              walkthroughContext={walkthroughStep.contextCells}
+              interactive={false}
+              onselect={() => {}}
+              onfocuscell={() => {}}
+              onnumber={() => {}}
+              ontoggleNotes={() => {}}
+              onerase={() => {}}
+              onundo={() => {}}
+              onredo={() => {}}
+            />
+            <div class="walkthrough-legend" aria-label="Walkthrough highlights"><span><i class="target"></i>Move</span><span><i class="context"></i>Supporting cells</span></div>
+          </div>
+          <aside class="walkthrough-panel" aria-live="polite">
+            <div class="walkthrough-progress" role="progressbar" aria-label="Walkthrough progress" aria-valuemin="1" aria-valuemax={walkthrough.steps.length} aria-valuenow={walkthroughIndex + 1}>
+              <span style={`width: ${((walkthroughIndex + 1) / walkthrough.steps.length) * 100}%`}></span>
+            </div>
+            <p class="walkthrough-count">Step {walkthroughIndex + 1} of {walkthrough.steps.length} · {formatElapsed(walkthroughStep.elapsedMs)}</p>
+            <p class={`walkthrough-rule rule-${walkthroughStep.rule}`}>{walkthroughStep.ruleLabel}</p>
+            <h2>{walkthroughStep.action}</h2>
+            <p class="walkthrough-explanation">{walkthroughStep.explanation}</p>
+            <p class="walkthrough-note">Technique names are inferred only when the board before the move proves them. Other actions remain factual rather than guessing the solver's intent.</p>
+            <div class="walkthrough-actions">
+              <button type="button" onclick={() => moveWalkthrough(-1)} disabled={walkthroughIndex === 0}>Previous</button>
+              <button type="button" class="next" onclick={() => moveWalkthrough(1)} disabled={walkthroughIndex === walkthrough.steps.length - 1}>Next step</button>
+            </div>
+          </aside>
+        </div>
       </section>
     {:else if view === 'puzzles'}
       <section class="library-view" aria-labelledby="puzzles-title">
@@ -899,6 +979,6 @@
   {/if}
 
   <p class="sr-live" aria-live="polite">{announcement}</p>
-  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
+  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' || view === 'walkthrough' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
   <footer><span>Private by design</span></footer>
 </div>

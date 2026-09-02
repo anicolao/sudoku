@@ -13,6 +13,9 @@
     stripeMode,
     evenStripeOrigin,
     oddStripeOrigin,
+    walkthroughTarget = null,
+    walkthroughContext = [],
+    interactive = true,
     onselect,
     onfocuscell,
     onnumber,
@@ -30,6 +33,9 @@
     stripeMode: boolean;
     evenStripeOrigin: number | null;
     oddStripeOrigin: number | null;
+    walkthroughTarget?: number | null;
+    walkthroughContext?: number[];
+    interactive?: boolean;
     onselect: (cell: number) => void;
     onfocuscell: (cell: number) => void;
     onnumber: (cell: number, value: Digit) => void;
@@ -75,6 +81,8 @@
       oddStripeCells.has(cell) ? 'odd stripe' : '',
       evenStripeOrigin === cell ? 'even stripe source' : '',
       oddStripeOrigin === cell ? 'odd stripe source' : '',
+      walkthroughTarget === cell ? 'walkthrough target' : '',
+      walkthroughContext.includes(cell) ? 'walkthrough context' : '',
       !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
   }
@@ -140,6 +148,8 @@
         class:hinted={game.hintedCells.includes(cell)}
         class:stripe-even={evenStripeCells.has(cell)}
         class:stripe-odd={oddStripeCells.has(cell)}
+        class:walkthrough-target={walkthroughTarget === cell}
+        class:walkthrough-context={walkthroughContext.includes(cell)}
         class:box-right={column === 2 || column === 5}
         class:box-bottom={row === 2 || row === 5}
         class:last-column={column === 8}
@@ -147,15 +157,16 @@
         role="gridcell"
         aria-label={label(cell)}
         aria-selected={stripeMode ? undefined : selected === cell}
-        aria-readonly={given !== '.'}
-        tabindex={rovingCell === cell ? 0 : -1}
+        aria-readonly={!interactive || given !== '.'}
+        disabled={!interactive}
+        tabindex={interactive && rovingCell === cell ? 0 : -1}
         data-cell={cell}
         data-stripes={`${evenStripeCells.has(cell) ? 'even' : ''}${evenStripeCells.has(cell) && oddStripeCells.has(cell) ? ' ' : ''}${oddStripeCells.has(cell) ? 'odd' : ''}` || undefined}
         data-stripe-source={evenStripeOrigin === cell && oddStripeOrigin === cell ? 'even odd' : evenStripeOrigin === cell ? 'even' : oddStripeOrigin === cell ? 'odd' : undefined}
         data-highlight={isNumberMatch ? 'number-match' : isNumberPeer ? 'number-peer' : matches ? 'matching' : isPeer ? 'peer' : undefined}
         data-e2e-board-cell
-        onclick={() => onselect(cell)}
-        onkeydown={(event) => handleKeydown(event, cell)}
+        onclick={() => { if (interactive) onselect(cell); }}
+        onkeydown={(event) => { if (interactive) handleKeydown(event, cell); }}
       >
         {#if evenStripeOrigin === cell}<span class="stripe-source-mark even" aria-hidden="true">E</span>{/if}
         {#if oddStripeOrigin === cell}<span class="stripe-source-mark odd" aria-hidden="true">O</span>{/if}
