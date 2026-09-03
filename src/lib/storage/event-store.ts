@@ -4,6 +4,7 @@ import type {
   Digit,
   GameSettings,
   ImportedCheckpoint,
+  ImportedPuzzleWorkAction,
   PuzzleDefinition,
   StoredEventDocumentV1,
   SudokuEvent
@@ -150,7 +151,8 @@ export class EventStore {
     transferId: string | null,
     checkpoint: ImportedCheckpoint | null,
     metadata: EventMetadata,
-    importedSettings: GameSettings = this.projection.settings
+    importedSettings: GameSettings = this.projection.settings,
+    work: readonly ImportedPuzzleWorkAction[] = []
   ): AppProjection {
     if (transferId && this.findImportedGame(transferId)) return this.getProjection();
     const storedPuzzle: PuzzleDefinition = {
@@ -179,7 +181,10 @@ export class EventStore {
             hints: checkpoint.hints,
             mistakes: checkpoint.mistakes,
             paused: true
-          } : null
+          } : null,
+          ...(work.length ? { work: work.map((action) => action.type === 'value'
+            ? { ...action }
+            : { ...action, values: [...action.values] }) } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: checkpoint?.elapsedMs ?? 0,

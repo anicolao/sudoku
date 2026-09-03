@@ -5,6 +5,7 @@ import type {
   GameProjection,
   GameSettings,
   ImportedCheckpoint,
+  ImportedPuzzleWorkAction,
   PuzzleDefinition,
   GameImportedEvent,
   ReversibleEvent,
@@ -102,10 +103,51 @@ function validImportedCheckpoint(
 function validImportOrigin(event: GameImportedEvent): boolean {
   if (event.payload.importKind === 'puzzle-link') {
     return event.payload.transferId === null && event.payload.checkpoint === null &&
-      event.payload.puzzle.provenance?.kind === 'puzzle-link';
+      event.payload.puzzle.provenance?.kind === 'puzzle-link' &&
+      (event.payload.puzzle.provenance.formatVersion === 1
+        ? event.payload.work === undefined
+        : Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
+          validImportedWork(event.payload.puzzle, event.payload.work));
   }
   return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
-    event.payload.puzzle.provenance?.kind === 'progress-transfer';
+    event.payload.work === undefined && event.payload.puzzle.provenance?.kind === 'progress-transfer';
+}
+
+function validImportedWork(
+  puzzle: PuzzleDefinition,
+  work: readonly ImportedPuzzleWorkAction[]
+): boolean {
+  if (work.length > 512) return false;
+  const values = Array<Digit | null>(81).fill(null);
+  for (const action of work) {
+    if (!action || typeof action !== 'object' || !Number.isInteger(action.cell) ||
+      action.cell < 0 || action.cell >= 81 || puzzle.givens[action.cell] !== '.') return false;
+    if (action.type === 'value') {
+      if (Object.keys(action).some((key) => !['type', 'cell', 'value'].includes(key)) ||
+        !Number.isInteger(action.value) || action.value < 1 || action.value > 9) return false;
+      values[action.cell] = action.value;
+      continue;
+    }
+    if (action.type !== 'notes' || Object.keys(action).some((key) => !['type', 'cell', 'values', 'enabled'].includes(key)) ||
+      typeof action.enabled !== 'boolean' || !Array.isArray(action.values) || action.values.length === 0 ||
+      new Set(action.values).size !== action.values.length ||
+      action.values.some((value) => !Number.isInteger(value) || value < 1 || value > 9) ||
+      values[action.cell] !== null) return false;
+  }
+  return true;
+}
+
+function applyImportedWork(game: GameProjection, work: readonly ImportedPuzzleWorkAction[]): void {
+  for (const action of work) {
+    if (action.type === 'value') {
+      game.values[action.cell] = action.value;
+      game.notes[action.cell] = [];
+      continue;
+    }
+    const notes = new Set(game.notes[action.cell]);
+    action.values.forEach((value) => action.enabled ? notes.add(value) : notes.delete(value));
+    game.notes[action.cell] = [...notes].sort();
+  }
 }
 
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
@@ -232,6 +274,9 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       activeStacks.set(event.gameId, []);
       redoStacks.set(event.gameId, []);
       const importedGame = state.games[event.gameId];
+      if (event.type === 'game/imported' && event.payload.work) {
+        applyImportedWork(importedGame, event.payload.work);
+      }
       const importedBoard = [...importedGame.puzzle.givens].map((given, cell) =>
         given === '.' ? importedGame.values[cell] : Number(given)
       ).join('');

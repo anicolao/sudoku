@@ -2,8 +2,8 @@
 
 import { SharedPuzzleError, validateSharedPuzzle } from './puzzle-link';
 
-self.addEventListener('message', (event: MessageEvent<{ givens: string }>) => {
-  void validateSharedPuzzle(event.data.givens).then(
+self.addEventListener('message', (event: MessageEvent<{ payload: string }>) => {
+  void validateSharedPuzzle(event.data.payload).then(
     (result) => self.postMessage({ ok: true, result }),
     (error: unknown) => self.postMessage({
       ok: false,

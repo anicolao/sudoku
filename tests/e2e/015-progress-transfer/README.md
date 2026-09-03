@@ -56,7 +56,7 @@ Every player action is shown below. The source pauses, renders its QR locally, a
 
 **Verifications:**
 
-- [x] Puzzle-only and progress transfer are distinct choices
+- [x] Clean puzzle, readable work, and exact progress are distinct choices
 
 ## The player first prepares a clean puzzle link
 
