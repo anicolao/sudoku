@@ -22,7 +22,11 @@
     loadIndexedDbEventStore,
     type CommitResult
   } from '$lib/storage/indexeddb-event-store';
-  import { puzzleUrl, type SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
+  import {
+    puzzleUrl,
+    puzzleWorkFromGame,
+    type SharedPuzzleValidation
+  } from '$lib/sharing/puzzle-link';
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
   import {
     checkpointFromGame,
@@ -40,6 +44,7 @@
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingKind = 'puzzle' | 'transfer';
   type ShareStage = 'choose' | 'ready';
+  type ShareKind = 'puzzle' | 'work' | 'transfer';
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -86,7 +91,7 @@
   let shareLink = $state('');
   let shareQr = $state('');
   let shareError = $state('');
-  let shareIsProgress = $state(false);
+  let shareKind = $state<ShareKind>('puzzle');
   let shareCopied = $state(false);
   let systemShareAvailable = $state(false);
   let timerNow = $state(
@@ -344,7 +349,9 @@
         'puzzle-link',
         null,
         null,
-        metadata(false)
+        metadata(false),
+        projection.settings,
+        incomingPuzzle.work
       );
     } else return;
     if (!applyCommit(result, incomingTransfer ? 'Transferred puzzle continued on this device' : 'Shared puzzle opened on this device')) return;
@@ -372,9 +379,9 @@
     return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
   }
 
-  async function showShareLink(link: string, progress: boolean): Promise<void> {
+  async function showShareLink(link: string, kind: ShareKind): Promise<void> {
     shareLink = link;
-    shareIsProgress = progress;
+    shareKind = kind;
     shareCopied = false;
     shareError = '';
     try {
@@ -387,7 +394,16 @@
 
   async function sharePuzzleOnly(): Promise<void> {
     if (!shareGame) return;
-    await showShareLink(puzzleUrl(window.location.href, shareGame.puzzle.givens), false);
+    await showShareLink(puzzleUrl(window.location.href, shareGame.puzzle.givens), 'puzzle');
+  }
+
+  async function sharePuzzleWork(): Promise<void> {
+    if (!shareGame) return;
+    await showShareLink(
+      puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(shareGame)),
+      'work'
+    );
+    announcement = 'Puzzle work link ready';
   }
 
   async function prepareProgressTransfer(): Promise<void> {
@@ -400,7 +416,7 @@
       selectedCell = null;
     }
     const record = { ...checkpointFromGame(snapshotGame), transferId: newTransferId() };
-    await showShareLink(transferUrl(window.location.href, encodeTransfer(record)), true);
+    await showShareLink(transferUrl(window.location.href, encodeTransfer(record)), 'transfer');
     announcement = snapshotGame.status === 'active'
       ? 'Progress transfer ready. The source puzzle remains paused.'
       : 'Saved progress transfer ready.';
@@ -798,12 +814,12 @@
           {/if}
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
-          <dl class="incoming-facts"><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div><div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <dl class="incoming-facts" class:transfer-facts={incomingPuzzle.work.length > 0}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open shared puzzle</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>Start this puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingPuzzle.work.length > 0 ? 'Open shared work' : 'Start this puzzle'}</button></div>
           {/if}
         {/if}
       </section>
@@ -1013,18 +1029,19 @@
     <div class="dialog-backdrop" role="presentation">
       <div class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-title" data-e2e-no-clip>
         {#if shareStage === 'choose'}
-          <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Start a clean copy, or carry this exact progress to another device.</p>
+          <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Choose what the link should carry to another device.</p>
           <div class="share-choices">
             <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
+            <button type="button" class="work" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes current values and notes in a readable link.</small></button>
             <button type="button" class="confirm" onclick={prepareProgressTransfer}><strong>Prepare progress transfer</strong><small>{shareGame?.status === 'active' ? 'Pauses and copies values, notes, and time.' : 'Copies the saved values, notes, and time.'}</small></button>
           </div>
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
         {:else}
-          <p class="eyebrow">{shareIsProgress ? 'Progress transfer' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
-          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareIsProgress ? (shareGame?.status === 'active' ? 'QR code for transferring this paused puzzle' : 'QR code for transferring this saved board') : 'QR code for opening this puzzle'} />
+          <p class="eyebrow">{shareKind === 'transfer' ? 'Progress transfer' : shareKind === 'work' ? 'Puzzle with work' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
+          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareKind === 'transfer' ? (shareGame?.status === 'active' ? 'QR code for transferring this paused puzzle' : 'QR code for transferring this saved board') : shareKind === 'work' ? 'QR code for opening this puzzle with its current work' : 'QR code for opening this puzzle'} />
           <p class="share-link-status" data-testid="share-link" data-link={shareLink}>Local link ready · {shareLink.length} characters</p>
-          {#if shareIsProgress}<p class="transfer-note">{shareGame?.status === 'active' ? 'This creates a copy on the other device. Your game stays paused here until you resume or abandon it.' : 'This creates a copy of the saved board on the other device. This attempt and its history stay on this device.'}</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
+          {#if shareKind === 'transfer'}<p class="transfer-note">{shareGame?.status === 'active' ? 'This creates a copy on the other device. Your game stays paused here until you resume or abandon it.' : 'This creates a copy of the saved board on the other device. This attempt and its history stay on this device.'}</p>{:else if shareKind === 'work'}<p class="transfer-note">The current values and candidates are readable in the link. Time, settings, hints, and mistakes are not included.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
         {/if}

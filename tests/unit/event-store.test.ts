@@ -75,6 +75,60 @@ describe('event store', () => {
     }]);
   });
 
+  it('opens shared placements and candidates from the same import origin event', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('shared-work-origin').puzzle;
+    const puzzle = {
+      ...generated,
+      id: 'shared-fedcba987654',
+      seed: undefined,
+      generatorVersion: undefined,
+      validatorVersion: 3 as const,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 2 as const, fingerprint: 'fedcba987654' }
+    };
+    const editable = [...puzzle.givens]
+      .map((given, cell) => given === '.' ? cell : -1)
+      .filter((cell) => cell >= 0);
+    const work = [
+      { type: 'value' as const, cell: editable[0], value: Number(puzzle.solution[editable[0]]) as Digit },
+      { type: 'notes' as const, cell: editable[1], values: [1, 4, 9] as Digit[], enabled: true }
+    ];
+    const store = new EventStore(storage);
+    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-work-1'
+    }, store.getProjection().settings, work);
+    const game = projection.games[projection.activeGameId ?? ''];
+
+    expect(game.values[editable[0]]).toBe(work[0].value);
+    expect(game.notes[editable[1]]).toEqual([1, 4, 9]);
+    expect(game.paused).toBe(false);
+    expect(game.undoTargetId).toBeNull();
+    expect(store.getDocument().events).toMatchObject([{
+      type: 'game/imported',
+      payload: { importKind: 'puzzle-link', checkpoint: null, work }
+    }]);
+  });
+
+  it('derives completion when shared puzzle work fills every editable cell', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('complete-shared-work').puzzle;
+    const puzzle = {
+      ...generated,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 2 as const, fingerprint: 'work-complete' }
+    };
+    const work = [...puzzle.givens].flatMap((given, cell) => given === '.'
+      ? [{ type: 'value' as const, cell, value: Number(puzzle.solution[cell]) as Digit }]
+      : []);
+    const store = new EventStore(storage);
+    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'complete-work-import'
+    }, store.getProjection().settings, work);
+
+    expect(projection.games[projection.activeGameId ?? '']).toMatchObject({
+      status: 'complete', paused: true, completedAt: '2026-08-16T12:00:00.000Z'
+    });
+  });
+
   it('imports a paused checkpoint with transferred settings exactly once', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('transfer-origin').puzzle;

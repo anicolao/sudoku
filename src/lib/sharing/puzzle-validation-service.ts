@@ -1,7 +1,7 @@
 import type { SharedPuzzleValidation } from './puzzle-link';
 
 export function validateSharedPuzzleInWorker(
-  givens: string,
+  payload: string,
   options: { signal?: AbortSignal; timeoutMs?: number } = {}
 ): Promise<SharedPuzzleValidation> {
   return new Promise((resolve, reject) => {
@@ -27,6 +27,6 @@ export function validateSharedPuzzleInWorker(
     worker.addEventListener('error', () => finish(() =>
       reject(new Error('This puzzle could not be checked safely.'))
     ));
-    worker.postMessage({ givens });
+    worker.postMessage({ payload });
   });
 }

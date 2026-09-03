@@ -105,14 +105,16 @@ vocabulary, persistence rules, worker boundaries, and compatibility promises.
 
 ## Sharing and privacy
 
-A puzzle-only URL uses `?p=` followed by 81 literal givens. A progress transfer
-uses a versioned, checksummed `#t=` fragment containing the selected attempt's
-current values, notes, elapsed time, hints, mistakes, and core settings. It does
-not contain the solution, source event log, device identity, or other History
+A puzzle URL uses `?p=` followed by 81 literal givens and can optionally append
+readable placement and candidate actions. An exact progress transfer uses a
+versioned, checksummed `#t=` fragment containing the selected attempt's current
+values, notes, elapsed time, hints, mistakes, and core settings. Neither form
+contains the solution, source event log, device identity, or other History
 entries.
 
-Both forms are bearer data: anyone with the link can open a copy. The fragment
-form is not sent in HTTP requests, and all parsing, uniqueness checking,
+Both forms are bearer data: anyone with the link can open a copy. Readable
+puzzle work is part of the query; the exact-transfer fragment is not sent in
+HTTP requests. All parsing, uniqueness checking,
 solution derivation, rating, QR generation, and import validation occur locally.
 See [PUZZLE_SHARING.md](PUZZLE_SHARING.md) for the exact contract.
 

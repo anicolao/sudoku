@@ -75,9 +75,10 @@ test('a QR code carries a paused checkpoint to an independent device exactly onc
   await page.getByRole('button', { name: 'Share' }).click();
   await steps.step('share-opened', {
     description: 'The player opens the local sharing choices',
-    verifications: [{ spec: 'Puzzle-only and progress transfer are distinct choices', check: async () => {
+    verifications: [{ spec: 'Clean puzzle, readable work, and exact progress are distinct choices', check: async () => {
       const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
       await expect(dialog.getByRole('button', { name: /Share puzzle only/ })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /Share puzzle with work/ })).toBeVisible();
       await expect(dialog.getByRole('button', { name: /Prepare progress transfer/ })).toBeVisible();
     } }]
   });

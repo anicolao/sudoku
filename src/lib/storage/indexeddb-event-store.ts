@@ -4,6 +4,7 @@ import type {
   Digit,
   GameSettings,
   ImportedCheckpoint,
+  ImportedPuzzleWorkAction,
   PuzzleDefinition,
   StoredEventDocumentV1,
   SudokuEvent
@@ -254,7 +255,8 @@ export class IndexedDbEventStore {
     transferId: string | null,
     checkpoint: ImportedCheckpoint | null,
     metadata: EventMetadata,
-    importedSettings: GameSettings = this.projection.settings
+    importedSettings: GameSettings = this.projection.settings,
+    work: readonly ImportedPuzzleWorkAction[] = []
   ): Promise<CommitResult> {
     if (transferId && this.findImportedGame(transferId)) {
       return Promise.resolve({ committed: false, gameId: this.findImportedGame(transferId), projection: this.getProjection() });
@@ -271,7 +273,10 @@ export class IndexedDbEventStore {
             values: [...checkpoint.values], notes: checkpoint.notes.map((notes) => [...notes]),
             hintedCells: [...checkpoint.hintedCells], elapsedMs: checkpoint.elapsedMs,
             hints: checkpoint.hints, mistakes: checkpoint.mistakes, paused: true
-          } : null
+          } : null,
+          ...(work.length ? { work: work.map((action) => action.type === 'value'
+            ? { ...action }
+            : { ...action, values: [...action.values] }) } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(), elapsedMs: checkpoint?.elapsedMs ?? 0,
         schemaVersion: 1, reducerVersion: 1
