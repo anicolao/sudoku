@@ -257,6 +257,54 @@ function tryYWing(state: SolverState): LogicalStep | null {
   return null;
 }
 
+function tryXYChain(state: SolverState): LogicalStep | null {
+  const bivalue = Array.from({ length: 81 }, (_, cell) => cell)
+    .filter((cell) => candidatesIn(state, cell).length === 2);
+  const bivalueSet = new Set(bivalue);
+
+  for (const start of bivalue) {
+    const startValues = candidatesIn(state, start);
+    for (const endpointValue of startValues) {
+      const firstLink = startValues.find((value) => value !== endpointValue);
+      if (!firstLink) continue;
+
+      const search = (
+        current: number,
+        linkValue: Digit,
+        path: number[]
+      ): LogicalStep | null => {
+        if (path.length >= 12) return null;
+        for (const next of PEERS[current]) {
+          if (!bivalueSet.has(next) || path.includes(next)) continue;
+          const values = candidatesIn(state, next);
+          if (!values.includes(linkValue)) continue;
+          const outgoing = values.find((value) => value !== linkValue);
+          if (!outgoing) continue;
+
+          const nextPath = [...path, next];
+          if (outgoing === endpointValue && nextPath.length >= 3) {
+            const removals = removeCandidates(state, PEERS[start]
+              .filter((cell) => PEERS[next].includes(cell) && !nextPath.includes(cell))
+              .map((cell) => ({ cell, value: endpointValue }))
+            );
+            if (removals.length) {
+              return { technique: 'xy-chain', eliminated: removals, relatedCells: nextPath };
+            }
+          }
+
+          const result = search(next, outgoing, nextPath);
+          if (result) return result;
+        }
+        return null;
+      };
+
+      const result = search(start, firstLink, [start]);
+      if (result) return result;
+    }
+  }
+  return null;
+}
+
 function tryUniqueRectangle(state: SolverState): LogicalStep | null {
   for (const [top, bottom] of combinations(Array.from({ length: 9 }, (_, index) => index), 2)) {
     for (const [left, right] of combinations(Array.from({ length: 9 }, (_, index) => index), 2)) {
@@ -319,6 +367,107 @@ function trySimpleColors(state: SolverState): LogicalStep | null {
         .map((cell) => ({ cell, value: digit }))
       );
       if (removals.length) return { technique: 'simple-colors', eliminated: removals, relatedCells: [...colors.keys()] };
+    }
+  }
+  return null;
+}
+
+interface ColoredCandidate {
+  cell: number;
+  value: Digit;
+}
+
+const candidateKey = ({ cell, value }: ColoredCandidate): string => `${cell}:${value}`;
+
+function tryMedusa(state: SolverState): LogicalStep | null {
+  const candidates = Array.from({ length: 81 }, (_, cell) =>
+    candidatesIn(state, cell).map((value) => ({ cell, value }))
+  ).flat();
+  const byKey = new Map(candidates.map((candidate) => [candidateKey(candidate), candidate]));
+  const graph = new Map<string, Set<string>>();
+  const connect = (left: ColoredCandidate, right: ColoredCandidate): void => {
+    const leftKey = candidateKey(left);
+    const rightKey = candidateKey(right);
+    if (!graph.has(leftKey)) graph.set(leftKey, new Set());
+    if (!graph.has(rightKey)) graph.set(rightKey, new Set());
+    graph.get(leftKey)?.add(rightKey);
+    graph.get(rightKey)?.add(leftKey);
+  };
+
+  for (let cell = 0; cell < 81; cell += 1) {
+    const values = candidatesIn(state, cell);
+    if (values.length === 2) {
+      connect({ cell, value: values[0] }, { cell, value: values[1] });
+    }
+  }
+  for (const unit of UNITS) {
+    for (const value of DIGITS) {
+      const cells = unit.filter((cell) => candidatesIn(state, cell).includes(value));
+      if (cells.length === 2) connect({ cell: cells[0], value }, { cell: cells[1], value });
+    }
+  }
+
+  const visited = new Set<string>();
+  for (const start of graph.keys()) {
+    if (visited.has(start)) continue;
+    const colors = new Map<string, 0 | 1>([[start, 0]]);
+    const queue = [start];
+    while (queue.length) {
+      const key = queue.shift() as string;
+      visited.add(key);
+      for (const peer of graph.get(key) ?? []) {
+        if (!colors.has(peer)) {
+          colors.set(peer, colors.get(key) === 0 ? 1 : 0);
+          queue.push(peer);
+        }
+      }
+    }
+    if (colors.size < 4) continue;
+
+    const colored = [...colors].map(([key, color]) => ({
+      candidate: byKey.get(key) as ColoredCandidate,
+      color
+    }));
+    const relatedCells = [...new Set(colored.map(({ candidate }) => candidate.cell))];
+
+    for (const color of [0, 1] as const) {
+      const sameColor = colored.filter((entry) => entry.color === color).map((entry) => entry.candidate);
+      const twiceInCell = sameColor.some((candidate, index) =>
+        sameColor.some((other, otherIndex) => otherIndex !== index && other.cell === candidate.cell)
+      );
+      const twiceInUnit = sameColor.some((candidate, index) =>
+        sameColor.some((other, otherIndex) => otherIndex !== index &&
+          other.value === candidate.value && PEERS[candidate.cell].includes(other.cell))
+      );
+      if (twiceInCell || twiceInUnit) {
+        const removals = removeCandidates(state, sameColor);
+        if (removals.length) return { technique: 'medusa', eliminated: removals, relatedCells };
+      }
+    }
+
+    for (let cell = 0; cell < 81; cell += 1) {
+      const inCell = colored.filter(({ candidate }) => candidate.cell === cell);
+      if (!inCell.some(({ color }) => color === 0) || !inCell.some(({ color }) => color === 1)) continue;
+      const coloredValues = new Set(inCell.map(({ candidate }) => candidate.value));
+      const removals = removeCandidates(state, candidatesIn(state, cell)
+        .filter((value) => !coloredValues.has(value))
+        .map((value) => ({ cell, value }))
+      );
+      if (removals.length) return { technique: 'medusa', eliminated: removals, relatedCells };
+    }
+
+    for (const candidate of candidates) {
+      if (colors.has(candidateKey(candidate))) continue;
+      const seenColors = new Set(colored
+        .filter(({ candidate: coloredCandidate }) =>
+          coloredCandidate.value === candidate.value &&
+          PEERS[candidate.cell].includes(coloredCandidate.cell)
+        )
+        .map(({ color }) => color)
+      );
+      if (seenColors.size !== 2) continue;
+      const removals = removeCandidates(state, [candidate]);
+      if (removals.length) return { technique: 'medusa', eliminated: removals, relatedCells };
     }
   }
   return null;
@@ -396,6 +545,78 @@ export function nextLogicalStep(
   };
   if (hasContradiction(state) || !state.grid.includes(0)) return null;
   return findLogicalStep(state, options.maxDifficulty ?? 'master');
+}
+
+const placementTechniqueStep = (
+  state: SolverState,
+  technique: SolveTechnique
+): LogicalStep | null => {
+  switch (technique) {
+    case 'naked-pair': return tryNakedSubset(state, 2);
+    case 'hidden-pair': return tryHiddenSubset(state, 2);
+    case 'pointing-pair': return tryPointing(state);
+    case 'y-wing': return tryYWing(state);
+    case 'x-wing': return tryFish(state, 2);
+    case 'swordfish': return tryFish(state, 3);
+    case 'naked-triple': return tryNakedSubset(state, 3);
+    case 'simple-colors': return trySimpleColors(state);
+    case 'xy-chain': return tryXYChain(state);
+    case 'unique-rectangle': return tryUniqueRectangle(state);
+    case 'medusa': return tryMedusa(state);
+    default: return null;
+  }
+};
+
+function directPlacementTechnique(
+  state: SolverState,
+  cell: number,
+  value: Digit
+): 'naked-single' | 'hidden-single' | null {
+  const candidates = candidatesIn(state, cell);
+  if (candidates.length === 1 && candidates[0] === value) return 'naked-single';
+  if (!candidates.includes(value)) return null;
+  const hidden = UNITS
+    .filter((unit) => unit.includes(cell))
+    .some((unit) => unit.filter((candidate) => candidatesIn(state, candidate).includes(value)).length === 1);
+  return hidden ? 'hidden-single' : null;
+}
+
+export function analyzeLogicalPlacement(
+  givens: string,
+  cell: number,
+  value: Digit,
+  techniqueOrder: readonly SolveTechnique[]
+): LogicalStep | null {
+  const base: SolverState = {
+    grid: parseGrid(givens),
+    eliminated: Array.from({ length: 81 }, () => new Set<Digit>())
+  };
+  if (cell < 0 || cell >= 81 || base.grid[cell] !== 0 || hasContradiction(base)) return null;
+
+  const direct = directPlacementTechnique(base, cell, value);
+  if (direct && techniqueOrder.includes(direct)) {
+    return { technique: direct, cell, value, relatedCells: PEERS[cell] };
+  }
+
+  for (const technique of techniqueOrder) {
+    if (technique === 'naked-single' || technique === 'hidden-single') continue;
+    const state = cloneState(base);
+    for (let iteration = 0; iteration < 512; iteration += 1) {
+      const step = placementTechniqueStep(state, technique);
+      if (!step || hasContradiction(state)) break;
+      const nowDirect = directPlacementTechnique(state, cell, value);
+      if (nowDirect) {
+        return {
+          technique,
+          cell,
+          value,
+          eliminated: step.eliminated,
+          relatedCells: step.relatedCells ?? []
+        };
+      }
+    }
+  }
+  return null;
 }
 
 function difficultyFromSteps(steps: readonly LogicalStep[]): PuzzleDifficulty {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
   import { checkForShellUpdate } from '$lib/shell-update';
@@ -9,7 +9,11 @@
   import { emptyProjection } from '$lib/domain/reducer';
   import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
-  import { buildSolveWalkthrough } from '$lib/domain/walkthrough';
+  import {
+    buildSolveWalkthroughAsync,
+    type SolveWalkthrough,
+    type WalkthroughBuildProgress
+  } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
@@ -36,6 +40,7 @@
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingKind = 'puzzle' | 'transfer';
   type ShareStage = 'choose' | 'ready';
+  type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -61,6 +66,11 @@
   let historyPage = $state(0);
   let walkthroughGameId = $state<string | null>(null);
   let walkthroughIndex = $state(0);
+  let walkthrough = $state<SolveWalkthrough | null>(null);
+  let walkthroughStatus = $state<WalkthroughStatus>('idle');
+  let walkthroughProgress = $state<WalkthroughBuildProgress>({ completed: 0, total: 0 });
+  let walkthroughError = $state('');
+  let walkthroughRequest = 0;
   let storageWarning = $state('');
   let tabGameId = $state<string | null>(null);
   let eventChannel: BroadcastChannel | null = null;
@@ -97,9 +107,6 @@
     void projection;
     return store ? store.getDocument().events : [];
   });
-  const walkthrough = $derived(
-    walkthroughGameId ? buildSolveWalkthrough(events, walkthroughGameId) : null
-  );
   const walkthroughStep = $derived(walkthrough?.steps[walkthroughIndex]);
   const undoMove = $derived(
     currentGame?.undoTargetId
@@ -641,24 +648,65 @@
     view = 'play';
   }
 
-  function openWalkthrough(gameId: string): void {
+  async function openWalkthrough(gameId: string): Promise<void> {
+    const request = ++walkthroughRequest;
+    const sourceEvents = [...events];
+    const loadingStartedAt = performance.now();
     walkthroughGameId = gameId;
     walkthroughIndex = 0;
+    walkthrough = null;
+    walkthroughStatus = 'loading';
+    walkthroughProgress = {
+      completed: 0,
+      total: sourceEvents.filter((event) =>
+        event.gameId === gameId && event.type === 'cell/value-entered'
+      ).length
+    };
+    walkthroughError = '';
     reviewedGameId = null;
     view = 'walkthrough';
-    announcement = 'Solve walkthrough opened at the starting position';
+    announcement = 'Analyzing recorded placements for the solve walkthrough';
+    await tick();
+    try {
+      const result = await buildSolveWalkthroughAsync(sourceEvents, gameId, {
+        onProgress: (progress) => {
+          if (request === walkthroughRequest) walkthroughProgress = progress;
+        },
+        yieldControl: () => new Promise((resolve) => requestAnimationFrame(() => resolve()))
+      });
+      const remainingDisplayTime = 250 - (performance.now() - loadingStartedAt);
+      if (remainingDisplayTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingDisplayTime));
+      }
+      if (request !== walkthroughRequest) return;
+      walkthrough = result;
+      walkthroughStatus = 'ready';
+      announcement = result.steps.length
+        ? `Walkthrough ready with ${result.steps.length} recorded placements`
+        : 'This attempt has no recorded placements to walk through';
+    } catch (error) {
+      if (request !== walkthroughRequest) return;
+      walkthroughStatus = 'failed';
+      walkthroughError = error instanceof Error ? error.message : 'The walkthrough could not be analyzed.';
+      announcement = 'Walkthrough analysis failed';
+    }
   }
 
   function moveWalkthrough(offset: number): void {
     if (!walkthrough) return;
     walkthroughIndex = Math.max(0, Math.min(walkthrough.steps.length - 1, walkthroughIndex + offset));
     const step = walkthrough.steps[walkthroughIndex];
-    if (step) announcement = `Walkthrough step ${walkthroughIndex + 1} of ${walkthrough.steps.length}: ${step.ruleLabel}`;
+    if (step) announcement = `Walkthrough placement ${walkthroughIndex + 1} of ${walkthrough.steps.length}: ${step.ruleLabel}`;
   }
 
   function closeWalkthrough(): void {
+    walkthroughRequest += 1;
     walkthroughGameId = null;
     walkthroughIndex = 0;
+    walkthrough = null;
+    walkthroughStatus = 'idle';
+    walkthroughProgress = { completed: 0, total: 0 };
+    walkthroughError = '';
     view = 'history';
     announcement = 'Returned to History';
   }
@@ -668,8 +716,13 @@
     if (next === 'history') historyPage = 0;
     if (next !== 'play') reviewedGameId = null;
     if (next !== 'walkthrough') {
+      walkthroughRequest += 1;
       walkthroughGameId = null;
       walkthroughIndex = 0;
+      walkthrough = null;
+      walkthroughStatus = 'idle';
+      walkthroughProgress = { completed: 0, total: 0 };
+      walkthroughError = '';
     }
   }
 
@@ -794,52 +847,69 @@
           {/if}
         {/if}
       </section>
-    {:else if view === 'walkthrough' && walkthrough && walkthroughStep}
+    {:else if view === 'walkthrough'}
       <section class="walkthrough-view" aria-labelledby="walkthrough-title">
         <div class="walkthrough-heading">
           <div><p class="eyebrow">Solve walkthrough</p><h1 id="walkthrough-title">Learn from this solve</h1></div>
           <button type="button" onclick={closeWalkthrough}>Back to History</button>
         </div>
-        <div class="walkthrough-workspace">
-          <div class="walkthrough-board">
-            <SudokuBoard
-              game={walkthroughStep.game}
-              selected={null}
-              highlightAllNumberPeers={false}
-              highlightMatchingNotes={walkthroughStep.game.settings.highlightMatchingNotes !== false}
-              notesBold={walkthroughStep.game.settings.notesBold !== false}
-              notesLarge={walkthroughStep.game.settings.notesLarge !== false}
-              stripeMode={false}
-              evenStripeOrigin={null}
-              oddStripeOrigin={null}
-              walkthroughTarget={walkthroughStep.targetCell}
-              walkthroughContext={walkthroughStep.contextCells}
-              interactive={false}
-              onselect={() => {}}
-              onfocuscell={() => {}}
-              onnumber={() => {}}
-              ontoggleNotes={() => {}}
-              onerase={() => {}}
-              onundo={() => {}}
-              onredo={() => {}}
-            />
-            <div class="walkthrough-legend" aria-label="Walkthrough highlights"><span><i class="target"></i>Move</span><span><i class="context"></i>Supporting cells</span></div>
+        {#if walkthroughStatus === 'loading'}
+          <div class="walkthrough-loading" role="status" aria-live="polite">
+            <p class="eyebrow">Analyzing solve</p>
+            <h2>Matching placements to book rules…</h2>
+            <div class="walkthrough-progress" role="progressbar" aria-label="Walkthrough analysis progress" aria-valuemin="0" aria-valuemax={walkthroughProgress.total} aria-valuenow={walkthroughProgress.completed}>
+              <span style={`width: ${walkthroughProgress.total ? (walkthroughProgress.completed / walkthroughProgress.total) * 100 : 0}%`}></span>
+            </div>
+            <p>{walkthroughProgress.total
+              ? `Checked ${walkthroughProgress.completed} of ${walkthroughProgress.total} placements`
+              : 'Looking for recorded placements…'}</p>
           </div>
-          <aside class="walkthrough-panel" aria-live="polite">
-            <div class="walkthrough-progress" role="progressbar" aria-label="Walkthrough progress" aria-valuemin="1" aria-valuemax={walkthrough.steps.length} aria-valuenow={walkthroughIndex + 1}>
-              <span style={`width: ${((walkthroughIndex + 1) / walkthrough.steps.length) * 100}%`}></span>
+        {:else if walkthroughStatus === 'ready' && walkthrough && walkthroughStep}
+          <div class="walkthrough-workspace">
+            <div class="walkthrough-board">
+              <SudokuBoard
+                game={walkthroughStep.game}
+                selected={null}
+                highlightAllNumberPeers={false}
+                highlightMatchingNotes={walkthroughStep.game.settings.highlightMatchingNotes !== false}
+                notesBold={walkthroughStep.game.settings.notesBold !== false}
+                notesLarge={walkthroughStep.game.settings.notesLarge !== false}
+                stripeMode={false}
+                evenStripeOrigin={null}
+                oddStripeOrigin={null}
+                walkthroughTarget={walkthroughStep.targetCell}
+                walkthroughContext={walkthroughStep.contextCells}
+                interactive={false}
+                onselect={() => {}}
+                onfocuscell={() => {}}
+                onnumber={() => {}}
+                ontoggleNotes={() => {}}
+                onerase={() => {}}
+                onundo={() => {}}
+                onredo={() => {}}
+              />
+              <div class="walkthrough-legend" aria-label="Walkthrough highlights"><span><i class="target"></i>Placement</span><span><i class="context"></i>Rule pattern</span></div>
             </div>
-            <p class="walkthrough-count">Step {walkthroughIndex + 1} of {walkthrough.steps.length} · {formatElapsed(walkthroughStep.elapsedMs)}</p>
-            <p class={`walkthrough-rule rule-${walkthroughStep.rule}`}>{walkthroughStep.ruleLabel}</p>
-            <h2>{walkthroughStep.action}</h2>
-            <p class="walkthrough-explanation">{walkthroughStep.explanation}</p>
-            <p class="walkthrough-note">Technique names are inferred only when the board before the move proves them. Other actions remain factual rather than guessing the solver's intent.</p>
-            <div class="walkthrough-actions">
-              <button type="button" onclick={() => moveWalkthrough(-1)} disabled={walkthroughIndex === 0}>Previous</button>
-              <button type="button" class="next" onclick={() => moveWalkthrough(1)} disabled={walkthroughIndex === walkthrough.steps.length - 1}>Next step</button>
-            </div>
-          </aside>
-        </div>
+            <aside class="walkthrough-panel" aria-live="polite">
+              <div class="walkthrough-progress" role="progressbar" aria-label="Walkthrough progress" aria-valuemin="1" aria-valuemax={walkthrough.steps.length} aria-valuenow={walkthroughIndex + 1}>
+                <span style={`width: ${((walkthroughIndex + 1) / walkthrough.steps.length) * 100}%`}></span>
+              </div>
+              <p class="walkthrough-count">Placement {walkthroughIndex + 1} of {walkthrough.steps.length} · {formatElapsed(walkthroughStep.elapsedMs)}</p>
+              <p class={`walkthrough-rule rule-${walkthroughStep.rule}`}>{walkthroughStep.ruleLabel}</p>
+              <h2>{walkthroughStep.action}</h2>
+              <p class="walkthrough-explanation">{walkthroughStep.explanation}</p>
+              <p class="walkthrough-note">Each placement is checked against the book rules in order. The first rule that proves the move is shown; otherwise it is marked Unknown rule.</p>
+              <div class="walkthrough-actions">
+                <button type="button" onclick={() => moveWalkthrough(-1)} disabled={walkthroughIndex === 0}>Previous placement</button>
+                <button type="button" class="next" onclick={() => moveWalkthrough(1)} disabled={walkthroughIndex === walkthrough.steps.length - 1}>Next placement</button>
+              </div>
+            </aside>
+          </div>
+        {:else if walkthroughStatus === 'failed'}
+          <div class="walkthrough-empty" role="alert"><h2>Walkthrough unavailable</h2><p>{walkthroughError}</p></div>
+        {:else}
+          <div class="walkthrough-empty"><h2>No placements to replay</h2><p>This attempt does not contain any recorded value placements.</p></div>
+        {/if}
       </section>
     {:else if view === 'puzzles'}
       <section class="library-view" aria-labelledby="puzzles-title">

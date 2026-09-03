@@ -4,8 +4,8 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 test('History turns a recorded solve into an instructional walkthrough', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
-    'Replay a solve as an instructional walkthrough',
-    'History can replay every recorded board action without changing it. Rules are named only when the board proves them, and the move plus its supporting cells are highlighted for another player.'
+    'Replay each placement with the simplest matching book rule',
+    'History analyzes a solve with visible progress, then jumps only between recorded placements. Each move names the first rule in the book order that proves it, or explicitly says Unknown rule.'
   );
 
   await page.goto('/');
@@ -84,16 +84,19 @@ test('History turns a recorded solve into an instructional walkthrough', async (
   });
 
   await page.getByRole('button', { name: 'Walkthrough' }).click();
-  await steps.step('transferred-starting-position', {
-    description: 'The walkthrough opens on the exact position where this recorded solve began',
+  const analysisProgress = page.getByRole('progressbar', { name: 'Walkthrough analysis progress' });
+  await expect(analysisProgress).toBeVisible();
+  await expect(analysisProgress).toHaveAttribute('aria-valuemax', '2');
+  await steps.step('first-recorded-placement', {
+    description: 'After visible analysis, the walkthrough opens directly on the first recorded placement',
     verifications: [
-      { spec: 'The instructional screen starts at step 1 of 3', check: async () => {
+      { spec: 'The instructional screen starts at placement 1 of 2', check: async () => {
         await expect(page.getByRole('heading', { name: 'Learn from this solve' })).toBeVisible();
-        await expect(page.getByText('Step 1 of 3 · 02:00')).toBeVisible();
-        await expect(page.getByText('Transferred position', { exact: true })).toBeVisible();
+        await expect(page.getByText('Placement 1 of 2 · 02:01')).toBeVisible();
+        await expect(page.locator('.walkthrough-rule')).toHaveText(/^(Full House|Naked Single|Hidden Single)$/);
       } },
-      { spec: 'The transferred checkpoint has exactly the two unsolved cells it recorded', check: async () => {
-        await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(2);
+      { spec: 'The first entered value is already present and only the final cell remains empty', check: async () => {
+        await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(1);
         await expect(page.getByRole('gridcell')).toHaveCount(81);
       } },
       { spec: 'The replay board is read-only and the event stream is unchanged', check: async () => {
@@ -103,14 +106,13 @@ test('History turns a recorded solve into an instructional walkthrough', async (
     ]
   });
 
-  await page.getByRole('button', { name: 'Next step' }).click();
-  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: 'Next placement' }).click();
   await steps.step('final-rule-explained', {
     description: 'The final placement is explained from the pre-move board and highlighted in context',
     verifications: [
-      { spec: 'The final move is identified as a provable Full house', check: async () => {
-        await expect(page.getByText('Step 3 of 3 · 02:02')).toBeVisible();
-        await expect(page.getByText('Full house', { exact: true })).toBeVisible();
+      { spec: 'The final move is identified as a provable Full House', check: async () => {
+        await expect(page.getByText('Placement 2 of 2 · 02:02')).toBeVisible();
+        await expect(page.getByText('Full House', { exact: true })).toBeVisible();
         await expect(page.locator('.walkthrough-explanation')).toContainText('only empty cell');
         await expect(page.locator('.walkthrough-explanation')).toContainText('completed the puzzle');
       } },
@@ -121,13 +123,13 @@ test('History turns a recorded solve into an instructional walkthrough', async (
       } },
       { spec: 'The completed replay contains no empty editable cells and cannot advance past its last event', check: async () => {
         await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(0);
-        await expect(page.getByRole('button', { name: 'Next step' })).toBeDisabled();
+        await expect(page.getByRole('button', { name: 'Next placement' })).toBeDisabled();
       } }
     ]
   });
 
-  await page.getByRole('button', { name: 'Previous' }).click();
-  await expect(page.getByText('Step 2 of 3 · 02:01')).toBeVisible();
+  await page.getByRole('button', { name: 'Previous placement' }).click();
+  await expect(page.getByText('Placement 1 of 2 · 02:01')).toBeVisible();
   await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(1);
   await page.getByRole('button', { name: 'Back to History' }).click();
   await steps.step('immutable-history-returned', {
