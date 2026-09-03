@@ -1,6 +1,6 @@
-# Replay a solve as an instructional walkthrough
+# Replay each placement with the simplest matching book rule
 
-History can replay every recorded board action without changing it. Rules are named only when the board proves them, and the move plus its supporting cells are highlighted for another player.
+History analyzes a solve with visible progress, then jumps only between recorded placements. Each move names the first rule in the book order that proves it, or explicitly says Unknown rule.
 
 ## The solved History card offers Walkthrough directly after Share
 
@@ -11,14 +11,14 @@ History can replay every recorded board action without changing it. Rules are na
 - [x] The solved attempt has the four expected actions in order
 - [x] Opening History and the walkthrough affordance append no events
 
-## The walkthrough opens on the exact position where this recorded solve began
+## After visible analysis, the walkthrough opens directly on the first recorded placement
 
-![The walkthrough opens on the exact position where this recorded solve began](./screenshots/001-transferred-starting-position-phone-macos.png)
+![After visible analysis, the walkthrough opens directly on the first recorded placement](./screenshots/001-first-recorded-placement-phone-macos.png)
 
 **Verifications:**
 
-- [x] The instructional screen starts at step 1 of 3
-- [x] The transferred checkpoint has exactly the two unsolved cells it recorded
+- [x] The instructional screen starts at placement 1 of 2
+- [x] The first entered value is already present and only the final cell remains empty
 - [x] The replay board is read-only and the event stream is unchanged
 
 ## The final placement is explained from the pre-move board and highlighted in context
@@ -27,7 +27,7 @@ History can replay every recorded board action without changing it. Rules are na
 
 **Verifications:**
 
-- [x] The final move is identified as a provable Full house
+- [x] The final move is identified as a provable Full House
 - [x] One move cell and the other eight cells in its unit carry distinct highlights
 - [x] The completed replay contains no empty editable cells and cannot advance past its last event
 

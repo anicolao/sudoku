@@ -273,6 +273,12 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .walkthrough-legend i.target { border-color: #b7791f; background: #fff0cf; box-shadow: inset 0 0 0 1px #b7791f; }
 .walkthrough-legend i.context { border-color: #9dbcb6; background: #e8f2ef; }
 .walkthrough-panel { min-width: 0; display: grid; gap: 10px; padding: 18px; border: 1px solid #d7d5cd; border-radius: 14px; background: #fffdf8; }
+.walkthrough-loading,
+.walkthrough-empty { width: min(100%, 560px); align-self: start; justify-self: center; display: grid; gap: 14px; margin-top: clamp(24px, 10vh, 90px); padding: clamp(22px, 5vw, 36px); border: 1px solid #d7d5cd; border-radius: 14px; background: #fffdf8; box-shadow: 0 12px 34px rgb(45 48 55 / 8%); }
+.walkthrough-loading h2,
+.walkthrough-empty h2 { margin: 0; font-size: clamp(1.25rem, 4vw, 1.75rem); }
+.walkthrough-loading p,
+.walkthrough-empty p { margin: 0; color: #62656b; }
 .walkthrough-progress { height: 6px; overflow: hidden; border-radius: 999px; background: #dedcd4; }
 .walkthrough-progress span { height: 100%; display: block; border-radius: inherit; background: #4654a3; transition: width .15s ease; }
 .walkthrough-count { margin: 0; color: #62656b; font-size: .78rem; font-variant-numeric: tabular-nums; }
@@ -294,6 +300,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .walkthrough-rule.rule-xy-chain,
 .walkthrough-rule.rule-medusa,
 .walkthrough-rule.rule-unique-rectangle { color: #25645d; background: #e4f4ec; }
+.walkthrough-rule.rule-unknown-rule { color: #6b5d4d; background: #eee9df; }
 .walkthrough-rule.rule-mistake,
 .walkthrough-rule.rule-correction { color: #9b2c24; background: #fff0ee; }
 .walkthrough-panel h2 { margin: 0; font-size: 1.25rem; line-height: 1.15; }
