@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f5ef" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; connect-src 'self'; manifest-src 'self'"
+    />
+    <meta
+      name="description"
+      content="A calm, local-only Sudoku puzzle app that works offline."
+    />
+    <meta name="application-name" content="Sudoku" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sudoku" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link href="./_app/immutable/entry/start.BxRkIk4s.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/C2ybilUj.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/Degp_wSv.js" rel="modulepreload">
+		<link href="./_app/immutable/entry/app.DghbIXRH.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/0.C1vGW7ia.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/2.dskvl2_B.js" rel="modulepreload">
+		
+		<link href="./_app/immutable/assets/0.CUSfMYTS.css" rel="stylesheet">
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">
+			<script>
+				{
+					__sveltekit_11tepei = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						assets: "/sudoku/pr22"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("./_app/immutable/entry/start.BxRkIk4s.js"),
+						import("./_app/immutable/entry/app.DghbIXRH.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+
+					if ('serviceWorker' in navigator) {
+						const script_url = './service-worker.js';
+						const policy = globalThis?.window?.trustedTypes?.createPolicy(
+							'sveltekit-trusted-url',
+							{ createScriptURL(url) { return url; } }
+						);
+						const sanitised = policy?.createScriptURL(script_url) ?? script_url;
+						addEventListener('load', function () {
+							navigator.serviceWorker.register(sanitised);
+						});
+					}
+				}
+			</script>
+		</div>
+  </body>
+</html>
