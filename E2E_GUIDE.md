@@ -193,7 +193,6 @@ and every changed PNG. Normal test runs must leave the worktree unchanged.
 | 012 | Installed offline | shell install, offline reopen/resume/solve/History/reload, cache inspection |
 | 013 | Multiple tabs | same-stream following, overlap handling, different tab-selected puzzles |
 | 014 | Checked puzzle URL | ephemeral validation, consent, one import origin, address cleanup |
-| 015 | Progress transfer | both share choices, local QR decode, clipboard, fresh context, idempotency |
 | 016 | Replay-aware value erase | restoration of placement-cleared notes and notes-only clearing |
 | 017 | Number-wide highlight | real taps, local/number-wide toggle, matching-note option, no double-tap zoom |
 | 018 | Notes default, All, and styles | preference snapshot, one-event fill, all note appearance combinations |
@@ -216,7 +215,7 @@ For an event-producing action, assert the smallest useful combination of:
 - no event for selection, cancellation, validation, or other ephemeral state;
 - board, timer, controls, History, and readable log agreeing with replay;
 - reload equivalence;
-- compensation target or transfer ID where identity matters.
+- compensation target where identity matters.
 
 Do not assert only the DOM for a persistence feature. Do not assert only storage
 for a user-visible feature.
@@ -228,10 +227,10 @@ selection, value entry, hint, History, settings, reload, and clear-all. It
 requires every request to be a same-origin `GET` and rejects unexpected browser
 storage keys.
 
-Sharing scenarios separately prove that transfer fragments do not appear in
-requests and that the generated link does not contain the stored solution.
-Service workers remain blocked in the ordinary privacy project so cache traffic
-does not obscure the application boundary.
+Sharing scenarios separately prove that a generated link reconstructs the
+intended givens and work without containing the stored solution. Service workers
+remain blocked in the ordinary privacy project so cache traffic does not obscure
+the application boundary.
 
 ## 10. Installed offline journey
 

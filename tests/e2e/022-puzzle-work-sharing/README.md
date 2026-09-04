@@ -16,7 +16,7 @@ The player can make a readable puzzle link containing placements and grouped can
 
 **Verifications:**
 
-- [x] Clean, readable-work, and exact-transfer choices remain distinct
+- [x] Clean and readable-work choices remain distinct
 
 ## The app prepares a readable puzzle-work link without pausing
 

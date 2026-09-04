@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { checkForShellUpdate } from './shell-update';
 
-const pageUrl = 'https://example.test/sudoku/pr6/?p=shared#t=private';
+const pageUrl = 'https://example.test/sudoku/pr6/?p=shared#section';
 
 describe('shell update checks', () => {
   it('checks the deployment-local manifest with an internal cache buster', async () => {

@@ -120,10 +120,12 @@ test('the final moves derive completion, history, review, and a repeated attempt
   await page.locator('.history-card').getByRole('button', { name: 'Share' }).click();
   const historyShareDialog = page.getByRole('dialog', { name: 'Share this puzzle' });
   await expect(historyShareDialog.getByRole('button', { name: /Share puzzle only/ })).toBeVisible();
-  await expect(historyShareDialog.getByRole('button', { name: /Prepare progress transfer/ })).toContainText('Copies the saved values, notes, and time.');
-  await historyShareDialog.getByRole('button', { name: /Prepare progress transfer/ }).click();
-  const completedTransferLink = await page.getByTestId('share-link').getAttribute('data-link') ?? '';
-  expect(new URL(completedTransferLink).hash).toMatch(/^#t=/);
+  await expect(historyShareDialog.getByRole('button', { name: /Share puzzle with work/ })).toBeVisible();
+  await historyShareDialog.getByRole('button', { name: /Share puzzle with work/ }).click();
+  const completedWorkLink = await page.getByTestId('share-link').getAttribute('data-link') ?? '';
+  const completedPuzzle = (await stream()).events[0].payload.puzzle;
+  expect(new URL(completedWorkLink).searchParams.get('p')?.startsWith(`${completedPuzzle.givens}_`)).toBe(true);
+  expect(new URL(completedWorkLink).hash).toBe('');
   expect((await stream()).events).toHaveLength(completedEventCount);
   await page.getByRole('button', { name: 'Done' }).click();
 
