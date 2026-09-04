@@ -3,6 +3,7 @@ import type {
   AppProjection,
   Digit,
   GameSettings,
+  ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
   StoredEventDocumentV1,
@@ -13,6 +14,15 @@ export const EVENT_STORE_KEY = 'sudoku.event-store.v1';
 export const CORRUPT_STORE_PREFIX = 'sudoku.event-store.corrupt.';
 
 export const emptyDocument = (): StoredEventDocumentV1 => ({ storageVersion: 1, nextSequence: 1, events: [] });
+
+export function copyImportedPuzzleMetadata(metadata: ImportedPuzzleMetadata): ImportedPuzzleMetadata {
+  return {
+    ...(metadata.elapsedMs !== undefined ? { elapsedMs: metadata.elapsedMs } : {}),
+    ...(metadata.hintedCells !== undefined ? { hintedCells: [...metadata.hintedCells] } : {}),
+    ...(metadata.mistakes !== undefined ? { mistakes: metadata.mistakes } : {}),
+    ...(metadata.settings !== undefined ? { settings: { ...metadata.settings } } : {})
+  };
+}
 
 interface StoredEventDocumentV0 { storageVersion: 0; events: SudokuEvent[]; }
 
@@ -148,7 +158,8 @@ export class EventStore {
     puzzle: PuzzleDefinition,
     metadata: EventMetadata,
     importedSettings: GameSettings = this.projection.settings,
-    work: readonly ImportedPuzzleWorkAction[] = []
+    work: readonly ImportedPuzzleWorkAction[] = [],
+    sharedMetadata?: ImportedPuzzleMetadata
   ): AppProjection {
     const storedPuzzle: PuzzleDefinition = {
       ...puzzle,
@@ -171,10 +182,11 @@ export class EventStore {
           checkpoint: null,
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }
-            : { ...action, values: [...action.values] }) } : {})
+            : { ...action, values: [...action.values] }) } : {}),
+          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(),
-        elapsedMs: 0,
+        elapsedMs: sharedMetadata?.elapsedMs ?? 0,
         schemaVersion: 1,
         reducerVersion: 1
       };

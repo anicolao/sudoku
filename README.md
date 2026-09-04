@@ -31,7 +31,8 @@ contract, and deterministic test evidence.
   to reject exceptional overlapping writes safely.
 - Local History for active, solved, and abandoned attempts, including read-only
   review, repeat play, and sharing.
-- Readable links for clean puzzles or puzzles with current values and notes.
+- Readable links for clean puzzles or puzzles with current work and optional
+  progress metadata.
   Incoming data is validated in a worker before the user consents to one local
   import event.
 - An application shell service worker that supports installed offline play
@@ -107,12 +108,13 @@ vocabulary, persistence rules, worker boundaries, and compatibility promises.
 ## Sharing and privacy
 
 A puzzle URL uses `?p=` followed by 81 literal givens and can optionally append
-readable placement and candidate actions. It does not contain the solution,
-elapsed time, hints, mistakes, settings, source event log, device identity, or
-other History entries.
+readable placement, candidate, elapsed-time, hinted-cell, mistake-count, and
+setting fields. It does not contain the solution, source event log, undo
+history, device identity, or other History entries.
 
-The link is bearer data: anyone with it can open a copy. Puzzle work is part of
-the query and may be visible to the static host and browser history. All
+The link is bearer data: anyone with it can open a copy. Included work and
+progress are part of the query and may be visible to the static host and browser
+history. All
 parsing, uniqueness checking,
 solution derivation, rating, QR generation, and import validation occur locally.
 See [PUZZLE_SHARING.md](PUZZLE_SHARING.md) for the exact contract.

@@ -22,11 +22,12 @@ The app offers two views of one readable format:
 | Purpose | URL form | Contents |
 | --- | --- | --- |
 | Start a clean puzzle | `?p=<81 cells>` | Literal givens only |
-| Show puzzle work | `?p=<81 cells>_<action>...` | Givens, placements, and candidates |
+| Show puzzle work | `?p=<81 cells>_<field>...` | Givens, placements, candidates, and optional progress metadata |
 
 Neither choice represents synchronization. The recipient creates an independent
-local attempt. Time, hints, mistakes, settings, source event history, and undo
-history are not shared.
+local attempt. A work link includes time, hinted cells, mistakes, and settings
+when the corresponding optional fields are present. Source event history, undo
+history, device identity, and other History entries are never shared.
 
 ## 2. Puzzle links
 
@@ -63,22 +64,30 @@ abandons anything.
 
 ## 3. Readable puzzle-work grammar
 
-Work follows the initial board as underscore-separated actions. Row and column
-coordinates are one-based digits. The decoded grammar is:
+Work and metadata follow the initial board as underscore-separated fields. Row
+and column coordinates are one-based digits. The decoded grammar is:
 
 ```text
-payload       = givens ("_" action)*
+payload       = givens ("_" field)*
 givens        = 81 × ("." | "1" … "9")
+field         = action | metadata
 action        = placement | note-add | note-remove
 placement     = row column value
 note-add      = row column "+" candidates "+"
 note-remove   = row column "-" candidates "-"
 candidates    = 1 … 9 unique digits
+metadata      = "time=" milliseconds
+              | "hints=" coordinates ("," coordinates)*
+              | "mistakes=" count
+              | "settings=" setting-bits
+coordinates   = row column
+setting-bits  = 8 × ("0" | "1" | "-")
 ```
 
 For example, `548` places 8 in r5c4, `54+489+` adds candidates 4, 8,
 and 9 there, and `54-4-` removes candidate 4. In a literal URL, `+` is
-percent-encoded as `%2B`; `URLSearchParams` decodes it before parsing.
+percent-encoded as `%2B` and `=` as `%3D`; `URLSearchParams` decodes them before
+parsing.
 
 Actions are applied from left to right. A placement replaces an earlier value
 and clears that cell's notes. A note action is rejected if the cell currently
@@ -94,13 +103,31 @@ coalesced into one action with unique sorted candidates. Thus a cell's surviving
 candidates are never expanded into one action per digit. The format accepts at
 most 512 actions and 4,096 decoded characters.
 
+Every metadata field is optional, may appear in any order, and may appear only
+once. `time` is active elapsed time in milliseconds, bounded at 365 days.
+`hints` lists the coordinates of cells previously revealed by a hint, including
+a cell the player later overwrote or erased. Its length is the hint count.
+`mistakes` is bounded at 1,000,000. `settings` contains eight positions
+in this order: check mistakes, auto-remove notes, show timer, number-first,
+notes-first, bold notes, large notes, and highlight matching notes. `0` is off,
+`1` is on, and `-` omits that individual setting. At least one position must be
+included. Unknown metadata is rejected instead of ignored.
+
+The app's **Share puzzle with work** link emits time and mistakes even when
+zero, emits hinted cells when there are any, and emits all eight settings. Its
+canonical order is placements and notes, then time, hints, mistakes, and the
+settings bundle. Hand-written links may omit any or all of these additions;
+omitted progress starts at zero and omitted settings retain the recipient's
+current preference.
+
 ## 4. Sharing flow
 
 Share is available during active play and from every History card. The dialog
 offers:
 
 - **Share puzzle only** — prepare clean givens without changing the source;
-- **Share puzzle with work** — prepare the current values and candidates.
+- **Share puzzle with work** — prepare current values, candidates, time, hinted
+  cells, mistakes, and settings.
 
 Neither choice pauses the source game or appends an event. The ready dialog
 contains a locally rendered QR, **Copy link**, optional native **Share link…**,
@@ -122,7 +149,9 @@ when:
 - the exhaustive solver finds exactly one solution, stopping after two;
 - the derived solution is a valid solved grid and agrees with every given;
 - every work action satisfies the grammar, bounds, and ordered-state rules in
-  section 3.
+  section 3;
+- optional metadata has known, unique fields and valid bounds, hinted cells
+  target cells editable in the initial puzzle, and settings are booleans.
 
 After exhaustive validation, the logical solver rates the puzzle up to Master.
 If it cannot reach the same solution within that curriculum, the rating is
@@ -133,8 +162,9 @@ full SHA-256 fingerprint, and rating. The persisted puzzle ID uses the first 12
 fingerprint characters; the UI displays a shorter prefix. The fingerprint
 identifies equal givens but is not a signature and proves no authorship.
 
-The receiver derives conflicts, mistake cells, completion, and future undo
-availability rather than trusting those projections from the link.
+The receiver derives conflicts, current mistake cells, completion, and future
+undo availability. It restores only the explicitly shared counters, timer,
+hinted-cell marks, and settings.
 
 ## 6. Event-sourced import
 
@@ -151,12 +181,14 @@ interface GameImportedEvent extends EventEnvelope {
     settings: GameSettings;
     checkpoint: null;
     work?: ImportedPuzzleWorkAction[];
+    sharedMetadata?: ImportedPuzzleMetadata;
   };
 }
 ```
 
-Clean links use puzzle-link format version 1. Links with work use version 2 and
-carry a non-empty validated work array. Replay validates the stored import again
+Clean links use puzzle-link format version 1. Work-only links use version 2 and
+carry a non-empty validated work array. A link containing any optional metadata
+uses version 3, with or without work. Replay validates the stored import again
 before constructing the game.
 
 The persisted puzzle contains the locally derived solution so future replay is
@@ -175,8 +207,9 @@ deployments remain valid. Puzzle URLs clear prior search and fragment data
 before adding `p`.
 
 All links are bearer data, not encryption. Anyone who can read the link or QR
-can reconstruct its contents. Givens and work appear in the `p` query and may be
-visible to the static host, browser history, and copied-link destinations. The
+can reconstruct its contents. Givens, work, and included progress metadata
+appear in the `p` query and may be visible to the static host, browser history,
+and copied-link destinations. The
 application keeps `Referrer-Policy: no-referrer` and does not intentionally
 write generated links to its event stream, IndexedDB, localStorage, console, or
 service-worker cache. Copy and native Web Share failures keep the dialog and QR
@@ -191,7 +224,7 @@ the application does not request camera permission or implement a scanner.
 | --- | --- |
 | More than one `p` value | Reject as ambiguous and append nothing |
 | Empty, malformed, or unsupported value | Show an invalid-link reason and append nothing |
-| Invalid coordinates, action syntax, work target, or bounds | Reject and append nothing |
+| Invalid coordinates, action/metadata syntax, target, duplicate, or bounds | Reject and append nothing |
 | Duplicate givens, no solution, or multiple solutions | Reject and append nothing |
 | Unique puzzle beyond the curriculum | Accept as Custom |
 | Worker timeout or error | Terminate it, report a safe failure, and append nothing |
@@ -207,16 +240,16 @@ import. Dismissing an incoming card removes it without altering local games.
 ## 9. Verification
 
 Unit tests cover structural puzzle errors, unique/no/multiple solutions,
-logical rating, work parsing and coalescing, candidate edits, completed-work
-derivation, worker timeouts, fingerprints, historical stored-event replay, URL
-construction, and base-path handling.
+logical rating, work parsing and coalescing, candidate edits, optional metadata,
+completed-work derivation, worker timeouts, fingerprints, historical
+stored-event replay, URL construction, and base-path handling.
 
 Browser scenario 014 proves a literal-givens URL remains ephemeral until
 consent, then creates one imported stream with the locally derived solution and
 cleans the address. Scenario 022 proves both Share choices, grouped candidate
-encoding, pixel-decoded QR equality, fresh-context validation, atomic import,
-and responsive presentation. Scenario 007 covers work sharing from a completed
-History card without adding an event.
+and metadata encoding, pixel-decoded QR equality, fresh-context validation,
+atomic import, and responsive presentation. Scenario 007 covers work sharing
+from a completed History card without adding an event.
 
 The privacy suite enforces same-origin requests, and the installed-offline suite
 proves that puzzle state and History remain outside the application-shell cache.

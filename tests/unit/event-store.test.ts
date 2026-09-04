@@ -129,6 +129,51 @@ describe('event store', () => {
     });
   });
 
+  it('restores optional progress metadata and shared settings from a readable link', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('shared-metadata-origin').puzzle;
+    const editable = [...generated.givens].findIndex((given) => given === '.');
+    const puzzle = {
+      ...generated,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 3 as const, fingerprint: 'metadata-link' }
+    };
+    const work = [{
+      type: 'value' as const,
+      cell: editable,
+      value: Number(puzzle.solution[editable]) as Digit
+    }];
+    const sharedSettings = {
+      ...new EventStore(storage).getProjection().settings,
+      checkMistakes: true,
+      showTimer: false
+    };
+    const sharedMetadata = {
+      elapsedMs: 75_432,
+      hintedCells: [editable],
+      mistakes: 2,
+      settings: { checkMistakes: true, showTimer: false }
+    };
+    const store = new EventStore(storage);
+    const projection = store.importGame(puzzle, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-metadata-1'
+    }, sharedSettings, work, sharedMetadata);
+    const game = projection.games[projection.activeGameId ?? ''];
+
+    expect(game).toMatchObject({
+      elapsedMs: 75_432,
+      hints: 1,
+      mistakes: 2,
+      hintedCells: [editable],
+      settings: { checkMistakes: true, showTimer: false },
+      paused: false
+    });
+    expect(store.getDocument().events).toMatchObject([{
+      type: 'game/imported',
+      elapsedMs: 75_432,
+      payload: { sharedMetadata }
+    }]);
+  });
+
   it('continues to replay a historical opaque-transfer import already in storage', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('transfer-origin').puzzle;

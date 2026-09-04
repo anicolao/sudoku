@@ -3,6 +3,7 @@ import type {
   AppProjection,
   Digit,
   GameSettings,
+  ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
   StoredEventDocumentV1,
@@ -11,6 +12,7 @@ import type {
 import {
   CORRUPT_STORE_PREFIX,
   EVENT_STORE_KEY,
+  copyImportedPuzzleMetadata,
   emptyDocument,
   parseDocument,
   type EventMetadata
@@ -252,7 +254,8 @@ export class IndexedDbEventStore {
     puzzle: PuzzleDefinition,
     metadata: EventMetadata,
     importedSettings: GameSettings = this.projection.settings,
-    work: readonly ImportedPuzzleWorkAction[] = []
+    work: readonly ImportedPuzzleWorkAction[] = [],
+    sharedMetadata?: ImportedPuzzleMetadata
   ): Promise<CommitResult> {
     const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
     const settings = { ...importedSettings };
@@ -265,9 +268,10 @@ export class IndexedDbEventStore {
           checkpoint: null,
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }
-            : { ...action, values: [...action.values] }) } : {})
+            : { ...action, values: [...action.values] }) } : {}),
+          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {})
         },
-        occurredAt: metadata.occurredAt.toISOString(), elapsedMs: 0,
+        occurredAt: metadata.occurredAt.toISOString(), elapsedMs: sharedMetadata?.elapsedMs ?? 0,
         schemaVersion: 1, reducerVersion: 1
       };
     });

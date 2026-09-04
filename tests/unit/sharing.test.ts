@@ -70,6 +70,44 @@ describe('shared puzzle links', () => {
     ]);
   });
 
+  it('parses optional time, hint, mistake, and setting directives as format version 3', async () => {
+    const payload = `${GIVENS}_134_time=75432_hints=13_mistakes=2_settings=1-0--0--`;
+    const parsed = parseSharedPuzzlePayload(payload);
+    const validated = await validateSharedPuzzle(payload);
+
+    expect(parsed.metadata).toEqual({
+      elapsedMs: 75_432,
+      hintedCells: [2],
+      mistakes: 2,
+      settings: { checkMistakes: true, showTimer: false, notesBold: false }
+    });
+    expect(validated).toMatchObject({
+      metadata: parsed.metadata,
+      puzzle: { provenance: { kind: 'puzzle-link', formatVersion: 3 } }
+    });
+  });
+
+  it('allows progress metadata independently of board work', async () => {
+    const validated = await validateSharedPuzzle(`${GIVENS}_time=5000_hints=13`);
+
+    expect(validated).toMatchObject({
+      work: [],
+      metadata: { elapsedMs: 5_000, hintedCells: [2] },
+      puzzle: { provenance: { kind: 'puzzle-link', formatVersion: 3 } }
+    });
+  });
+
+  it.each([
+    `${GIVENS}_time=1_time=2`,
+    `${GIVENS}_future=1`,
+    `${GIVENS}_settings=01x10111`,
+    `${GIVENS}_settings=--------`,
+    `${GIVENS}_134_hints=11`,
+    `${GIVENS}_hints=13,13`
+  ])('rejects invalid shared metadata: %s', async (payload) => {
+    await expect(validateSharedPuzzle(payload)).rejects.toMatchObject({ code: 'metadata-format' });
+  });
+
   it.each([
     `${GIVENS}_`,
     `${GIVENS}_14+11+`,
@@ -95,5 +133,21 @@ describe('shared puzzle links', () => {
     ]);
     expect(url).toContain('14%2B489%2B');
     expect(new URL(url).searchParams.get('p')).toBe(`${GIVENS}_14+489+_14-1-_134`);
+  });
+
+  it('writes shared metadata in a stable readable order', () => {
+    const url = puzzleUrl('https://example.test/sudoku/', GIVENS, [
+      { type: 'value', cell: 2, value: 4 }
+    ], {
+      elapsedMs: 75_432,
+      hintedCells: [2],
+      mistakes: 2,
+      settings: { showTimer: false, checkMistakes: true }
+    });
+
+    expect(url).toContain('time%3D75432_hints%3D13_mistakes%3D2_settings%3D1-0-----');
+    expect(new URL(url).searchParams.get('p')).toBe(
+      `${GIVENS}_134_time=75432_hints=13_mistakes=2_settings=1-0-----`
+    );
   });
 });
