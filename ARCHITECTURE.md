@@ -46,7 +46,7 @@ directly.
 | `src/lib/generator/` | Versioned PRNG, rated puzzle transforms, exhaustive solver, logical solver, worker, and service boundary |
 | `src/lib/storage/indexeddb-event-store.ts` | Canonical browser repository, per-stream revisions, migration, memory-only fallback, and deletion |
 | `src/lib/storage/event-store.ts` | Flat V0/V1 document parser, legacy migration support, and framework-neutral test store |
-| `src/lib/sharing/` | Puzzle-link parsing, transfer codec, fingerprints, worker validation, and URL construction |
+| `src/lib/sharing/` | Puzzle/work-link parsing, fingerprints, worker validation, and URL construction |
 | `src/service-worker.ts` | Versioned static shell installation, activation, update, and cache-first reads |
 | `tests/unit/` | Pure domain, generator, storage, migration, sharing, and compatibility evidence |
 | `tests/e2e/` | Production-shaped user journeys, screenshots, privacy, accessibility, and offline evidence |
@@ -118,7 +118,7 @@ Current vocabulary:
 | --- | --- | --- |
 | `settings/changed` | changed settings | Update device-local defaults or appearance preferences |
 | `game/started` | game ID, puzzle, settings snapshot | Start a locally generated attempt |
-| `game/imported` | import kind, transfer ID, puzzle, settings, optional checkpoint | Start from checked givens or a transferred snapshot |
+| `game/imported` | puzzle, settings, and optional work; legacy origins may contain an old checkpoint | Start from checked givens and optional shared work |
 | `cell/value-entered` | cell, value | Place or replace a user value |
 | `cell/value-erased` | cell, value, target event ID | Replay without one exact placement and its derived effects |
 | `cell/cleared` | cell | Clear the selected editable cell when no local placement source can be targeted |
@@ -213,18 +213,17 @@ data** clears IndexedDB and every `sudoku.*` localStorage key.
 
 ## 8. Sharing and imports
 
-Puzzle links and progress transfers never trust a supplied solution. Worker
-validation checks structure, givens, uniqueness, derived solution, logical
-rating, checkpoint bounds, hint values, flags, checksum, and trailing data.
+Puzzle links never trust a supplied solution. Worker validation checks the
+givens and optional work structure, bounds, uniqueness, derived solution, and
+logical rating.
 
-A successful import appends one `game/imported` origin event. A transferred
-checkpoint is paused and contains no source event IDs or undo stack, so undo on
-the recipient begins with moves made after import. Transfer IDs make repeat
-scans idempotent on the receiving browser.
+A successful import appends one `game/imported` origin event. Shared work
+contains no source event IDs or undo stack, so undo on the recipient begins with
+moves made after import.
 
 History sharing exports either clean givens or the selected attempt's current
-checkpoint. It does not export that attempt's event log or any other attempt.
-The precise binary and user-visible contract is in
+values and notes. It does not export time, statistics, settings, that attempt's
+event log, or any other attempt. The precise readable contract is in
 [PUZZLE_SHARING.md](PUZZLE_SHARING.md).
 
 ## 9. Offline shell and updates
@@ -251,33 +250,32 @@ document, bundled files, and revision manifest. The application contains no
 analytics, telemetry, remote fonts, hosted QR API, WebSocket, EventSource,
 beacon, or user-data endpoint.
 
-Puzzle givens in `?p=` are visible to the static host. Progress data in `#t=` is
-a bearer secret but fragments are not sent in HTTP requests. Neither format
-contains a solution. The CSP and `Referrer-Policy: no-referrer` reinforce this
-boundary, and scenario 010 instruments browser network APIs to test it.
+Puzzle givens and optional work in `?p=` are visible to the static host and may
+appear in browser history. Links contain no solution. The CSP and
+`Referrer-Policy: no-referrer` reinforce this boundary, and scenario 010
+instruments browser network APIs to test it.
 
 ## 11. Compatibility rules
 
 Maintenance changes must follow these rules:
 
 1. Never change the meaning of an existing event, generator version, validator
-   version, transfer version, or settings bit in place.
+   version, or settings bit in place.
 2. Add a versioned reader or migration before emitting a new persisted format.
 3. Keep old puzzle definitions self-contained; historical replay must not call
    the current generator.
 4. Keep reducers deterministic and browser-free.
 5. Treat incoming links, stored imports, and legacy text as untrusted data.
 6. Do not add a second mutable canonical board alongside the event stream.
-7. Do not put user events or transfer fragments in Cache Storage, logs, or
-   network requests.
+7. Do not put user events or generated sharing links in Cache Storage or logs.
 8. Update unit tests, browser evidence, and the relevant contract document in
    the same change.
 
 ## 12. Verification boundary
 
 Pure tests cover solver correctness, deterministic generation, replay,
-selectors, storage migration, IndexedDB revisions, shell updates, link parsing,
-and the transfer codec. Browser scenarios cover observable journeys through the
+selectors, storage migration, IndexedDB revisions, shell updates, and link
+parsing. Browser scenarios cover observable journeys through the
 production-shaped app at the supported form factors, including privacy,
 accessibility, multiple tabs, sharing, and installed offline use.
 

@@ -3,7 +3,6 @@ import type {
   AppProjection,
   Digit,
   GameSettings,
-  ImportedCheckpoint,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
   StoredEventDocumentV1,
@@ -251,16 +250,10 @@ export class IndexedDbEventStore {
 
   importGame(
     puzzle: PuzzleDefinition,
-    importKind: 'puzzle-link' | 'progress-transfer',
-    transferId: string | null,
-    checkpoint: ImportedCheckpoint | null,
     metadata: EventMetadata,
     importedSettings: GameSettings = this.projection.settings,
     work: readonly ImportedPuzzleWorkAction[] = []
   ): Promise<CommitResult> {
-    if (transferId && this.findImportedGame(transferId)) {
-      return Promise.resolve({ committed: false, gameId: this.findImportedGame(transferId), projection: this.getProjection() });
-    }
     const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
     const settings = { ...importedSettings };
     return this.append((sequence) => {
@@ -268,25 +261,16 @@ export class IndexedDbEventStore {
       return {
         id: metadata.id, sequence, gameId, type: 'game/imported',
         payload: {
-          gameId, importKind, transferId, puzzle: storedPuzzle, settings,
-          checkpoint: checkpoint ? {
-            values: [...checkpoint.values], notes: checkpoint.notes.map((notes) => [...notes]),
-            hintedCells: [...checkpoint.hintedCells], elapsedMs: checkpoint.elapsedMs,
-            hints: checkpoint.hints, mistakes: checkpoint.mistakes, paused: true
-          } : null,
+          gameId, importKind: 'puzzle-link', transferId: null, puzzle: storedPuzzle, settings,
+          checkpoint: null,
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }
             : { ...action, values: [...action.values] }) } : {})
         },
-        occurredAt: metadata.occurredAt.toISOString(), elapsedMs: checkpoint?.elapsedMs ?? 0,
+        occurredAt: metadata.occurredAt.toISOString(), elapsedMs: 0,
         schemaVersion: 1, reducerVersion: 1
       };
     });
-  }
-
-  findImportedGame(transferId: string): string | null {
-    const event = this.document.events.find((candidate) => candidate.type === 'game/imported' && candidate.payload.transferId === transferId);
-    return event?.gameId ?? null;
   }
 
   changeSettings(changes: Partial<GameSettings>, metadata: EventMetadata): Promise<CommitResult> {

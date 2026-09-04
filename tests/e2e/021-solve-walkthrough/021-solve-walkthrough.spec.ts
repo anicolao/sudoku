@@ -16,7 +16,7 @@ test('History turns a recorded solve into an instructional walkthrough', async (
     const generated = document.events[0];
     const puzzle = {
       ...generated.payload.puzzle,
-      provenance: { kind: 'progress-transfer', formatVersion: 1, fingerprint: 'walkthrough-fixture' }
+      provenance: { kind: 'puzzle-link', formatVersion: 2, fingerprint: 'walkthrough-fixture' }
     };
     const blanks = [...puzzle.givens].flatMap((value, cell) => value === '.' ? [cell] : []);
     const final = blanks.slice(-2);
@@ -34,26 +34,19 @@ test('History turns a recorded solve into an instructional walkthrough', async (
         ...base, id: 'walkthrough-1', sequence: 1, type: 'game/imported',
         payload: {
           gameId,
-          importKind: 'progress-transfer',
-          transferId: '0123456789abcdef01234567',
+          importKind: 'puzzle-link',
+          transferId: null,
           puzzle,
           settings: generated.payload.settings,
-          checkpoint: {
-            values,
-            notes: Array.from({ length: 81 }, () => []),
-            hintedCells: [], elapsedMs: 120_000, hints: 0, mistakes: 0, paused: true
-          }
+          checkpoint: null,
+          work: values.flatMap((value, cell) => value === null ? [] : [{ type: 'value', cell, value }])
         },
         occurredAt: '2026-08-16T12:00:00.000Z', elapsedMs: 120_000
       },
-      {
-        ...base, id: 'walkthrough-2', sequence: 2, type: 'game/resumed', payload: {},
-        occurredAt: '2026-08-16T12:00:01.000Z', elapsedMs: 120_000
-      },
       ...final.map((cell, index) => ({
         ...base,
-        id: `walkthrough-${index + 3}`,
-        sequence: index + 3,
+        id: `walkthrough-${index + 2}`,
+        sequence: index + 2,
         type: 'cell/value-entered',
         payload: { cell, value: Number(puzzle.solution[cell]) },
         occurredAt: `2026-08-16T12:00:0${index + 2}.000Z`,
@@ -61,7 +54,7 @@ test('History turns a recorded solve into an instructional walkthrough', async (
       }))
     ];
     await (window as unknown as { __sudokuReplaceEventDocument: (value: unknown) => Promise<unknown> })
-      .__sudokuReplaceEventDocument({ storageVersion: 1, nextSequence: 5, events });
+      .__sudokuReplaceEventDocument({ storageVersion: 1, nextSequence: 4, events });
     return final;
   });
   await page.reload();

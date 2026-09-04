@@ -91,7 +91,7 @@ The maintained release includes:
 4. accessible responsive layouts for phone, tablet, landscape, zoom, and
    desktop use;
 5. installed offline operation after one successful online load;
-6. checked puzzle links and independent progress transfers;
+6. checked readable links for clean puzzles or current puzzle work;
 7. explicit storage degradation, migration, corruption recovery, and deletion;
 8. deterministic unit, browser, privacy, offline, and visual evidence.
 

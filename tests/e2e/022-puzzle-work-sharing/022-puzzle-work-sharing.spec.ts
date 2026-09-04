@@ -38,11 +38,10 @@ test('a readable puzzle link carries grouped placements and candidates', async (
   await page.getByRole('button', { name: 'Share' }).click();
   await steps.step('sharing-choices', {
     description: 'The player chooses how much state to share',
-    verifications: [{ spec: 'Clean, readable-work, and exact-transfer choices remain distinct', check: async () => {
+    verifications: [{ spec: 'Clean and readable-work choices remain distinct', check: async () => {
       const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
       await expect(dialog.getByRole('button', { name: /Share puzzle only/ })).toBeVisible();
       await expect(dialog.getByRole('button', { name: /Share puzzle with work/ })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: /Prepare progress transfer/ })).toBeVisible();
     } }]
   });
 

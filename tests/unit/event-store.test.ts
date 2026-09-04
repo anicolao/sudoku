@@ -59,7 +59,7 @@ describe('event store', () => {
       provenance: { kind: 'puzzle-link' as const, formatVersion: 1 as const, fingerprint: '123456789abc' }
     };
     const store = new EventStore(storage);
-    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+    const projection = store.importGame(puzzle, {
       occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-1'
     });
 
@@ -94,7 +94,7 @@ describe('event store', () => {
       { type: 'notes' as const, cell: editable[1], values: [1, 4, 9] as Digit[], enabled: true }
     ];
     const store = new EventStore(storage);
-    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+    const projection = store.importGame(puzzle, {
       occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-work-1'
     }, store.getProjection().settings, work);
     const game = projection.games[projection.activeGameId ?? ''];
@@ -120,7 +120,7 @@ describe('event store', () => {
       ? [{ type: 'value' as const, cell, value: Number(puzzle.solution[cell]) as Digit }]
       : []);
     const store = new EventStore(storage);
-    const projection = store.importGame(puzzle, 'puzzle-link', null, null, {
+    const projection = store.importGame(puzzle, {
       occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'complete-work-import'
     }, store.getProjection().settings, work);
 
@@ -129,14 +129,13 @@ describe('event store', () => {
     });
   });
 
-  it('imports a paused checkpoint with transferred settings exactly once', () => {
+  it('continues to replay a historical opaque-transfer import already in storage', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('transfer-origin').puzzle;
     const puzzle = {
       ...generated,
       provenance: { kind: 'progress-transfer' as const, formatVersion: 1 as const, fingerprint: 'abc123' }
     };
-    const store = new EventStore(storage);
     const values = Array(81).fill(null);
     const editable = [...puzzle.givens].findIndex((value) => value === '.');
     values[editable] = Number(puzzle.solution[editable]);
@@ -151,37 +150,25 @@ describe('event store', () => {
       paused: true as const
     };
 
-    const first = store.importGame(puzzle, 'progress-transfer', '00112233445566778899aabb', checkpoint, {
-      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-1'
-    }, settings);
-    const second = store.importGame(puzzle, 'progress-transfer', '00112233445566778899aabb', checkpoint, {
-      occurredAt: new Date('2026-08-16T12:01:00.000Z'), id: 'import-2'
-    }, settings);
+    storage.setItem(EVENT_STORE_KEY, JSON.stringify({
+      storageVersion: 1,
+      nextSequence: 2,
+      events: [{
+        id: 'legacy-import', sequence: 1, gameId: 'legacy-transfer-game', type: 'game/imported',
+        payload: {
+          gameId: 'legacy-transfer-game', importKind: 'progress-transfer',
+          transferId: '00112233445566778899aabb', puzzle, settings, checkpoint
+        },
+        occurredAt: '2026-08-16T12:00:00.000Z', elapsedMs: 12_345,
+        schemaVersion: 1, reducerVersion: 1
+      }]
+    }));
 
-    expect(second).toEqual(first);
-    expect(store.getDocument().events).toHaveLength(1);
-    expect(store.findImportedGame('00112233445566778899aabb')).toBe(first.activeGameId);
-    expect(first.games[first.activeGameId ?? '']).toMatchObject({ paused: true, settings, elapsedMs: 12_345 });
-  });
-
-  it('derives completion when a stored transfer checkpoint is already solved', () => {
-    const storage = new MemoryStorage();
-    const generated = generateEasyPuzzle('complete-transfer').puzzle;
-    const puzzle = {
-      ...generated,
-      provenance: { kind: 'progress-transfer' as const, formatVersion: 1 as const, fingerprint: 'def456' }
-    };
-    const values = [...puzzle.givens].map((given, cell) => given === '.' ? Number(puzzle.solution[cell]) as Digit : null);
-    const store = new EventStore(storage);
-    const projection = store.importGame(puzzle, 'progress-transfer', 'ffeeddccbbaa998877665544', {
-      values,
-      notes: Array.from({ length: 81 }, () => []),
-      hintedCells: [], elapsedMs: 99_000, hints: 0, mistakes: 0, paused: true
-    }, { occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'complete-import' });
-
-    expect(projection.games[projection.activeGameId ?? '']).toMatchObject({
-      status: 'complete', paused: true, completedAt: '2026-08-16T12:00:00.000Z'
+    const projection = new EventStore(storage).getProjection();
+    expect(projection.games['legacy-transfer-game']).toMatchObject({
+      paused: true, settings, elapsedMs: 12_345
     });
+    expect(projection.games['legacy-transfer-game'].values[editable]).toBe(values[editable]);
   });
 
   it('migrates a frozen V0 document before publishing it', () => {

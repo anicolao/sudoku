@@ -85,7 +85,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .incoming-facts div { min-width: 0; padding: 9px 5px; border: 1px solid #d8daf0; border-radius: 9px; background: #f0f1fa; }
 .incoming-facts dt { color: #62656b; font-size: .7rem; }
 .incoming-facts dd { margin: 2px 0 0; overflow: hidden; color: #303a7d; font-size: .9rem; font-weight: 700; text-overflow: ellipsis; }
-.incoming-facts.transfer-facts { grid-template-columns: repeat(3, 1fr); }
+.incoming-facts.work-facts { grid-template-columns: repeat(3, 1fr); }
 .incoming-warning { margin: 0; padding: 10px; border-radius: 9px; color: #754c16; background: #fff0cf; font-size: .84rem; text-align: left; }
 .incoming-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .incoming-actions button { min-height: 48px; padding: 6px 10px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; font-weight: 700; cursor: pointer; }

@@ -31,8 +31,9 @@ contract, and deterministic test evidence.
   to reject exceptional overlapping writes safely.
 - Local History for active, solved, and abandoned attempts, including read-only
   review, repeat play, and sharing.
-- Puzzle-only links and compact progress transfers. Incoming data is validated
-  in a worker before the user consents to one local import event.
+- Readable links for clean puzzles or puzzles with current values and notes.
+  Incoming data is validated in a worker before the user consents to one local
+  import event.
 - An application shell service worker that supports installed offline play
   without putting puzzle records in Cache Storage.
 - Explicit memory-only and corrupt-store recovery states, plus one physical
@@ -95,8 +96,8 @@ pure replay reducer
 board, timer, undo/redo, history, and readable game-log projections
 ```
 
-Puzzle generation, exhaustive solution counting, logical rating, shared-puzzle
-validation, and progress-transfer validation run outside the main UI thread.
+Puzzle generation, exhaustive solution counting, logical rating, and
+shared-puzzle validation run outside the main UI thread.
 The production build is a client-only SvelteKit SPA emitted by
 `@sveltejs/adapter-static`, so it can be hosted at the origin root or a subpath.
 
@@ -106,15 +107,13 @@ vocabulary, persistence rules, worker boundaries, and compatibility promises.
 ## Sharing and privacy
 
 A puzzle URL uses `?p=` followed by 81 literal givens and can optionally append
-readable placement and candidate actions. An exact progress transfer uses a
-versioned, checksummed `#t=` fragment containing the selected attempt's current
-values, notes, elapsed time, hints, mistakes, and core settings. Neither form
-contains the solution, source event log, device identity, or other History
-entries.
+readable placement and candidate actions. It does not contain the solution,
+elapsed time, hints, mistakes, settings, source event log, device identity, or
+other History entries.
 
-Both forms are bearer data: anyone with the link can open a copy. Readable
-puzzle work is part of the query; the exact-transfer fragment is not sent in
-HTTP requests. All parsing, uniqueness checking,
+The link is bearer data: anyone with it can open a copy. Puzzle work is part of
+the query and may be visible to the static host and browser history. All
+parsing, uniqueness checking,
 solution derivation, rating, QR generation, and import validation occur locally.
 See [PUZZLE_SHARING.md](PUZZLE_SHARING.md) for the exact contract.
 
@@ -130,7 +129,7 @@ and revision manifest. User records are never added to the service-worker cache.
 | [VISION.md](VISION.md) | Stable product principles, audience, scope, and maintenance direction |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Current implementation, domain model, storage, workers, offline shell, and compatibility boundaries |
 | [UX_DESIGN.md](UX_DESIGN.md) | Current interaction, responsive, visual, content, and accessibility contract |
-| [PUZZLE_SHARING.md](PUZZLE_SHARING.md) | Puzzle-link and progress-transfer formats, validation, privacy, and failure handling |
+| [PUZZLE_SHARING.md](PUZZLE_SHARING.md) | Readable puzzle/work format, validation, privacy, and failure handling |
 | [E2E_GUIDE.md](E2E_GUIDE.md) | Playwright projects, deterministic evidence, scenario ownership, and review workflow |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Maintenance workflow and change checklist |
 | [`tests/e2e/*/README.md`](tests/e2e/) | Generated, scenario-owned walkthroughs with reviewed screenshots |

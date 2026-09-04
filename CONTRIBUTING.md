@@ -50,7 +50,7 @@ A larger feature should first explain:
 - why it belongs in a calm classic Sudoku application;
 - whether it introduces a server, account, recurring operating cost, or new
   private data;
-- how old event streams and transfer links continue to work;
+- how old event streams continue to work;
 - how it behaves offline and in memory-only mode;
 - what accessible and responsive evidence will be added;
 - which current contract documents it changes.
@@ -61,14 +61,14 @@ A larger feature should first explain:
 - Reducers and Sudoku rules remain deterministic and browser-free.
 - Components dispatch commands and render projections; they do not construct or
   mutate persisted records directly.
-- Existing event and transfer meanings are immutable. Add a versioned reader or
+- Existing event and link meanings are immutable. Add a versioned reader or
   migration before writing a new format.
 - Historical puzzles remain self-contained; replay must not depend on the
   current generator or network.
-- Incoming links, legacy storage, and imported checkpoints are untrusted until
+- Incoming links, legacy storage, and historical imported checkpoints are untrusted until
   bounded validation succeeds.
-- User records, transfer fragments, and solutions do not enter network logs,
-  analytics, or Cache Storage.
+- User records and solutions do not enter network logs, analytics, or Cache
+  Storage. Readable shared work is explicitly visible in its URL query.
 - Local storage failure degrades visibly to playable memory-only state.
 
 ## 5. Tests by change type
@@ -151,8 +151,7 @@ Before merging a change that affects stored or shared data, confirm:
 - [ ] V0/V1 legacy migration still succeeds or has an explicit successor;
 - [ ] unknown or malformed versions reject safely;
 - [ ] old generated puzzles retain their stored solution and provenance;
-- [ ] version 1 puzzle and transfer links still validate;
-- [ ] duplicate transfers remain idempotent;
+- [ ] existing clean and work puzzle links still validate;
 - [ ] memory-only and clear-all behaviour remain accurate;
 - [ ] the service-worker cache contains no user records;
 - [ ] privacy instrumentation observes no new request class;
@@ -160,10 +159,10 @@ Before merging a change that affects stored or shared data, confirm:
 
 ## 10. Security and privacy reports
 
-Do not include a real progress-transfer URL, local event export, or private
-browser data in a public issue. A transfer fragment is bearer data. Reduce a
-report to synthetic givens and events, and remove device-specific details before
-sharing it.
+Do not include a real puzzle-work URL, local event export, or private browser
+data in a public issue. A shared link is bearer data. Reduce a report to
+synthetic givens and events, and remove device-specific details before sharing
+it.
 
-The repository has no backend to revoke a leaked transfer. Treat copied links
+The repository has no backend to revoke a leaked link. Treat copied links
 accordingly.

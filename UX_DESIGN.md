@@ -204,10 +204,10 @@ A card reports state, level and short puzzle ID, active time, mistakes, and
 hints. Active attempts offer **Open puzzle** and **Share**. Solved or abandoned
 attempts offer **Review board**, **Start over**, and **Share**.
 
-Share presents the same clean-puzzle or current-progress choice used during
-play. A progress transfer contains the selected attempt's current checkpoint,
-not its event log or the rest of History. Preparing an active checkpoint pauses
-that attempt; sharing a terminal attempt adds no event.
+Share presents the same clean-puzzle or current-work choice used during play.
+A work link contains the selected attempt's current values and notes, not its
+time, settings, event log, or the rest of History. Sharing adds no event and
+does not pause an active attempt.
 
 There is no individual history deletion. Settings provides the explicit
 privacy operation **Clear all local Sudoku data**, whose confirmation states
@@ -216,16 +216,15 @@ deleted.
 
 ## 12. Incoming links and sharing dialogs
 
-Incoming puzzle and transfer links use a full-view checking state before any
-board or data is trusted. A valid result shows a factual summary and waits for
-consent. When an active game is selected, opening the incoming copy requires an
-explicit choice to keep it or abandon it first.
+Incoming puzzle links use a full-view checking state before any board or data is
+trusted. A valid result shows a factual summary and waits for consent. When an
+active game is selected, opening the incoming copy requires an explicit choice
+to keep it or abandon it first.
 
 The Share dialog distinguishes:
 
 - **Share puzzle only** — clean givens for a fresh board;
-- **Prepare progress transfer** — current values, notes, time, hints, mistakes,
-  and transferable settings.
+- **Share puzzle with work** — current values and grouped notes.
 
 QR generation is local. Copy link is always the accessible alternative, and
 native Web Share appears only when supported. The dialog states that the other
@@ -308,7 +307,7 @@ required text or actions disappear.
 - Never say “perfect”; report time, mistakes, and hints.
 - Use compact `r4c7` notation only in readable log text where space matters;
   cell accessible names spell out row and column.
-- Call a transferred game a copy, not a move or synchronization.
+- Call a shared game a copy, not a move or synchronization.
 
 ## 17. Accessibility acceptance
 
