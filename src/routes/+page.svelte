@@ -307,8 +307,9 @@
     const result = await store.importGame(
       incomingPuzzle.puzzle,
       metadata(false),
-      projection.settings,
-      incomingPuzzle.work
+      { ...projection.settings, ...(incomingPuzzle.metadata?.settings ?? {}) },
+      incomingPuzzle.work,
+      incomingPuzzle.metadata ?? undefined
     );
     if (!applyCommit(result, 'Shared puzzle opened on this device')) return;
     selectTabGame(result.gameId);
@@ -350,7 +351,12 @@
   async function sharePuzzleWork(): Promise<void> {
     if (!shareGame) return;
     await showShareLink(
-      puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(shareGame)),
+      puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(shareGame), {
+        elapsedMs: elapsedAt(shareGame, timerNow),
+        ...(shareGame.hintedCells.length ? { hintedCells: [...shareGame.hintedCells] } : {}),
+        mistakes: shareGame.mistakes,
+        settings: { ...shareGame.settings }
+      }),
       'work'
     );
     announcement = 'Puzzle work link ready';
@@ -739,12 +745,12 @@
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
-          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open shared puzzle</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingPuzzle.work.length > 0 ? 'Open shared work' : 'Start this puzzle'}</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingPuzzle.work.length > 0 || incomingPuzzle.metadata ? 'Open shared work' : 'Start this puzzle'}</button></div>
           {/if}
         {/if}
       </section>
@@ -957,7 +963,7 @@
           <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Choose what the link should carry to another device.</p>
           <div class="share-choices">
             <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
-            <button type="button" class="confirm" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes current values and notes in a readable link.</small></button>
+            <button type="button" class="confirm" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes values, notes, time, stats, and settings in a readable link.</small></button>
           </div>
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
@@ -965,7 +971,7 @@
           <p class="eyebrow">{shareKind === 'work' ? 'Puzzle with work' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
           <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareKind === 'work' ? 'QR code for opening this puzzle with its current work' : 'QR code for opening this puzzle'} />
           <p class="share-link-status" data-testid="share-link" data-link={shareLink}>Local link ready · {shareLink.length} characters</p>
-          {#if shareKind === 'work'}<p class="transfer-note">The current values and candidates are readable in the link. Time, settings, hints, and mistakes are not included.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
+          {#if shareKind === 'work'}<p class="transfer-note">The current values, candidates, time, hints, mistakes, and settings are readable in the link.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
         {/if}

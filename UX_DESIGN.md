@@ -205,9 +205,9 @@ hints. Active attempts offer **Open puzzle** and **Share**. Solved or abandoned
 attempts offer **Review board**, **Start over**, and **Share**.
 
 Share presents the same clean-puzzle or current-work choice used during play.
-A work link contains the selected attempt's current values and notes, not its
-time, settings, event log, or the rest of History. Sharing adds no event and
-does not pause an active attempt.
+A work link contains the selected attempt's current values, notes, time, hints,
+mistakes, and settings, but not its source event log, undo history, or the rest
+of History. Sharing adds no event and does not pause an active attempt.
 
 There is no individual history deletion. Settings provides the explicit
 privacy operation **Clear all local Sudoku data**, whose confirmation states
@@ -224,7 +224,8 @@ to keep it or abandon it first.
 The Share dialog distinguishes:
 
 - **Share puzzle only** — clean givens for a fresh board;
-- **Share puzzle with work** — current values and grouped notes.
+- **Share puzzle with work** — current values, grouped notes, time, hints,
+  mistakes, and settings.
 
 QR generation is local. Copy link is always the accessible alternative, and
 native Web Share appears only when supported. The dialog states that the other

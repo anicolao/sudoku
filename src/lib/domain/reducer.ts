@@ -5,6 +5,7 @@ import type {
   GameProjection,
   GameSettings,
   ImportedCheckpoint,
+  ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
   GameImportedEvent,
@@ -102,15 +103,52 @@ function validImportedCheckpoint(
 
 function validImportOrigin(event: GameImportedEvent): boolean {
   if (event.payload.importKind === 'puzzle-link') {
-    return event.payload.transferId === null && event.payload.checkpoint === null &&
-      event.payload.puzzle.provenance?.kind === 'puzzle-link' &&
-      (event.payload.puzzle.provenance.formatVersion === 1
-        ? event.payload.work === undefined
-        : Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
-          validImportedWork(event.payload.puzzle, event.payload.work));
+    if (event.payload.transferId !== null || event.payload.checkpoint !== null ||
+      event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;
+    const version = event.payload.puzzle.provenance.formatVersion;
+    if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined;
+    if (version === 2) return event.payload.sharedMetadata === undefined &&
+      Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
+      validImportedWork(event.payload.puzzle, event.payload.work);
+    if (version !== 3) return false;
+    return (event.payload.work === undefined ||
+      (Array.isArray(event.payload.work) && validImportedWork(event.payload.puzzle, event.payload.work))) &&
+      validImportedMetadata(event.payload.puzzle, event.payload.settings, event.payload.sharedMetadata);
   }
   return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
-    event.payload.work === undefined && event.payload.puzzle.provenance?.kind === 'progress-transfer';
+    event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
+    event.payload.puzzle.provenance?.kind === 'progress-transfer';
+}
+
+function validImportedMetadata(
+  puzzle: PuzzleDefinition,
+  settings: GameSettings,
+  metadata: ImportedPuzzleMetadata | undefined
+): boolean {
+  if (!metadata || typeof metadata !== 'object') return false;
+  const record = metadata as unknown as Record<string, unknown>;
+  if (Object.keys(record).length === 0 ||
+    Object.keys(record).some((key) => !['elapsedMs', 'hintedCells', 'mistakes', 'settings'].includes(key))) return false;
+  if (metadata.elapsedMs !== undefined && (!Number.isSafeInteger(metadata.elapsedMs) ||
+    metadata.elapsedMs < 0 || metadata.elapsedMs > 365 * 24 * 60 * 60 * 1_000)) return false;
+  if (metadata.mistakes !== undefined && (!Number.isSafeInteger(metadata.mistakes) ||
+    metadata.mistakes < 0 || metadata.mistakes > 1_000_000)) return false;
+  if (metadata.settings !== undefined) {
+    if (!metadata.settings || typeof metadata.settings !== 'object' || Array.isArray(metadata.settings)) return false;
+    const sharedSettings = metadata.settings as Record<string, unknown>;
+    if (Object.keys(sharedSettings).length === 0 ||
+      Object.keys(sharedSettings).some((key) => !(key in DEFAULT_SETTINGS)) ||
+      Object.entries(sharedSettings).some(([key, value]) => typeof value !== 'boolean' || settings[key as keyof GameSettings] !== value)) {
+      return false;
+    }
+  }
+  if (metadata.hintedCells !== undefined) {
+    if (!Array.isArray(metadata.hintedCells) || metadata.hintedCells.length === 0 ||
+      new Set(metadata.hintedCells).size !== metadata.hintedCells.length) return false;
+    if (metadata.hintedCells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81 ||
+      puzzle.givens[cell] !== '.')) return false;
+  }
+  return true;
 }
 
 function validImportedWork(
@@ -262,12 +300,13 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         undoTargetId: null,
         redoTargetId: null,
         paused: checkpoint?.paused ?? false,
-        elapsedMs: checkpoint?.elapsedMs ?? 0,
+        elapsedMs: checkpoint?.elapsedMs ?? (event.type === 'game/imported' ? event.payload.sharedMetadata?.elapsedMs : undefined) ?? 0,
         resumedAt: checkpoint ? null : event.occurredAt,
         status: 'active',
-        hints: checkpoint?.hints ?? 0,
-        mistakes: checkpoint?.mistakes ?? 0,
-        hintedCells: checkpoint ? [...checkpoint.hintedCells] : [],
+        hints: checkpoint?.hints ?? (event.type === 'game/imported' ? event.payload.sharedMetadata?.hintedCells?.length : undefined) ?? 0,
+        mistakes: checkpoint?.mistakes ?? (event.type === 'game/imported' ? event.payload.sharedMetadata?.mistakes : undefined) ?? 0,
+        hintedCells: checkpoint ? [...checkpoint.hintedCells] :
+          event.type === 'game/imported' ? [...(event.payload.sharedMetadata?.hintedCells ?? [])] : [],
         completedAt: null
       };
       state.activeGameId = event.gameId;

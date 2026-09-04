@@ -11,7 +11,7 @@ export type PuzzleRating = PuzzleDifficulty | 'custom';
 
 export type PuzzleProvenance =
   | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
-  | { kind: 'puzzle-link'; formatVersion: 1 | 2; fingerprint: string }
+  | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3; fingerprint: string }
   | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
 
 export type SolveTechnique =
@@ -93,6 +93,13 @@ export type ImportedPuzzleWorkAction =
   | { type: 'value'; cell: number; value: Digit }
   | { type: 'notes'; cell: number; values: Digit[]; enabled: boolean };
 
+export interface ImportedPuzzleMetadata {
+  elapsedMs?: number;
+  hintedCells?: number[];
+  mistakes?: number;
+  settings?: Partial<GameSettings>;
+}
+
 export interface GameImportedEvent extends EventEnvelope {
   type: 'game/imported';
   payload: {
@@ -103,6 +110,7 @@ export interface GameImportedEvent extends EventEnvelope {
     settings: GameSettings;
     checkpoint: ImportedCheckpoint | null;
     work?: ImportedPuzzleWorkAction[];
+    sharedMetadata?: ImportedPuzzleMetadata;
   };
 }
 

@@ -1,14 +1,14 @@
 # Share a puzzle with its current work
 
-The player can make a readable puzzle link containing placements and grouped candidates. The recipient checks it locally, sees a work summary, and opens the reconstructed board from one import event.
+The player can make a readable puzzle link containing placements, grouped candidates, time, stats, and settings. The recipient checks it locally, sees a progress summary, and opens the reconstructed board from one import event.
 
-## The player adds one placement and three candidates
+## The player adds a placement, three candidates, and one hint
 
-![The player adds one placement and three candidates](./screenshots/000-work-entered-phone-macos.png)
+![The player adds a placement, three candidates, and one hint](./screenshots/000-work-entered-phone-macos.png)
 
 **Verifications:**
 
-- [x] The board shows the placement and all three notes before sharing
+- [x] The board shows the placement, notes, and marked hint before sharing
 
 ## The player chooses how much state to share
 
@@ -18,22 +18,22 @@ The player can make a readable puzzle link containing placements and grouped can
 
 - [x] Clean and readable-work choices remain distinct
 
-## The app prepares a readable puzzle-work link without pausing
+## The app prepares a readable puzzle-work and progress link without pausing
 
-![The app prepares a readable puzzle-work link without pausing](./screenshots/002-work-link-prepared-phone-macos.png)
+![The app prepares a readable puzzle-work and progress link without pausing](./screenshots/002-work-link-prepared-phone-macos.png)
 
 **Verifications:**
 
-- [x] The decoded work has one placement and one grouped candidate action
+- [x] The decoded payload has grouped work followed by readable optional metadata
 - [x] The local QR exactly matches the link and sharing adds no event
 
-## The recipient sees the checked puzzle and work summary before consent
+## The recipient sees the checked puzzle and progress summary before consent
 
-![The recipient sees the checked puzzle and work summary before consent](./screenshots/003-shared-work-checked-phone-macos.png)
+![The recipient sees the checked puzzle and progress summary before consent](./screenshots/003-shared-work-checked-phone-macos.png)
 
 **Verifications:**
 
-- [x] The summary reports one filled and one noted cell
+- [x] The summary reports work, time, hints, and mistakes
 - [x] Validation remains ephemeral and offers to open shared work
 
 ## Consent reconstructs the work as one local import origin
@@ -42,5 +42,5 @@ The player can make a readable puzzle link containing placements and grouped can
 
 **Verifications:**
 
-- [x] The imported event separates givens from two compact work actions
+- [x] The imported event separates givens, compact work, and optional metadata
 - [x] The address is clean and the reconstructed board is immediately playable

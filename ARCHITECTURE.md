@@ -250,8 +250,9 @@ document, bundled files, and revision manifest. The application contains no
 analytics, telemetry, remote fonts, hosted QR API, WebSocket, EventSource,
 beacon, or user-data endpoint.
 
-Puzzle givens and optional work in `?p=` are visible to the static host and may
-appear in browser history. Links contain no solution. The CSP and
+Puzzle givens, optional work, and included progress metadata in `?p=` are
+visible to the static host and may appear in browser history. Links contain no
+solution. The CSP and
 `Referrer-Policy: no-referrer` reinforce this boundary, and scenario 010
 instruments browser network APIs to test it.
 
