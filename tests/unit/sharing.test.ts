@@ -46,7 +46,7 @@ describe('shared puzzle links', () => {
   });
 
   it('builds a canonical base-path-safe puzzle URL', () => {
-    expect(puzzleUrl('https://example.test/sudoku/pr5/?old=1#stale', GIVENS)).toBe(
+    expect(puzzleUrl('https://example.test/sudoku/pr5/?old=1&view=walkthrough#stale', GIVENS)).toBe(
       `https://example.test/sudoku/pr5/?p=${GIVENS}`
     );
   });

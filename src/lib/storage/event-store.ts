@@ -159,7 +159,8 @@ export class EventStore {
     metadata: EventMetadata,
     importedSettings: GameSettings = this.projection.settings,
     work: readonly ImportedPuzzleWorkAction[] = [],
-    sharedMetadata?: ImportedPuzzleMetadata
+    sharedMetadata?: ImportedPuzzleMetadata,
+    initialView?: 'walkthrough'
   ): AppProjection {
     const storedPuzzle: PuzzleDefinition = {
       ...puzzle,
@@ -183,7 +184,8 @@ export class EventStore {
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }
             : { ...action, values: [...action.values] }) } : {}),
-          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {})
+          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {}),
+          ...(initialView ? { initialView } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: sharedMetadata?.elapsedMs ?? 0,

@@ -17,12 +17,13 @@ Sharing remains local-first:
   accepts it;
 - existing local games are never silently replaced.
 
-The app offers two views of one readable format:
+The app supports three presentations of one readable format:
 
 | Purpose | URL form | Contents |
 | --- | --- | --- |
 | Start a clean puzzle | `?p=<81 cells>` | Literal givens only |
 | Show puzzle work | `?p=<81 cells>_<field>...` | Givens, placements, candidates, and optional progress metadata |
+| Walk through shared work | `?p=<progress>&view=walkthrough` | The same progress, presented as ordered instructional placements |
 
 Neither choice represents synchronization. The recipient creates an independent
 local attempt. A work link includes time, hinted cells, mistakes, and settings
@@ -49,7 +50,7 @@ Opening a link:
    deadline;
 3. shows level, clue count, work counts, and a short local fingerprint only
    after success;
-4. waits for **Start this puzzle** or **Open shared work**;
+4. waits for **Start this puzzle**, **Open shared work**, or **Open walkthrough**;
 5. appends one `game/imported` origin and removes `p` with
    `history.replaceState` after consent.
 
@@ -120,6 +121,26 @@ settings bundle. Hand-written links may omit any or all of these additions;
 omitted progress starts at zero and omitted settings retain the recipient's
 current preference.
 
+### Walkthrough view selector
+
+An optional sibling query parameter, `view=walkthrough`, asks the recipient to
+present the shared placement actions as a solve walkthrough. It is accepted
+only when `p` contains at least one placement; metadata remains optional.
+Unknown or repeated `view` values are rejected.
+
+The shared puzzle is still validated and remains ephemeral until explicit
+consent. The ready card offers **Open walkthrough**; accepting it writes the
+same single import origin, displays the existing analysis progress bar, and
+opens at placement 1 without first showing the play board. If another puzzle is
+active, the existing abandon-or-keep consent remains in force.
+
+Placement actions are analyzed in their URL order. Notes between placements are
+replayed into subsequent board states but are not walkthrough steps. Because the
+format carries one final elapsed time rather than per-action timestamps, each
+shared walkthrough step displays that shared time. The Share dialog never emits
+`view=walkthrough`; it is reserved for intentionally authored links such as
+those printed in the book.
+
 ## 4. Sharing flow
 
 Share is available during active play and from every History card. The dialog
@@ -182,6 +203,7 @@ interface GameImportedEvent extends EventEnvelope {
     checkpoint: null;
     work?: ImportedPuzzleWorkAction[];
     sharedMetadata?: ImportedPuzzleMetadata;
+    initialView?: 'walkthrough';
   };
 }
 ```
@@ -204,7 +226,7 @@ layouts reduce the displayed dimensions while retaining the full matrix.
 
 Links are constructed from the current application URL, so root and subpath
 deployments remain valid. Puzzle URLs clear prior search and fragment data
-before adding `p`.
+before adding `p`; generated Share links never add `view`.
 
 All links are bearer data, not encryption. Anyone who can read the link or QR
 can reconstruct its contents. Givens, work, and included progress metadata
@@ -224,6 +246,7 @@ the application does not request camera permission or implement a scanner.
 | --- | --- |
 | More than one `p` value | Reject as ambiguous and append nothing |
 | Empty, malformed, or unsupported value | Show an invalid-link reason and append nothing |
+| Unknown/repeated `view`, or walkthrough without progress/placements | Reject and append nothing |
 | Invalid coordinates, action/metadata syntax, target, duplicate, or bounds | Reject and append nothing |
 | Duplicate givens, no solution, or multiple solutions | Reject and append nothing |
 | Unique puzzle beyond the curriculum | Accept as Custom |
@@ -250,6 +273,9 @@ cleans the address. Scenario 022 proves both Share choices, grouped candidate
 and metadata encoding, pixel-decoded QR equality, fresh-context validation,
 atomic import, and responsive presentation. Scenario 007 covers work sharing
 from a completed History card without adding an event.
+Scenario 023 proves an authored `view=walkthrough` link remains ephemeral until
+consent, records one marked import, shows analysis progress, cleans both query
+parameters, and opens on its first ordered placement.
 
 The privacy suite enforces same-origin requests, and the installed-offline suite
 proves that puzzle state and History remain outside the application-shell cache.

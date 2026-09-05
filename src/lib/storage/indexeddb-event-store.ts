@@ -255,7 +255,8 @@ export class IndexedDbEventStore {
     metadata: EventMetadata,
     importedSettings: GameSettings = this.projection.settings,
     work: readonly ImportedPuzzleWorkAction[] = [],
-    sharedMetadata?: ImportedPuzzleMetadata
+    sharedMetadata?: ImportedPuzzleMetadata,
+    initialView?: 'walkthrough'
   ): Promise<CommitResult> {
     const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
     const settings = { ...importedSettings };
@@ -269,7 +270,8 @@ export class IndexedDbEventStore {
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }
             : { ...action, values: [...action.values] }) } : {}),
-          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {})
+          ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {}),
+          ...(initialView ? { initialView } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(), elapsedMs: sharedMetadata?.elapsedMs ?? 0,
         schemaVersion: 1, reducerVersion: 1

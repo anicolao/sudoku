@@ -111,6 +111,7 @@ export interface GameImportedEvent extends EventEnvelope {
     checkpoint: ImportedCheckpoint | null;
     work?: ImportedPuzzleWorkAction[];
     sharedMetadata?: ImportedPuzzleMetadata;
+    initialView?: 'walkthrough';
   };
 }
 

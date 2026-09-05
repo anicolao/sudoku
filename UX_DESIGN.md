@@ -221,6 +221,10 @@ trusted. A valid result shows a factual summary and waits for consent. When an
 active game is selected, opening the incoming copy requires an explicit choice
 to keep it or abandon it first.
 
+An authored progress link with `view=walkthrough` changes the consent action to
+**Open walkthrough**. After acceptance it shows walkthrough analysis progress
+and opens directly at placement 1. Share never generates this parameter.
+
 The Share dialog distinguishes:
 
 - **Share puzzle only** — clean givens for a fresh board;

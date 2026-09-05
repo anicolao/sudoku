@@ -3,6 +3,7 @@ import type { Digit, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/
 import {
   buildSolveWalkthrough,
   buildSolveWalkthroughAsync,
+  countSolveWalkthroughPlacements,
   type WalkthroughBuildProgress
 } from '../../src/lib/domain/walkthrough';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
@@ -173,5 +174,71 @@ describe('instructional solve walkthroughs', () => {
       { completed: 2, total: 2 }
     ]);
     expect(yields).toBe(2);
+  });
+
+  it('replays ordered placements embedded in a walkthrough-directed shared import', () => {
+    const solution = '549371628826945371173628945654719283917283456382456719738562194491837562265194837';
+    const puzzle: PuzzleDefinition = {
+      id: 'shared-walkthrough-fixture',
+      givens: `..${solution.slice(2)}`,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null,
+      provenance: { kind: 'puzzle-link', formatVersion: 3, fingerprint: 'shared-walkthrough' }
+    };
+    const events: SudokuEvent[] = [{
+      ...envelope(1),
+      elapsedMs: 5_000,
+      type: 'game/imported',
+      payload: {
+        gameId,
+        importKind: 'puzzle-link',
+        transferId: null,
+        puzzle,
+        settings,
+        checkpoint: null,
+        work: [
+          { type: 'value', cell: 0, value: 5 },
+          { type: 'notes', cell: 1, values: [4], enabled: true },
+          { type: 'value', cell: 1, value: 4 }
+        ],
+        sharedMetadata: { elapsedMs: 5_000 },
+        initialView: 'walkthrough'
+      }
+    }];
+
+    const walkthrough = buildSolveWalkthrough(events, gameId);
+    expect(countSolveWalkthroughPlacements(events, gameId)).toBe(2);
+    expect(walkthrough.steps.map((step) => step.targetCell)).toEqual([0, 1]);
+    expect(walkthrough.steps[0].game.values.slice(0, 2)).toEqual([5, null]);
+    expect(walkthrough.steps[1]).toMatchObject({
+      elapsedMs: 5_000,
+      rule: 'full-house',
+      game: { status: 'complete' }
+    });
+  });
+
+  it('does not reinterpret ordinary shared work as a recorded solve', () => {
+    const puzzle = generateEasyPuzzle('ordinary-shared-work').puzzle;
+    const cell = puzzle.givens.indexOf('.');
+    const events: SudokuEvent[] = [{
+      ...envelope(1),
+      type: 'game/imported',
+      payload: {
+        gameId,
+        importKind: 'puzzle-link',
+        transferId: null,
+        puzzle: {
+          ...puzzle,
+          provenance: { kind: 'puzzle-link', formatVersion: 2, fingerprint: 'ordinary-work' }
+        },
+        settings,
+        checkpoint: null,
+        work: [{ type: 'value', cell, value: Number(puzzle.solution[cell]) as Digit }]
+      }
+    }];
+
+    expect(buildSolveWalkthrough(events, gameId).steps).toEqual([]);
   });
 });

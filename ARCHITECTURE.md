@@ -42,6 +42,7 @@ directly.
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
 | `src/lib/domain/game-log.ts` | Human-readable projection of canonical events |
+| `src/lib/domain/walkthrough.ts` | Rule analysis and placement replay for recorded and walkthrough-directed shared solves |
 | `src/lib/domain/sudoku.ts` | Grid parsing, units, peers, solved-grid checks, and domain helpers |
 | `src/lib/generator/` | Versioned PRNG, rated puzzle transforms, exhaustive solver, logical solver, worker, and service boundary |
 | `src/lib/storage/indexeddb-event-store.ts` | Canonical browser repository, per-stream revisions, migration, memory-only fallback, and deletion |
@@ -118,7 +119,7 @@ Current vocabulary:
 | --- | --- | --- |
 | `settings/changed` | changed settings | Update device-local defaults or appearance preferences |
 | `game/started` | game ID, puzzle, settings snapshot | Start a locally generated attempt |
-| `game/imported` | puzzle, settings, and optional work; legacy origins may contain an old checkpoint | Start from checked givens and optional shared work |
+| `game/imported` | puzzle, settings, optional work/metadata, and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked givens and optional shared work |
 | `cell/value-entered` | cell, value | Place or replace a user value |
 | `cell/value-erased` | cell, value, target event ID | Replay without one exact placement and its derived effects |
 | `cell/cleared` | cell | Clear the selected editable cell when no local placement source can be targeted |
