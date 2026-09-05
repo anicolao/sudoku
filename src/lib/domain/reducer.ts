@@ -106,17 +106,23 @@ function validImportOrigin(event: GameImportedEvent): boolean {
     if (event.payload.transferId !== null || event.payload.checkpoint !== null ||
       event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;
     const version = event.payload.puzzle.provenance.formatVersion;
-    if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined;
+    if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
+      event.payload.initialView === undefined;
     if (version === 2) return event.payload.sharedMetadata === undefined &&
+      (event.payload.initialView === undefined || event.payload.initialView === 'walkthrough') &&
       Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
-      validImportedWork(event.payload.puzzle, event.payload.work);
+      validImportedWork(event.payload.puzzle, event.payload.work) &&
+      (event.payload.initialView !== 'walkthrough' || event.payload.work.some((action) => action.type === 'value'));
     if (version !== 3) return false;
+    if (event.payload.initialView !== undefined && event.payload.initialView !== 'walkthrough') return false;
+    if (event.payload.initialView === 'walkthrough' &&
+      (!Array.isArray(event.payload.work) || !event.payload.work.some((action) => action.type === 'value'))) return false;
     return (event.payload.work === undefined ||
       (Array.isArray(event.payload.work) && validImportedWork(event.payload.puzzle, event.payload.work))) &&
       validImportedMetadata(event.payload.puzzle, event.payload.settings, event.payload.sharedMetadata);
   }
   return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
-    event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
+    event.payload.work === undefined && event.payload.sharedMetadata === undefined && event.payload.initialView === undefined &&
     event.payload.puzzle.provenance?.kind === 'progress-transfer';
 }
 

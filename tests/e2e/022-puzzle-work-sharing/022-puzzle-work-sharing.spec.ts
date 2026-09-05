@@ -63,6 +63,7 @@ test('a readable puzzle link carries work and optional progress metadata', async
         );
         expect(shareLink).toContain('%2B249%2B');
         expect(shareLink).toContain('time%3D75432');
+        expect(new URL(shareLink).searchParams.has('view')).toBe(false);
       } },
       { spec: 'The local QR exactly matches the link and sharing adds no event', check: async () => {
         const qr = PNG.sync.read(await page.getByTestId('share-qr').screenshot());

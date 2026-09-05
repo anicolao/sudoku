@@ -129,7 +129,7 @@ describe('event store', () => {
     });
   });
 
-  it('restores optional progress metadata and shared settings from a readable link', () => {
+  it('restores optional progress metadata, settings, and a walkthrough destination from a readable link', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('shared-metadata-origin').puzzle;
     const editable = [...generated.givens].findIndex((given) => given === '.');
@@ -156,7 +156,7 @@ describe('event store', () => {
     const store = new EventStore(storage);
     const projection = store.importGame(puzzle, {
       occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-metadata-1'
-    }, sharedSettings, work, sharedMetadata);
+    }, sharedSettings, work, sharedMetadata, 'walkthrough');
     const game = projection.games[projection.activeGameId ?? ''];
 
     expect(game).toMatchObject({
@@ -170,7 +170,7 @@ describe('event store', () => {
     expect(store.getDocument().events).toMatchObject([{
       type: 'game/imported',
       elapsedMs: 75_432,
-      payload: { sharedMetadata }
+      payload: { sharedMetadata, initialView: 'walkthrough' }
     }]);
   });
 

@@ -112,6 +112,10 @@ readable placement, candidate, elapsed-time, hinted-cell, mistake-count, and
 setting fields. It does not contain the solution, source event log, undo
 history, device identity, or other History entries.
 
+An intentionally authored progress link may add `&view=walkthrough` to open its
+ordered placements in the instructional walkthrough immediately after local
+validation and consent. Links created by the app never add this view parameter.
+
 The link is bearer data: anyone with it can open a copy. Included work and
 progress are part of the query and may be visible to the static host and browser
 history. All

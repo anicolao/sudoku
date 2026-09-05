@@ -11,6 +11,7 @@
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import {
     buildSolveWalkthroughAsync,
+    countSolveWalkthroughPlacements,
     type SolveWalkthrough,
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
@@ -35,6 +36,7 @@
   type StripeType = 'even' | 'odd';
   type View = 'play' | 'puzzles' | 'history' | 'walkthrough' | 'settings';
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
+  type IncomingView = 'play' | 'walkthrough';
   type ShareStage = 'choose' | 'ready';
   type ShareKind = 'puzzle' | 'work';
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
@@ -75,6 +77,7 @@
   let incomingStatus = $state<IncomingStatus>('none');
   let incomingPuzzle = $state<SharedPuzzleValidation | null>(null);
   let incomingError = $state('');
+  let incomingView = $state<IncomingView>('play');
   let shareDialogOpen = $state(false);
   let shareGameId = $state<string | null>(null);
   let shareStage = $state<ShareStage>('choose');
@@ -268,15 +271,28 @@
     const url = new URL(window.location.href);
     const puzzles = url.searchParams.getAll('p');
     if (puzzles.length === 0) return;
+    incomingView = 'play';
     if (puzzles.length !== 1) {
       incomingStatus = 'invalid';
       incomingError = 'This link is ambiguous because it contains more than one puzzle.';
       return;
     }
+    const requestedViews = url.searchParams.getAll('view');
+    if (requestedViews.length > 1 || (requestedViews[0] && requestedViews[0] !== 'walkthrough')) {
+      incomingStatus = 'invalid';
+      incomingError = 'This link requests an unsupported puzzle view.';
+      return;
+    }
+    const requestedView: IncomingView = requestedViews[0] === 'walkthrough' ? 'walkthrough' : 'play';
     incomingStatus = 'checking';
     incomingError = '';
     try {
       incomingPuzzle = await validateSharedPuzzleInWorker(puzzles[0]);
+      if (requestedView === 'walkthrough' &&
+        !incomingPuzzle.work.some((action) => action.type === 'value')) {
+        throw new Error('A walkthrough link must include at least one placement.');
+      }
+      incomingView = requestedView;
       incomingStatus = 'ready';
     } catch (error) {
       incomingStatus = 'invalid';
@@ -287,6 +303,7 @@
   function clearIncomingUrl(): void {
     const url = new URL(window.location.href);
     url.searchParams.delete('p');
+    url.searchParams.delete('view');
     history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -295,10 +312,12 @@
     incomingStatus = 'none';
     incomingPuzzle = null;
     incomingError = '';
+    incomingView = 'play';
   }
 
   async function acceptIncoming(abandonCurrent = false): Promise<void> {
     if (!store || !incomingPuzzle) return;
+    const destination = incomingView;
     if (activeGame?.status === 'active') {
       if (!abandonCurrent) return;
       const abandoned = await store.abandon(activeGame.id, metadata());
@@ -309,14 +328,16 @@
       metadata(false),
       { ...projection.settings, ...(incomingPuzzle.metadata?.settings ?? {}) },
       incomingPuzzle.work,
-      incomingPuzzle.metadata ?? undefined
+      incomingPuzzle.metadata ?? undefined,
+      destination === 'walkthrough' ? 'walkthrough' : undefined
     );
     if (!applyCommit(result, 'Shared puzzle opened on this device')) return;
     selectTabGame(result.gameId);
     reviewedGameId = null;
     selectedCell = null;
-    view = 'play';
     dismissIncoming();
+    if (destination === 'walkthrough' && result.gameId) await openWalkthrough(result.gameId);
+    else view = 'play';
   }
 
   function openShareDialog(gameId: string): void {
@@ -614,9 +635,7 @@
     walkthroughStatus = 'loading';
     walkthroughProgress = {
       completed: 0,
-      total: sourceEvents.filter((event) =>
-        event.gameId === gameId && event.type === 'cell/value-entered'
-      ).length
+      total: countSolveWalkthroughPlacements(sourceEvents, gameId)
     };
     walkthroughError = '';
     reviewedGameId = null;
@@ -744,13 +763,13 @@
         {:else if incomingStatus === 'invalid'}
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
-          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>
+          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{/if}
           <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open shared puzzle</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open {incomingView === 'walkthrough' ? 'walkthrough' : 'shared puzzle'}</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingPuzzle.work.length > 0 || incomingPuzzle.metadata ? 'Open shared work' : 'Start this puzzle'}</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingView === 'walkthrough' ? 'Open walkthrough' : incomingPuzzle.work.length > 0 || incomingPuzzle.metadata ? 'Open shared work' : 'Start this puzzle'}</button></div>
           {/if}
         {/if}
       </section>
