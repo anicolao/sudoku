@@ -3,7 +3,7 @@ import { createWorker, OEM, PSM, type Worker } from 'tesseract.js';
 import type { Digit } from '$lib/domain/types';
 import { findGridQuadrilateral, perspectiveCoefficients, projectPoint } from './grid-extraction';
 
-export type PhotoRecognitionPhase = 'preparing' | 'finding-grid' | 'loading-reader' | 'reading-digits';
+export type PhotoRecognitionPhase = 'preparing' | 'finding-grid' | 'loading-reader' | 'reading-digits' | 'checking-puzzle';
 
 export interface PhotoRecognitionProgress {
   phase: PhotoRecognitionPhase;

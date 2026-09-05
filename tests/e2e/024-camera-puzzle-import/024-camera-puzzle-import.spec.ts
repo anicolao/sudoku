@@ -64,16 +64,18 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
   });
 
   await expect(page.getByRole('progressbar', { name: 'Photo recognition progress' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Correct any digit' })).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 120_000 });
   await steps.step('recognized-givens-reviewed', {
-    description: 'The recognized givens are presented as an editable grid',
+    description: 'The confident givens are checked and presented for acceptance',
     verifications: [
       { spec: 'Every printed clue lands in its source cell and blank cells stay empty', check: async () => {
         const recognized = await page.locator('[data-photo-cell]').allTextContents();
         expect(recognized.map((value) => value || '.').join('')).toBe(GIVENS);
       } },
-      { spec: 'The review reports all 30 detected givens before saving', check: async () => {
+      { spec: 'The clean review is already proven and remains unsaved', check: async () => {
         await expect(page.getByText('30 givens', { exact: true })).toBeVisible();
+        await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
+        await expect(page.getByText(/One unique solution/)).toBeVisible();
         expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
       } }
     ]
