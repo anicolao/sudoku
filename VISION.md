@@ -92,8 +92,10 @@ The maintained release includes:
    desktop use;
 5. installed offline operation after one successful online load;
 6. checked readable links for clean puzzles or current puzzle work;
-7. explicit storage degradation, migration, corruption recovery, and deletion;
-8. deterministic unit, browser, privacy, offline, and visual evidence.
+7. private on-device camera recognition and correction for conventional printed
+   grids;
+8. explicit storage degradation, migration, corruption recovery, and deletion;
+9. deterministic unit, browser, privacy, offline, and visual evidence.
 
 This is the baseline, not a backlog. A future change should justify itself
 against these established behaviours instead of reopening completed scope.
@@ -104,7 +106,7 @@ against these established behaviours instead of reopening completed scope.
 - ads, analytics, telemetry, push notifications, streak pressure, or purchases;
 - daily content that depends on a server or globally synchronized calendar;
 - competitive rankings or anti-cheat measures;
-- puzzle authoring, printing, OCR, or an in-app camera scanner;
+- free-form puzzle authoring, printing, or handwriting-specific recognition;
 - killer, samurai, irregular, or other Sudoku variants;
 - cross-device merge or ownership transfer after a shared checkpoint;
 - cross-tab collaborative editing of the same action at the same instant;

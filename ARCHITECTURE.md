@@ -12,7 +12,7 @@ Sudoku is a client-only SvelteKit application built with TypeScript and
 origin root or configured subpath. There is no application server.
 
 ```text
-+page.svelte and SudokuBoard.svelte
++page.svelte and UI components
         │
         ├── command methods ──→ IndexedDbEventStore ──→ IndexedDB streams
         │                              │
@@ -22,7 +22,9 @@ origin root or configured subpath. There is no application server.
         │
         ├── generation service ──→ generator worker
         │
-        └── sharing services ──→ validation workers and local QR encoder
+        ├── sharing services ──→ validation workers and local QR encoder
+        │
+        └── photo service ──→ local grid extraction and OCR worker
 
 service-worker.ts ──→ static application-shell cache only
 ```
@@ -38,6 +40,7 @@ directly.
 | --- | --- |
 | `src/routes/+page.svelte` | Application composition, navigation, UI commands, incoming links, sharing dialogs, and live announcements |
 | `src/lib/components/SudokuBoard.svelte` | Accessible 9×9 board rendering and cell interaction |
+| `src/lib/components/PhotoPuzzleImport.svelte` | Camera/file choice, recognition progress, editable givens review, and import consent |
 | `src/lib/domain/types.ts` | Persisted event, puzzle, settings, and projection types |
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
@@ -48,6 +51,7 @@ directly.
 | `src/lib/storage/indexeddb-event-store.ts` | Canonical browser repository, per-stream revisions, migration, memory-only fallback, and deletion |
 | `src/lib/storage/event-store.ts` | Flat V0/V1 document parser, legacy migration support, and framework-neutral test store |
 | `src/lib/sharing/` | Puzzle/work-link parsing, fingerprints, worker validation, and URL construction |
+| `src/lib/photo/` | Adaptive thresholding, connected-grid detection, perspective correction, cell extraction, and bundled OCR orchestration |
 | `src/service-worker.ts` | Versioned static shell installation, activation, update, and cache-first reads |
 | `tests/unit/` | Pure domain, generator, storage, migration, sharing, and compatibility evidence |
 | `tests/e2e/` | Production-shaped user journeys, screenshots, privacy, accessibility, and offline evidence |
@@ -119,7 +123,7 @@ Current vocabulary:
 | --- | --- | --- |
 | `settings/changed` | changed settings | Update device-local defaults or appearance preferences |
 | `game/started` | game ID, puzzle, settings snapshot | Start a locally generated attempt |
-| `game/imported` | puzzle, settings, optional work/metadata, and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked givens and optional shared work |
+| `game/imported` | import kind, puzzle, settings, optional work/metadata, and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked shared givens, transferred progress, or a reviewed camera grid |
 | `cell/value-entered` | cell, value | Place or replace a user value |
 | `cell/value-erased` | cell, value, target event ID | Replay without one exact placement and its derived effects |
 | `cell/cleared` | cell | Clear the selected editable cell when no local placement source can be targeted |
@@ -227,6 +231,23 @@ values and notes. It does not export time, statistics, settings, that attempt's
 event log, or any other attempt. The precise readable contract is in
 [PUZZLE_SHARING.md](PUZZLE_SHARING.md).
 
+Photo import accepts a browser camera capture or image file up to 20 MB. The
+client downsizes it, creates an adaptive black/white mask, finds the largest
+connected square lattice, maps its four corners to a normalized square, and
+extracts likely printed-digit components from the 81 cells. A bundled
+Tesseract LSTM worker reads those isolated components with a 1–9 whitelist.
+The OCR worker, WebAssembly core, and compact English model are versioned
+same-origin build assets and remain available to an installed app.
+
+Recognition is advisory. The editable review grid flags missing or
+low-confidence detected cells and never writes the source image. The corrected
+81-character givens pass through the same worker uniqueness proof, solution
+derivation, and logical rating as a clean shared puzzle. Consent then appends
+one `game/imported` origin with `importKind: 'camera-photo'`, recognizer version
+1, and the SHA-256 givens fingerprint. Only that self-contained puzzle and the
+settings snapshot are persisted; pixels and confidence scores remain
+ephemeral.
+
 ## 9. Offline shell and updates
 
 The service worker creates a cache name from its deployment scope and build
@@ -247,7 +268,8 @@ app can reopen, resume, complete, review History, and reload offline.
 ## 10. Privacy boundary
 
 Ordinary runtime traffic is restricted to same-origin `GET` requests for the
-document, bundled files, and revision manifest. The application contains no
+document, bundled files (including the lazily used OCR worker, core, and digit
+model), and revision manifest. The application contains no
 analytics, telemetry, remote fonts, hosted QR API, WebSocket, EventSource,
 beacon, or user-data endpoint.
 

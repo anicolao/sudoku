@@ -74,6 +74,10 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .primary-action:disabled { cursor: progress; background: #7f86b5; }
 .local-note, .generation-error { margin: 9px 0 0; color: #777a80; font-size: .82rem; text-align: center; }
 .generation-error { color: #b42318; }
+.photo-import-card { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 16px 18px; border: 1px solid #b9bedf; border-radius: 12px; background: #f0f1fa; }
+.photo-import-card h2 { margin: 0 0 4px; color: #303a7d; font-size: 1.12rem; }
+.photo-import-card p:last-child { max-width: 48ch; margin: 0; color: #565a62; font-size: .84rem; line-height: 1.35; }
+.photo-import-card button { flex: 0 0 auto; min-height: 46px; padding: 7px 14px; border: 1px solid #4654a3; border-radius: 9px; color: #fff; background: #4654a3; font-weight: 700; cursor: pointer; }
 
 .incoming-card { width: min(100%, 560px); display: grid; justify-items: center; gap: 10px; padding: clamp(20px, 5vw, 38px); border: 1px solid #d7d5cd; border-radius: 18px; background: #fffdf8; text-align: center; }
 .incoming-card .dialog-symbol { margin-bottom: 0; }
@@ -319,6 +323,9 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 footer { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 14px; color: #666970; background: #fffdf8; font-size: .68rem; }
 
 @media (max-width: 599px) {
+  .photo-import-card { align-items: stretch; flex-direction: column; gap: 10px; padding: 13px; }
+  .photo-import-card .eyebrow { margin-bottom: 3px; }
+  .photo-import-card button { width: 100%; }
   .shell-header { min-height: 54px; padding: 5px 12px; }
   .brand { min-height: 44px; font-size: 1.25rem; }
   .brand-mark { transform: scale(.9); }
@@ -427,6 +434,9 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .hero-card .local-note { display: none; }
   .hero-card .welcome-copy h1 { margin-bottom: 12px; font-size: 1.6rem; text-align: center; }
   .library-view { gap: 5px; }
+  .photo-import-card { padding: 0; border: 0; background: transparent; }
+  .photo-import-card > div { display: none; }
+  .photo-import-card button { width: 100%; min-height: 44px; }
   .incoming-card { gap: 5px; padding: 10px; }
   .incoming-card .dialog-symbol { display: none; }
   .incoming-card h1 { font-size: 1.5rem; }

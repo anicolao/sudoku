@@ -12,6 +12,7 @@ export type PuzzleRating = PuzzleDifficulty | 'custom';
 export type PuzzleProvenance =
   | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
   | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3; fingerprint: string }
+  | { kind: 'camera-photo'; recognizerVersion: 1; fingerprint: string }
   | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
 
 export type SolveTechnique =
@@ -104,7 +105,7 @@ export interface GameImportedEvent extends EventEnvelope {
   type: 'game/imported';
   payload: {
     gameId: string;
-    importKind: 'puzzle-link' | 'progress-transfer';
+    importKind: 'puzzle-link' | 'camera-photo' | 'progress-transfer';
     transferId: string | null;
     puzzle: PuzzleDefinition;
     settings: GameSettings;

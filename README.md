@@ -19,6 +19,9 @@ contract, and deterministic test evidence.
 - Five locally generated levels: Foundations, Intermediate, Advanced, Expert,
   and Master. Every accepted puzzle has one independently proven solution and a
   logical solve path within its selected technique band.
+- Camera or image import for conventional printed Sudoku grids. Grid finding,
+  perspective correction, digit recognition, correction, solution proof, and
+  rating all happen in the browser; the source photo is never persisted.
 - Touch, mouse, and keyboard play with number-first or cell-first input,
   pencil notes, fill-all notes, erase, undo, redo, restart, pause, and hints.
 - Accessible board semantics, roving keyboard focus, visible focus and
@@ -97,8 +100,10 @@ pure replay reducer
 board, timer, undo/redo, history, and readable game-log projections
 ```
 
-Puzzle generation, exhaustive solution counting, logical rating, and
-shared-puzzle validation run outside the main UI thread.
+Puzzle generation, photo digit recognition, exhaustive solution counting,
+logical rating, and shared-puzzle validation run locally. Expensive generation,
+OCR, and validation work uses browser workers so the interface can report
+progress.
 The production build is a client-only SvelteKit SPA emitted by
 `@sveltejs/adapter-static`, so it can be hosted at the origin root or a subpath.
 
@@ -122,6 +127,11 @@ history. All
 parsing, uniqueness checking,
 solution derivation, rating, QR generation, and import validation occur locally.
 See [PUZZLE_SHARING.md](PUZZLE_SHARING.md) for the exact contract.
+
+Photo import loads its OCR engine and English digit model as bundled,
+same-origin application assets. The selected image stays in memory only long
+enough to find, straighten, and read the grid. Only the user-reviewed 81-cell
+givens and their derived puzzle definition enter local History.
 
 Local History is not a backup. Clearing browser data, private-browsing teardown,
 storage eviction, or loss of the device removes it. The application makes no

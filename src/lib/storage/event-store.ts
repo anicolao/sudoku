@@ -160,7 +160,8 @@ export class EventStore {
     importedSettings: GameSettings = this.projection.settings,
     work: readonly ImportedPuzzleWorkAction[] = [],
     sharedMetadata?: ImportedPuzzleMetadata,
-    initialView?: 'walkthrough'
+    initialView?: 'walkthrough',
+    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link'
   ): AppProjection {
     const storedPuzzle: PuzzleDefinition = {
       ...puzzle,
@@ -176,7 +177,7 @@ export class EventStore {
         type: 'game/imported',
         payload: {
           gameId,
-          importKind: 'puzzle-link',
+          importKind,
           transferId: null,
           puzzle: storedPuzzle,
           settings,
