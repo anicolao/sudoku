@@ -62,16 +62,20 @@ Recognition has a labelled progress bar with distinct preparation, grid,
 reader-loading, and digit-reading messages. A failure retains no partial puzzle
 and gives actionable framing, lighting, size, or format guidance.
 
-Success opens an editable 9×9 givens review. Every cell spells out its row,
-column, value or emptiness, and low-confidence status. Amber plus the words
-**needs a closer look** identify uncertain cells; colour is not the only cue.
-Selecting a cell and using 1–9 or **Clear** corrects recognition. The optional
-straightened grayscale preview helps comparison on larger layouts.
+After reading, the app first removes every low-confidence result and checks the
+remaining givens. If they prove one unique puzzle, success opens that clean,
+editable 9×9 grid already ready for acceptance. If they do not, review restores
+the uncertain OCR results for comparison: every cell spells out its row, column,
+value or emptiness, and low-confidence status. Amber plus the words **needs a
+closer look** identify uncertain cells; colour is not the only cue. Selecting a
+cell and using 1–9 or **Clear** corrects recognition. The optional straightened
+grayscale preview helps comparison on larger layouts.
 The review grid has one tab stop; arrows, Home, and End move between cells,
 number keys replace a given, and Backspace or Delete clears it.
 
-**Check puzzle** proves the reviewed givens have one unique solution and shows
-their logical rating. Nothing is persisted before **Start photographed
+The automatic check, or **Check puzzle** after a correction, proves the reviewed
+givens have one unique solution and shows their logical rating. Nothing is
+persisted before **Start photographed
 puzzle**. If another attempt is active, the final action explicitly says it
 will abandon that attempt to History. The source photo and confidence data are
 never stored; the resulting play screen identifies the puzzle as **Recognized

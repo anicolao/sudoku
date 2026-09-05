@@ -239,10 +239,13 @@ Tesseract LSTM worker reads those isolated components with a 1–9 whitelist.
 The OCR worker, WebAssembly core, and compact English model are versioned
 same-origin build assets and remain available to an installed app.
 
-Recognition is advisory. The editable review grid flags missing or
-low-confidence detected cells and never writes the source image. The corrected
-81-character givens pass through the same worker uniqueness proof, solution
-derivation, and logical rating as a clean shared puzzle. Consent then appends
+Recognition is advisory. Before review, low-confidence readings are removed and
+the remaining givens pass through the same worker uniqueness proof, solution
+derivation, and logical rating as a clean shared puzzle. A successful proof
+presents that clean grid for acceptance without confidence warnings. If the
+confident givens cannot prove one puzzle, the editable review restores and flags
+the uncertain OCR readings for correction. It never writes the source image.
+Consent then appends
 one `game/imported` origin with `importKind: 'camera-photo'`, recognizer version
 1, and the SHA-256 givens fingerprint. Only that self-contained puzzle and the
 settings snapshot are persisted; pixels and confidence scores remain

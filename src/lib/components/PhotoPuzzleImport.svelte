@@ -6,6 +6,7 @@
     type PhotoRecognitionPhase,
     type PhotoRecognitionProgress
   } from '$lib/photo/photo-recognition';
+  import { preparePhotoReview } from '$lib/photo/photo-review';
   import type { SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
 
@@ -37,6 +38,7 @@
     if (progress.phase === 'preparing') return 5;
     if (progress.phase === 'finding-grid') return 16;
     if (progress.phase === 'loading-reader') return 28;
+    if (progress.phase === 'checking-puzzle') return 98;
     return 28 + Math.round((progress.completed / Math.max(1, progress.total)) * 67);
   });
   const progressLabel = $derived(progressText(progress.phase));
@@ -45,6 +47,7 @@
     if (phase === 'preparing') return 'Preparing photo…';
     if (phase === 'finding-grid') return 'Finding and straightening the grid…';
     if (phase === 'loading-reader') return 'Loading the on-device digit reader…';
+    if (phase === 'checking-puzzle') return 'Checking the confident givens…';
     return `Reading printed digits ${progress.completed} of ${progress.total}…`;
   }
 
@@ -57,11 +60,14 @@
     selectedCell = null;
     try {
       const result = await recognizeSudokuPhoto(file, (next) => progress = next);
-      values = result.values;
-      uncertainCells = result.uncertainCells;
+      progress = { phase: 'checking-puzzle', completed: 0, total: 1 };
+      const review = await preparePhotoReview(result, validateSharedPuzzleInWorker);
+      values = review.values;
+      uncertainCells = review.uncertainCells;
+      validation = review.validation;
       detectedCellCount = result.detectedCellCount;
       previewDataUrl = result.previewDataUrl;
-      selectedCell = result.uncertainCells[0] ?? result.values.findIndex((value) => value !== null);
+      selectedCell = review.uncertainCells[0] ?? review.values.findIndex((value) => value !== null);
       stage = 'review';
     } catch (recognitionError) {
       error = recognitionError instanceof Error ? recognitionError.message : 'This puzzle could not be recognized.';

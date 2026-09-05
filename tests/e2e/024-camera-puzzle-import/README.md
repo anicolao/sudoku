@@ -10,14 +10,14 @@ A player can select or photograph a conventional grid, recognize its printed giv
 
 - [x] The photo option explains that the image is not sent anywhere
 
-## The recognized givens are presented as an editable grid
+## The confident givens are checked and presented for acceptance
 
-![The recognized givens are presented as an editable grid](./screenshots/001-recognized-givens-reviewed-phone-macos.png)
+![The confident givens are checked and presented for acceptance](./screenshots/001-recognized-givens-reviewed-phone-macos.png)
 
 **Verifications:**
 
 - [x] Every printed clue lands in its source cell and blank cells stay empty
-- [x] The review reports all 30 detected givens before saving
+- [x] The clean review is already proven and remains unsaved
 
 ## The corrected grid is proven before import
 
