@@ -4,6 +4,7 @@
   import { buildLabel } from '$lib/app-meta';
   import { checkForShellUpdate } from '$lib/shell-update';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
+  import PhotoPuzzleImport from '$lib/components/PhotoPuzzleImport.svelte';
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
   import { describeMove, formatGameLog } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
@@ -34,7 +35,7 @@
   type GenerationStatus = 'idle' | 'generating' | 'failed';
   type InputMode = 'number' | 'notes' | 'stripes';
   type StripeType = 'even' | 'odd';
-  type View = 'play' | 'puzzles' | 'history' | 'walkthrough' | 'settings';
+  type View = 'play' | 'puzzles' | 'photo-import' | 'history' | 'walkthrough' | 'settings';
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingView = 'play' | 'walkthrough';
   type ShareStage = 'choose' | 'ready';
@@ -427,6 +428,38 @@
       generationError = error instanceof Error ? error.message : 'Could not generate a puzzle yet';
       generationStatus = 'failed';
     }
+  }
+
+  async function startPhotoPuzzle(validation: SharedPuzzleValidation, abandonCurrent: boolean): Promise<void> {
+    if (!store) return;
+    if (activeGame?.status === 'active') {
+      if (!abandonCurrent) return;
+      const abandoned = await store.abandon(activeGame.id, metadata());
+      if (!applyCommit(abandoned, 'Puzzle abandoned')) return;
+    }
+    const puzzle = {
+      ...validation.puzzle,
+      id: `photo-${validation.fingerprint.slice(0, 12)}`,
+      provenance: {
+        kind: 'camera-photo' as const,
+        recognizerVersion: 1 as const,
+        fingerprint: validation.fingerprint
+      }
+    };
+    const result = await store.importGame(
+      puzzle,
+      metadata(false),
+      projection.settings,
+      [],
+      undefined,
+      undefined,
+      'camera-photo'
+    );
+    if (!applyCommit(result, 'Photographed puzzle imported on this device')) return;
+    selectTabGame(result.gameId);
+    reviewedGameId = null;
+    selectedCell = null;
+    view = 'play';
   }
 
   function selectCell(cell: number): void {
@@ -877,6 +910,12 @@
           <div class="walkthrough-empty"><h2>No placements to replay</h2><p>This attempt does not contain any recorded value placements.</p></div>
         {/if}
       </section>
+    {:else if view === 'photo-import'}
+      <PhotoPuzzleImport
+        hasActiveGame={activeGame?.status === 'active'}
+        onclose={() => showView('puzzles')}
+        onstart={startPhotoPuzzle}
+      />
     {:else if view === 'puzzles'}
       <section class="library-view" aria-labelledby="puzzles-title">
         <div class="library-heading"><p class="eyebrow">Generated here</p><h1 id="puzzles-title">Puzzles</h1><p>Choose any chapter level. Every puzzle is generated and rated entirely on this device.</p></div>
@@ -887,6 +926,10 @@
             {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
             {#if activeGame?.status === 'active'}<p class="local-note">Generating another puzzle keeps this one available in History.</p>{/if}
         </div>
+        <section class="photo-import-card" aria-labelledby="photo-option-title" data-e2e-no-clip>
+          <div><p class="eyebrow">From paper</p><h2 id="photo-option-title">Have a puzzle in front of you?</h2><p>Take a photo and recognize its printed givens without sending the image anywhere.</p></div>
+          <button type="button" onclick={() => showView('photo-import')}>Import from photo</button>
+        </section>
       </section>
     {:else if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
@@ -908,7 +951,7 @@
               <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
             <span class="board-validation">Unique solution</span>
-            <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
+            <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'camera-photo' ? 'Recognized and validated here' : currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
           </div>
 
           <aside class="play-controls" aria-label="Puzzle controls">
@@ -1015,6 +1058,6 @@
   {/if}
 
   <p class="sr-live" aria-live="polite">{announcement}</p>
-  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' || view === 'walkthrough' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
+  <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' || view === 'photo-import' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' || view === 'walkthrough' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
   <footer><span>Private by design</span></footer>
 </div>

@@ -102,6 +102,14 @@ function validImportedCheckpoint(
 }
 
 function validImportOrigin(event: GameImportedEvent): boolean {
+  if (event.payload.importKind === 'camera-photo') {
+    return event.payload.transferId === null && event.payload.checkpoint === null &&
+      event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
+      event.payload.initialView === undefined &&
+      event.payload.puzzle.provenance?.kind === 'camera-photo' &&
+      event.payload.puzzle.provenance.recognizerVersion === 1 &&
+      /^[0-9a-f]{64}$/.test(event.payload.puzzle.provenance.fingerprint);
+  }
   if (event.payload.importKind === 'puzzle-link') {
     if (event.payload.transferId !== null || event.payload.checkpoint !== null ||
       event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;

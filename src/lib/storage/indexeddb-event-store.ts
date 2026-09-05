@@ -256,7 +256,8 @@ export class IndexedDbEventStore {
     importedSettings: GameSettings = this.projection.settings,
     work: readonly ImportedPuzzleWorkAction[] = [],
     sharedMetadata?: ImportedPuzzleMetadata,
-    initialView?: 'walkthrough'
+    initialView?: 'walkthrough',
+    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link'
   ): Promise<CommitResult> {
     const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
     const settings = { ...importedSettings };
@@ -265,7 +266,7 @@ export class IndexedDbEventStore {
       return {
         id: metadata.id, sequence, gameId, type: 'game/imported',
         payload: {
-          gameId, importKind: 'puzzle-link', transferId: null, puzzle: storedPuzzle, settings,
+          gameId, importKind, transferId: null, puzzle: storedPuzzle, settings,
           checkpoint: null,
           ...(work.length ? { work: work.map((action) => action.type === 'value'
             ? { ...action }

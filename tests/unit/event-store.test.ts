@@ -75,6 +75,43 @@ describe('event store', () => {
     }]);
   });
 
+  it('opens a validated camera puzzle without retaining photo data', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('camera-origin').puzzle;
+    const fingerprint = 'a'.repeat(64);
+    const puzzle = {
+      ...generated,
+      id: `photo-${fingerprint.slice(0, 12)}`,
+      seed: undefined,
+      generatorVersion: undefined,
+      validatorVersion: 3 as const,
+      provenance: { kind: 'camera-photo' as const, recognizerVersion: 1 as const, fingerprint }
+    };
+    const store = new EventStore(storage);
+    const projection = store.importGame(
+      puzzle,
+      { occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'camera-import-1' },
+      store.getProjection().settings,
+      [],
+      undefined,
+      undefined,
+      'camera-photo'
+    );
+
+    expect(projection.diagnostics).toEqual([]);
+    expect(projection.games[projection.activeGameId ?? ''].puzzle).toEqual(puzzle);
+    expect(store.getDocument().events).toMatchObject([{
+      type: 'game/imported',
+      payload: {
+        importKind: 'camera-photo',
+        transferId: null,
+        checkpoint: null,
+        puzzle: { provenance: { recognizerVersion: 1, fingerprint } }
+      }
+    }]);
+    expect(storage.getItem(EVENT_STORE_KEY)).not.toContain('data:image');
+  });
+
   it('opens shared placements and candidates from the same import origin event', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('shared-work-origin').puzzle;

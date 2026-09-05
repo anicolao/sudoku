@@ -50,6 +50,33 @@ Generating another puzzle does not destroy an active attempt. It starts a new
 game stream, selects it in that tab, and leaves the earlier attempt available in
 History.
 
+### Photo import
+
+Puzzles also offers **Import from photo** for a conventional printed 9×9 grid.
+The capture control requests the rear camera where the browser supports it and
+remains an ordinary image chooser on desktop and other devices. Guidance asks
+the player to fill the frame with one straight, well-lit puzzle and explains
+that the image stays on-device.
+
+Recognition has a labelled progress bar with distinct preparation, grid,
+reader-loading, and digit-reading messages. A failure retains no partial puzzle
+and gives actionable framing, lighting, size, or format guidance.
+
+Success opens an editable 9×9 givens review. Every cell spells out its row,
+column, value or emptiness, and low-confidence status. Amber plus the words
+**needs a closer look** identify uncertain cells; colour is not the only cue.
+Selecting a cell and using 1–9 or **Clear** corrects recognition. The optional
+straightened grayscale preview helps comparison on larger layouts.
+The review grid has one tab stop; arrows, Home, and End move between cells,
+number keys replace a given, and Backspace or Delete clears it.
+
+**Check puzzle** proves the reviewed givens have one unique solution and shows
+their logical rating. Nothing is persisted before **Start photographed
+puzzle**. If another attempt is active, the final action explicitly says it
+will abandon that attempt to History. The source photo and confidence data are
+never stored; the resulting play screen identifies the puzzle as **Recognized
+and validated here**.
+
 ## 4. Play header and board
 
 The play header shows the level, a calm state heading, optional active time, and
@@ -178,7 +205,8 @@ from the solution increments the mistake count and remains marked until fixed.
 When it is disabled, the interface does not reveal non-conflicting wrong values.
 
 Live announcements are short and factual: selection, entry, conflict, note
-change, erase, undo/redo, pause/resume, hint, completion, sharing, storage, and
+change, erase, undo/redo, pause/resume, hint, completion, photo import, sharing,
+storage, and
 overlapping-tab results. Highlight changes are announced only when the user
 explicitly toggles number-wide inspection.
 
@@ -262,6 +290,7 @@ announcement says the latest state is shown.
 - The number pad uses five columns; utility actions use four columns.
 - The game log remains a compact newest-entry panel.
 - History cards stack and actions use a two-column grid.
+- Photo review stacks the grid above a compact five-column correction pad.
 
 ### Tablet: 600–899 px
 
@@ -276,6 +305,7 @@ announcement says the latest state is shown.
 - Main content uses the remaining viewport; play is capped at a 600 px board
   plus a 250–290 px inspector.
 - Large monitors gain surrounding space rather than an oversized board.
+- Photo review uses a board plus correction rail matching the play workspace.
 
 ### Short-height layouts
 

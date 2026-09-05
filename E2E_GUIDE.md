@@ -96,6 +96,8 @@ The E2E build sets `VITE_E2E_MODE=1`. In that mode:
 - the IndexedDB repository mirrors its event document to
   `sudoku.event-store.v1` for assertions;
 - a bounded `__sudokuReplaceEventDocument` hook can install canonical fixtures.
+- the camera-import journey rasterizes a fixed printed grid in the browser and
+  passes that real PNG through the production grid detector and bundled OCR.
 
 The application never reads the E2E mirror. Fixtures still pass through the
 production replay reducer and IndexedDB stream conversion. They are used only
