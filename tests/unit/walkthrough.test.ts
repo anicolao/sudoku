@@ -8,6 +8,8 @@ import {
 } from '../../src/lib/domain/walkthrough';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
 import { solveLogically } from '../../src/lib/generator/logical-solver';
+import { solveFirst } from '../../src/lib/generator/solve';
+import { parseSharedPuzzlePayload } from '../../src/lib/sharing/puzzle-link';
 
 const gameId = 'game-walkthrough';
 const settings = {
@@ -123,6 +125,46 @@ describe('instructional solve walkthroughs', () => {
     expect(step).toMatchObject({ rule: 'hidden-pair', ruleLabel: 'Hidden Pairs', targetCell: 20 });
     expect(step.contextCells).toContain(2);
     expect(step.explanation).toContain('simplest listed rule');
+  });
+
+  it('recognizes the fourth placement from the xwing.png walkthrough as an X-Wing', () => {
+    const payload = '7.8.24....2.9....44.97.321...743...66...1...7...2.65..5.4..2..9.7..9.4...9.5.7682_954_548_657_21+13+_41+1289+_61+1389+_81+1238+_91+13+_41-1-_61-13-_81-13-_23+1356+_53+235+_63+13+_83+1236+_93+13+_23-13-_53-3-_83-13-_26+158+_46+59+_56+59+_26-5-_17+39+_27+378+_47+189+_57+39+_77+137+_27-3-_47-9-_77-3-_12+1356+_32+56+_12-56-_72+1368+_72-13-_74+136+_75+68+_74-6-_69+138+_69-3-_18+3569+_19+35+_28+3567+_39+58+_88+35+_89+135+_28-5-_39-5-_398';
+    const { givens, work } = parseSharedPuzzlePayload(payload);
+    const solution = solveFirst(givens);
+    if (!solution) throw new Error('The xwing.png regression puzzle must have a solution.');
+    const puzzle: PuzzleDefinition = {
+      id: 'xwing-qr-regression',
+      givens,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null,
+      provenance: { kind: 'puzzle-link', formatVersion: 2, fingerprint: 'xwing-qr-regression' }
+    };
+    const events: SudokuEvent[] = [{
+      ...envelope(1),
+      type: 'game/imported',
+      payload: {
+        gameId,
+        importKind: 'puzzle-link',
+        transferId: null,
+        puzzle,
+        settings,
+        checkpoint: null,
+        work,
+        initialView: 'walkthrough'
+      }
+    }];
+
+    const step = buildSolveWalkthrough(events, gameId).steps[3];
+
+    expect(step).toMatchObject({
+      rule: 'x-wing',
+      ruleLabel: 'X-Wing',
+      targetCell: 26,
+      explanation: 'The 5 X-Wing at r1c8, r1c9, r8c8, r8c9 eliminates 5 from r3c9, leaving 8.'
+    });
+    expect(step.contextCells).toEqual([7, 8, 70, 71]);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {

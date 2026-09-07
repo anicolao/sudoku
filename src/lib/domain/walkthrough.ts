@@ -142,7 +142,8 @@ function placementExplanation(
       serializeGrid(grid),
       cell,
       value,
-      BOOK_TECHNIQUE_ORDER as readonly SolveTechnique[]
+      BOOK_TECHNIQUE_ORDER as readonly SolveTechnique[],
+      game.notes
     );
     if (logical) {
       const rule = logical.technique as BookTechnique;
@@ -166,6 +167,18 @@ function placementExplanation(
           ruleLabel,
           explanation: `${target} is the only cell in ${hiddenUnit ? unitName(hiddenUnit.index) : 'its unit'} that can contain ${value}.`,
           contextCells: hiddenUnit?.unit.filter((candidate) => candidate !== cell) ?? logical.relatedCells ?? []
+        };
+      }
+      if (rule === 'x-wing') {
+        const eliminated = logical.eliminated?.find((candidate) => candidate.cell === cell);
+        const pattern = (logical.relatedCells ?? []).map(cellName).join(', ');
+        return {
+          rule,
+          ruleLabel,
+          explanation: eliminated
+            ? `The ${eliminated.value} X-Wing at ${pattern} eliminates ${eliminated.value} from ${target}, leaving ${value}.`
+            : `The X-Wing at ${pattern} eliminates the other candidate from ${target}, leaving ${value}.`,
+          contextCells: (logical.relatedCells ?? []).filter((candidate) => candidate !== cell)
         };
       }
       return {
