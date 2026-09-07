@@ -45,7 +45,7 @@ directly.
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
 | `src/lib/domain/game-log.ts` | Human-readable projection of canonical events |
-| `src/lib/domain/walkthrough.ts` | Rule analysis and placement replay for recorded and walkthrough-directed shared solves |
+| `src/lib/domain/walkthrough.ts` | Rule analysis from placed digits and recorded candidate state, plus placement replay for recorded and walkthrough-directed shared solves |
 | `src/lib/domain/sudoku.ts` | Grid parsing, units, peers, solved-grid checks, and domain helpers |
 | `src/lib/generator/` | Versioned PRNG, rated puzzle transforms, exhaustive solver, logical solver, worker, and service boundary |
 | `src/lib/storage/indexeddb-event-store.ts` | Canonical browser repository, per-stream revisions, migration, memory-only fallback, and deletion |

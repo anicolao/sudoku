@@ -255,7 +255,10 @@ to keep it or abandon it first.
 
 An authored progress link with `view=walkthrough` changes the consent action to
 **Open walkthrough**. After acceptance it shows walkthrough analysis progress
-and opens directly at placement 1. Share never generates this parameter.
+and opens directly at placement 1. Rule analysis preserves recorded candidate
+eliminations between placements, so patterns such as X-Wings highlight their
+pattern cells and explain the candidate removed from the placement cell. Share
+never generates this parameter.
 
 The Share dialog distinguishes:
 

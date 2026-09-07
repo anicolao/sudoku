@@ -585,13 +585,25 @@ export function analyzeLogicalPlacement(
   givens: string,
   cell: number,
   value: Digit,
-  techniqueOrder: readonly SolveTechnique[]
+  techniqueOrder: readonly SolveTechnique[],
+  notes: readonly (readonly Digit[])[] = []
 ): LogicalStep | null {
   const base: SolverState = {
     grid: parseGrid(givens),
     eliminated: Array.from({ length: 81 }, () => new Set<Digit>())
   };
   if (cell < 0 || cell >= 81 || base.grid[cell] !== 0 || hasContradiction(base)) return null;
+
+  // During a walkthrough, non-empty pencil marks record candidate eliminations
+  // that happened between placements. Preserve the target's unfiltered legal
+  // candidates so the rule responsible for its final elimination can be named.
+  for (let noteCell = 0; noteCell < 81; noteCell += 1) {
+    if (noteCell === cell || base.grid[noteCell] !== 0 || !notes[noteCell]?.length) continue;
+    const retained = new Set(notes[noteCell]);
+    for (const candidate of candidatesIn(base, noteCell)) {
+      if (!retained.has(candidate)) base.eliminated[noteCell].add(candidate);
+    }
+  }
 
   const direct = directPlacementTechnique(base, cell, value);
   if (direct && techniqueOrder.includes(direct)) {
