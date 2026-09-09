@@ -15,38 +15,37 @@
     <meta name="application-name" content="Sudoku" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sudoku" />
-    <link rel="manifest" href="/sudoku/manifest.webmanifest" />
-    <link rel="icon" href="/sudoku/icon.svg" />
-    <link rel="apple-touch-icon" href="/sudoku/icon.svg" />
-    <link href="/sudoku/_app/immutable/entry/start.DjeO8aQK.js" rel="modulepreload">
-		<link href="/sudoku/_app/immutable/chunks/B2ssQZMq.js" rel="modulepreload">
-		<link href="/sudoku/_app/immutable/chunks/CxkLcgE2.js" rel="modulepreload">
-		<link href="/sudoku/_app/immutable/entry/app.BNJVqcvX.js" rel="modulepreload">
-		<link href="/sudoku/_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
-		<link href="/sudoku/_app/immutable/nodes/0.CVUm1IQ_.js" rel="modulepreload">
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link href="/_app/immutable/entry/start.C4770L63.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/C5pIo4a3.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CxkLcgE2.js" rel="modulepreload">
+		<link href="/_app/immutable/entry/app.BKx0pjyw.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="/_app/immutable/nodes/0.CVUm1IQ_.js" rel="modulepreload">
 		
-		<link href="/sudoku/_app/immutable/assets/0.BM1xBcbG.css" rel="stylesheet">
+		<link href="/_app/immutable/assets/0.BM1xBcbG.css" rel="stylesheet">
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">
 			<script>
 				{
-					__sveltekit_15cea9 = {
-						base: "/sudoku",
-						assets: "/sudoku"
+					__sveltekit_3uwspj = {
+						base: ""
 					};
 
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/sudoku/_app/immutable/entry/start.DjeO8aQK.js"),
-						import("/sudoku/_app/immutable/entry/app.BNJVqcvX.js")
+						import("/_app/immutable/entry/start.C4770L63.js"),
+						import("/_app/immutable/entry/app.BKx0pjyw.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});
 
 					if ('serviceWorker' in navigator) {
-						const script_url = '/sudoku/service-worker.js';
+						const script_url = '/service-worker.js';
 						const policy = globalThis?.window?.trustedTypes?.createPolicy(
 							'sveltekit-trusted-url',
 							{ createScriptURL(url) { return url; } }
