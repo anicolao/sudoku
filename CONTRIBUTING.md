@@ -141,7 +141,7 @@ A pull request should state:
 
 CI reruns checks, unit tests, all Playwright projects, and the production build
 on `macos-15`. Successful same-repository pull requests receive a GitHub Pages
-preview at `https://anicolao.github.io/sudoku/pr<PR number>/`.
+preview at `https://sudoku.annasdadpress.com/pr<PR number>/`.
 
 ## 9. Release and compatibility checklist
 

@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const configuredBase = process.env.PUBLIC_BASE_PATH;
-if (!configuredBase || configuredBase === '/') {
-  throw new Error('PUBLIC_BASE_PATH must be a non-root deployment path');
+const configuredBase = process.env.PUBLIC_BASE_PATH ?? '';
+if (configuredBase && !/^\/[a-zA-Z0-9/_-]+\/?$/.test(configuredBase)) {
+  throw new Error('PUBLIC_BASE_PATH must be empty for the domain root or an absolute deployment path');
 }
 
 const base = configuredBase.replace(/\/$/, '');
@@ -39,8 +39,11 @@ if (failures.length > 0) {
 }
 
 const index = fs.readFileSync(indexPath, 'utf8');
-if (!index.includes(`assets: "${base}"`)) {
+if (base && !index.includes(`assets: "${base}"`)) {
   throw new Error(`build/index.html does not expose ${base} as the application asset base`);
+}
+if (!base && /assets:\s*"\/[^"]+"/.test(index)) {
+  throw new Error('Domain-root build still contains a subpath asset base');
 }
 if (!index.includes('./_app/') || !index.includes('./manifest.webmanifest')) {
   throw new Error('build/index.html does not use relative application and manifest assets');
@@ -57,7 +60,7 @@ if (
   !serviceWorker.includes('version.json') ||
   !serviceWorker.includes('skipWaiting') ||
   !serviceWorker.includes('shell') ||
-  serviceWorker.includes('"/_app/')
+  (base && serviceWorker.includes('"/_app/'))
 ) {
   throw new Error('build/service-worker.js does not implement the base-safe revision update protocol');
 }
@@ -71,4 +74,4 @@ if (typeof deployedVersion.revision !== 'string' || !/^[a-z0-9._-]{1,128}$/i.tes
   throw new Error('build/version.json does not contain a valid revision');
 }
 
-console.log(`Verified deployment assets remain under ${base}`);
+console.log(`Verified deployment assets remain under ${base || '/'}`);

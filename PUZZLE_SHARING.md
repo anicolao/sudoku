@@ -37,7 +37,7 @@ ASCII characters in row-major order: digits `1`–`9` are givens and `.` is
 empty. With no following fields, the recipient starts with no work.
 
 ```text
-https://anicolao.github.io/sudoku/?p=53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79
+https://sudoku.annasdadpress.com/?p=53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79
 ```
 
 Literal givens are deliberately readable and small. The URL does not claim a

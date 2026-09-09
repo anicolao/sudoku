@@ -10,7 +10,7 @@ maintenance mode. Small features and bug fixes are welcome, but changes should
 preserve the local-first data model, replay compatibility, accessibility
 contract, and deterministic test evidence.
 
-[Open the application](https://anicolao.github.io/sudoku/) ·
+[Open the application](https://sudoku.annasdadpress.com/) ·
 [Product vision](VISION.md) · [Architecture](ARCHITECTURE.md) ·
 [Contributing](CONTRIBUTING.md)
 
@@ -160,12 +160,14 @@ build on the pinned `macos-15` runner. A successful same-repository PR receives
 a retained preview at:
 
 ```text
-https://anicolao.github.io/sudoku/pr<PR number>/
+https://sudoku.annasdadpress.com/pr<PR number>/
 ```
 
 Pushes to `main` publish the production application at
-`https://anicolao.github.io/sudoku/`. Both deployments are checked for
-base-path-safe assets, manifest entries, and service-worker scope.
+`https://sudoku.annasdadpress.com/`. Both deployments are checked for
+base-path-safe assets, manifest entries, and service-worker scope. Production builds use an empty `PUBLIC_BASE_PATH`; PR previews use `/pr<PR number>`. The deployment action maintains the `sudoku.annasdadpress.com` CNAME. Cloudflare DNS points this hostname to `anicolao.github.io` (DNS only), and GitHub Pages serves the custom domain.
+
+Old `https://anicolao.github.io/sudoku/` links redirect through GitHub Pages; puzzle query parameters remain part of the URL. Browser-saved games and installed-app data belong to their original origin and do not automatically transfer to the custom domain. Use a shared-work link to transfer a particular puzzle before leaving an existing old-domain session.
 
 ## License
 
