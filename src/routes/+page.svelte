@@ -13,6 +13,8 @@
   import {
     buildSolveWalkthroughAsync,
     countSolveWalkthroughPlacements,
+    findNextSolveHint,
+    type NextSolveHint,
     type SolveWalkthrough,
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
@@ -41,6 +43,7 @@
   type ShareStage = 'choose' | 'ready';
   type ShareKind = 'puzzle' | 'work';
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
+  type HintAdviceKind = 'technique' | 'cell';
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -62,6 +65,8 @@
   let view = $state<View>('play');
   let reviewedGameId = $state<string | null>(null);
   let hintDialogOpen = $state(false);
+  let hintAdviceKind = $state<HintAdviceKind | null>(null);
+  let hintAdvice = $state<NextSolveHint | null>(null);
   let clearDialogOpen = $state(false);
   let historyPage = $state(0);
   let walkthroughGameId = $state<string | null>(null);
@@ -592,7 +597,7 @@
 
   function handleGlobalKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return;
-    if (hintDialogOpen) hintDialogOpen = false;
+    if (hintDialogOpen) closeHintDialog();
     else if (clearDialogOpen) clearDialogOpen = false;
     else if (shareDialogOpen) shareDialogOpen = false;
   }
@@ -620,15 +625,42 @@
 
   async function confirmHint(): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
-    const cell = currentGame.values.findIndex((value, index) =>
-      currentGame.puzzle.givens[index] === '.' && value === null
-    );
-    if (cell < 0) return;
-    const value = Number(currentGame.puzzle.solution[cell]) as Digit;
-    const result = await store.revealHint(currentGame.id, cell, value, metadata());
-    if (!applyCommit(result, `Hint revealed ${value} in row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`)) return;
-    selectedCell = cell;
+    const advice = findNextSolveHint(currentGame);
+    if (!advice) return;
+    const result = await store.revealHint(currentGame.id, advice.targetCell, advice.value, metadata());
+    if (!applyCommit(result, `Hint revealed ${advice.value} in row ${Math.floor(advice.targetCell / 9) + 1}, column ${(advice.targetCell % 9) + 1}`)) return;
+    selectedCell = advice.targetCell;
+    closeHintDialog();
+  }
+
+  function openHintDialog(): void {
+    hintAdviceKind = null;
+    hintAdvice = null;
+    hintDialogOpen = true;
+  }
+
+  function closeHintDialog(): void {
     hintDialogOpen = false;
+    hintAdviceKind = null;
+    hintAdvice = null;
+  }
+
+  function showHintAdvice(kind: HintAdviceKind): void {
+    if (!currentGame || isReadOnly || currentGame.paused) return;
+    const advice = findNextSolveHint(currentGame);
+    if (!advice) return;
+    hintAdviceKind = kind;
+    hintAdvice = advice;
+    if (kind === 'cell') {
+      selectedCell = advice.targetCell;
+      selectedDigit = null;
+      highlightAllNumberPeers = false;
+      announcement = `Cell hint: row ${Math.floor(advice.targetCell / 9) + 1}, column ${(advice.targetCell % 9) + 1}`;
+    } else {
+      announcement = advice.rule === 'unknown-rule'
+        ? 'No listed technique was found for the current board'
+        : `Technique hint: ${advice.ruleLabel}`;
+    }
   }
 
   async function restartGame(): Promise<void> {
@@ -979,7 +1011,7 @@
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
               <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
-              <button type="button" onclick={() => hintDialogOpen = true} disabled={currentGame.paused || isReadOnly}>Hint</button>
+              <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly}>Hint</button>
             </div>
             {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
@@ -1034,8 +1066,29 @@
 
   {#if hintDialogOpen}
     <div class="dialog-backdrop" role="presentation">
-      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="hint-title">
-        <p class="dialog-symbol" aria-hidden="true">◆</p><h2 id="hint-title">Reveal one cell?</h2><p>This will be recorded in your game summary.</p><div><button type="button" onclick={() => hintDialogOpen = false}>Cancel</button><button type="button" class="confirm" onclick={confirmHint}>Reveal one cell</button></div>
+      <div class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="hint-title" data-e2e-no-clip>
+        {#if hintAdviceKind && hintAdvice}
+          <p class="eyebrow">{hintAdviceKind === 'technique' ? 'Technique hint' : 'Cell hint'}</p>
+          <h2 id="hint-title">{hintAdviceKind === 'technique'
+            ? hintAdvice.rule === 'unknown-rule' ? 'No listed technique found' : `Try ${hintAdvice.ruleLabel}`
+            : `Try r${Math.floor(hintAdvice.targetCell / 9) + 1}c${(hintAdvice.targetCell % 9) + 1}`}</h2>
+          <p>{hintAdviceKind === 'technique'
+            ? hintAdvice.rule === 'unknown-rule'
+              ? 'The current position is not accounted for by the book rules yet.'
+              : 'This is the simplest book rule that can produce a placement from the current board.'
+            : 'That cell is ready to solve. Its number is still yours to find.'}</p>
+          <button type="button" class="confirm" onclick={closeHintDialog}>Back to puzzle</button>
+        {:else}
+          <p class="dialog-symbol" aria-hidden="true">◆</p>
+          <h2 id="hint-title">Choose a hint</h2>
+          <p>How much help would you like?</p>
+          <div class="hint-choices">
+            <button type="button" onclick={() => showHintAdvice('technique')}><strong>Technique only</strong><small>Name the simplest book rule to try.</small></button>
+            <button type="button" onclick={() => showHintAdvice('cell')}><strong>Cell only</strong><small>Point to the next cell without showing its number.</small></button>
+            <button type="button" class="confirm" onclick={confirmHint}><strong>Reveal one cell</strong><small>Place its correct number and record the hint.</small></button>
+          </div>
+          <button type="button" class="text-action" onclick={closeHintDialog}>Cancel</button>
+        {/if}
       </div>
     </div>
   {/if}

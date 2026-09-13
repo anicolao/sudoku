@@ -34,6 +34,8 @@ contract, and deterministic test evidence.
   to reject exceptional overlapping writes safely.
 - Local History for active, solved, and abandoned attempts, including read-only
   review, repeat play, and sharing.
+- Tiered hints that can name the next simplest book technique, identify its
+  target cell without revealing the number, or record and place the answer.
 - Readable links for clean puzzles or puzzles with current work and optional
   progress metadata.
   Incoming data is validated in a worker before the user consents to one local

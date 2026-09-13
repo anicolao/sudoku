@@ -95,9 +95,9 @@ test('ordinary play makes only same-origin GET requests', async ({ page }, testI
   });
   await page.getByRole('button', { name: 'Hint' }).click();
   await steps.step('private-hint-opened', {
-    description: 'The player opens the local hint confirmation',
+    description: 'The player opens the local hint choices',
     verifications: [{ spec: 'The dialog requires consent without contacting a service', check: async () => {
-      await expect(page.getByRole('dialog', { name: 'Reveal one cell?' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Choose a hint' })).toBeVisible();
       await assertPrivate();
     } }]
   });

@@ -194,6 +194,14 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .confirm-dialog button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
 .confirm-dialog button.danger { border-color: #9b2c24; color: #fff; background: #9b2c24; }
 .danger-dialog .dialog-symbol { color: #9b2c24; background: #fff0ee; }
+.hint-dialog { width: min(100%, 430px); max-height: calc(100svh - 24px); display: grid; justify-items: center; gap: 10px; padding: 22px; overflow: hidden; border-radius: 16px; background: #fffdf8; box-shadow: 0 18px 60px #0004; text-align: center; }
+.hint-dialog h2 { margin: 0; font-size: 1.5rem; }
+.hint-dialog > p:not(.eyebrow, .dialog-symbol) { margin: 0; color: #62656b; }
+.hint-dialog > button.confirm { width: 100%; min-height: 46px; border: 1px solid #4654a3; border-radius: 9px; color: #fff; background: #4654a3; font-weight: 700; cursor: pointer; }
+.hint-choices { width: 100%; display: grid; gap: 8px; }
+.hint-choices button { min-height: 60px; display: grid; gap: 2px; place-content: center; padding: 7px 10px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; cursor: pointer; }
+.hint-choices button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
+.hint-choices small { font-size: .76rem; }
 .share-dialog { width: min(100%, 430px); max-height: calc(100svh - 24px); display: grid; justify-items: center; gap: 10px; padding: 22px; overflow: hidden; border-radius: 16px; background: #fffdf8; box-shadow: 0 18px 60px #0004; text-align: center; }
 .share-dialog h2 { margin: 0; font-size: 1.5rem; }
 .share-dialog > p:not(.eyebrow, .dialog-symbol, .share-error, .transfer-note) { margin: 0; color: #62656b; }
@@ -201,7 +209,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .share-choices button { min-height: 62px; display: grid; gap: 2px; place-content: center; padding: 8px; border: 1px solid #c8c7c2; border-radius: 9px; color: #4654a3; background: #fff; cursor: pointer; }
 .share-choices button.confirm { border-color: #4654a3; color: #fff; background: #4654a3; }
 .share-choices small { font-size: .76rem; }
-.share-dialog .text-action { min-height: 44px; border: 0; color: #62656b; background: transparent; cursor: pointer; }
+.share-dialog .text-action,
+.hint-dialog .text-action { min-height: 44px; border: 0; color: #62656b; background: transparent; cursor: pointer; }
 .share-qr { width: min(224px, 42svh, 70vw); height: min(224px, 42svh, 70vw); image-rendering: pixelated; }
 .share-link-status { width: 100%; min-height: 34px; display: grid; place-items: center; margin: 0; padding: 5px 9px; border: 1px solid #c8c7c2; border-radius: 8px; color: #565a62; background: #fff; font-size: .76rem; }
 .transfer-note { margin: 0; color: #62656b; font-size: .82rem; line-height: 1.3; }
@@ -422,6 +431,11 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .share-dialog { gap: 5px; padding: 10px; }
   .share-dialog .dialog-symbol { display: none; }
   .share-dialog h2 { font-size: 1.25rem; }
+  .hint-dialog { gap: 5px; padding: 10px; }
+  .hint-dialog .dialog-symbol { display: none; }
+  .hint-dialog h2 { font-size: 1.25rem; }
+  .hint-choices { gap: 5px; }
+  .hint-choices button { min-height: 54px; }
   .share-qr { width: min(128px, 28svh); height: min(128px, 28svh); }
   .transfer-note { font-size: .72rem; }
   .library-view .library-heading { display: none; }

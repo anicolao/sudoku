@@ -4,12 +4,14 @@ import {
   buildSolveWalkthrough,
   buildSolveWalkthroughAsync,
   countSolveWalkthroughPlacements,
+  findNextSolveHint,
   type WalkthroughBuildProgress
 } from '../../src/lib/domain/walkthrough';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
 import { solveLogically } from '../../src/lib/generator/logical-solver';
 import { solveFirst } from '../../src/lib/generator/solve';
 import { parseSharedPuzzlePayload } from '../../src/lib/sharing/puzzle-link';
+import { replay } from '../../src/lib/domain/reducer';
 
 const gameId = 'game-walkthrough';
 const settings = {
@@ -35,6 +37,39 @@ const startEvent = (puzzle: PuzzleDefinition): SudokuEvent => ({
 });
 
 describe('instructional solve walkthroughs', () => {
+  it('finds the globally simplest next placement without changing the game', () => {
+    const puzzle = generateEasyPuzzle('walkthrough-seed').puzzle;
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const before = structuredClone(game.values);
+
+    const hint = findNextSolveHint(game);
+
+    expect(hint).not.toBeNull();
+    expect(hint?.rule).not.toBe('unknown-rule');
+    expect(hint?.value).toBe(Number(puzzle.solution[hint?.targetCell ?? -1]));
+    expect(puzzle.givens[hint?.targetCell ?? -1]).toBe('.');
+    expect(game.values).toEqual(before);
+  });
+
+  it('prefers a Full House for the next hint when it is also a naked single', () => {
+    const solution = '549371628826945371173628945654719283917283456382456719738562194491837562265194837';
+    const puzzle: PuzzleDefinition = {
+      id: 'full-house-hint-fixture',
+      givens: `.${solution.slice(1)}`,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+
+    expect(findNextSolveHint(replay([startEvent(puzzle)]).games[gameId])).toMatchObject({
+      targetCell: 0,
+      value: 5,
+      rule: 'full-house',
+      ruleLabel: 'Full House'
+    });
+  });
+
   it('jumps only between placements and uses a book rule or Unknown rule for every move', () => {
     const puzzle = generateEasyPuzzle('walkthrough-seed').puzzle;
     const logical = solveLogically(puzzle.givens);

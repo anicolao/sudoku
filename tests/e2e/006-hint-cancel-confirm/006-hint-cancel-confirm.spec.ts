@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test('a hint is explicit, cancellable, deterministic, and recorded', async ({ page }, testInfo) => {
+test('a hint can name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
-    'Cancel and confirm a hint',
-    'A hint never changes the board silently: the player sees a confirmation, cancellation is inert, and confirmation records the exact revealed cell and value.'
+    'Choose how much help a hint provides',
+    'Technique and cell guidance use the same simplest book-rule placement without changing canonical history. A reveal places that target and records the exact cell and value.'
   );
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
@@ -24,21 +24,64 @@ test('a hint is explicit, cancellable, deterministic, and recorded', async ({ pa
   });
 
   await page.getByRole('button', { name: 'Hint' }).click();
-  await steps.step('hint-confirmation-opened', {
-    description: 'The player opens a clear confirmation before revealing anything',
+  await steps.step('hint-choices-opened', {
+    description: 'The player opens three distinct levels of help',
     verifications: [
-      { spec: 'The modal explains that the reveal is recorded in the summary', check: async () => {
-        const dialog = page.getByRole('dialog', { name: 'Reveal one cell?' });
+      { spec: 'The modal offers technique, cell, and reveal choices', check: async () => {
+        const dialog = page.getByRole('dialog', { name: 'Choose a hint' });
         await expect(dialog).toBeVisible();
-        await expect(dialog).toContainText('This will be recorded in your game summary.');
+        await expect(dialog.getByRole('button', { name: /Technique only/ })).toBeEnabled();
+        await expect(dialog.getByRole('button', { name: /Cell only/ })).toBeEnabled();
+        await expect(dialog.getByRole('button', { name: /Reveal one cell/ })).toBeEnabled();
       } },
-      { spec: 'Opening the confirmation appends no event', check: async () => expect(await stream()).toHaveLength(1) }
+      { spec: 'Opening the choices appends no event', check: async () => expect(await stream()).toHaveLength(1) }
     ]
   });
 
+  await page.getByRole('button', { name: /Technique only/ }).click();
+  await steps.step('technique-hint-shown', {
+    description: 'The player asks only which technique to try',
+    verifications: [
+      { spec: 'The result names one supported book rule without naming a cell or value', check: async () => {
+        const dialog = page.getByRole('dialog', { name: /Try / });
+        await expect(dialog.getByRole('heading')).toHaveText(/Try (Full House|Naked Single|Hidden Single|Naked Pairs|Hidden Pairs|Pointing Pairs|Y-Wing|X-Wing|Swordfish|Naked Triples|Simple Colors|XY-Chains|Unique Rectangles|3D Medusa)/);
+        await expect(dialog).toContainText('simplest book rule');
+        await expect(dialog).not.toContainText(/r\d+c\d+/);
+      } },
+      { spec: 'Technique advice changes no cell and appends no event', check: async () => {
+        await expect(page.getByRole('gridcell', { selected: true })).toHaveCount(0);
+        expect(await stream()).toHaveLength(1);
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Back to puzzle' }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await page.getByRole('button', { name: /Cell only/ }).click();
+  let advisedCell = -1;
+  await steps.step('cell-hint-shown', {
+    description: 'The player asks which cell to solve without seeing its contents',
+    verifications: [
+      { spec: 'The result names one coordinate and selects that still-empty cell', check: async () => {
+        const selected = page.getByRole('gridcell', { selected: true });
+        await expect(selected).toHaveCount(1);
+        await expect(selected).toHaveAccessibleName(/editable, empty, selected/);
+        advisedCell = Number(await selected.getAttribute('data-cell'));
+        const coordinate = `r${Math.floor(advisedCell / 9) + 1}c${(advisedCell % 9) + 1}`;
+        await expect(page.getByRole('dialog', { name: `Try ${coordinate}` })).toContainText('number is still yours to find');
+      } },
+      { spec: 'Cell advice reveals no number and appends no event', check: async () => {
+        await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(0);
+        expect(await stream()).toHaveLength(1);
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Back to puzzle' }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await steps.step('hint-cancelled', {
-    description: 'The player cancels and returns to the unchanged puzzle',
+    description: 'The player can still cancel from the choice menu',
     verifications: [
       { spec: 'The dialog closes and the board still has only its fixed givens', check: async () => {
         await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -49,8 +92,8 @@ test('a hint is explicit, cancellable, deterministic, and recorded', async ({ pa
   });
 
   await page.getByRole('button', { name: 'Hint' }).click();
-  await steps.step('hint-confirmation-reopened', {
-    description: 'The player deliberately opens the confirmation again',
+  await steps.step('hint-choices-reopened', {
+    description: 'The player returns and chooses the full reveal',
     verifications: [
       { spec: 'Reveal one cell is now the explicit confirm action', check: async () => await expect(page.getByRole('button', { name: 'Reveal one cell' })).toBeEnabled() }
     ]
@@ -58,12 +101,13 @@ test('a hint is explicit, cancellable, deterministic, and recorded', async ({ pa
 
   await page.getByRole('button', { name: 'Reveal one cell' }).click();
   await steps.step('one-cell-revealed', {
-    description: 'Confirmation reveals the deterministic lowest-index eligible cell',
+    description: 'Reveal places the same simplest target identified by Cell only',
     verifications: [
       { spec: 'Exactly one cell is labelled as revealed by hint and selected', check: async () => {
         const hinted = page.getByRole('gridcell', { name: /revealed by hint/ });
         await expect(hinted).toHaveCount(1);
         await expect(hinted).toHaveAttribute('aria-selected', 'true');
+        await expect(page.locator(`[data-cell="${advisedCell}"]`)).toHaveAccessibleName(/revealed by hint/);
       } },
       { spec: 'One hint/revealed fact records the exact cell and solution value', check: async () => {
         const events = await stream();
