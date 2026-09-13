@@ -34,9 +34,9 @@ The browser observes the complete gameplay request surface while the player gene
 
 - [x] cell/value-entered is local and no runtime request follows it
 
-## The player opens the local hint confirmation
+## The player opens the local hint choices
 
-![The player opens the local hint confirmation](./screenshots/004-private-hint-opened-phone-macos.png)
+![The player opens the local hint choices](./screenshots/004-private-hint-opened-phone-macos.png)
 
 **Verifications:**
 

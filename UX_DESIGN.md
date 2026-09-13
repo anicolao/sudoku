@@ -176,9 +176,18 @@ events. A new reversible action after undo retires the previous redo branch.
 attempt. **Start over** from History creates a distinct game stream over the
 same immutable puzzle.
 
-Hint opens a confirmation dialog: **Reveal one cell?** Cancelling changes
-nothing. Confirming reveals the first eligible empty cell, adds a visible and
-programmatic hint mark, records the exact value, and increments the hint count.
+Hint opens three progressively stronger choices based on the same simplest
+placement in book-rule order:
+
+- **Technique only** names the rule without identifying its target or value.
+- **Cell only** names and selects the target without revealing its value.
+- **Reveal one cell** places the target value with a visible and programmatic
+  hint mark, records the exact reveal, and increments the hint count.
+
+Technique and cell guidance are ephemeral and do not change canonical history.
+Live hint analysis uses the committed board rather than assuming that a
+player's partial pencil notes form a complete candidate set. Cancelling changes
+nothing.
 
 **Abandon** closes an unfinished attempt and opens History. The final board
 remains available for read-only review and sharing.

@@ -123,7 +123,7 @@ test('number-first and keyboard-only play reflow accessibly', async ({ page }, t
   await page.getByRole('button', { name: 'Hint' }).click();
   await steps.step('hint-dialog-opened-for-escape', {
     description: 'The player opens a transient dialog',
-    verifications: [{ spec: 'The modal is visible before the Escape command', check: async () => await expect(page.getByRole('dialog', { name: 'Reveal one cell?' })).toBeVisible() }]
+    verifications: [{ spec: 'The modal is visible before the Escape command', check: async () => await expect(page.getByRole('dialog', { name: 'Choose a hint' })).toBeVisible() }]
   });
   await page.keyboard.press('Escape');
   await steps.step('escape-closes-dialog', {

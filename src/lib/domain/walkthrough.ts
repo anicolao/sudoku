@@ -65,6 +65,11 @@ interface PlacementExplanation {
   contextCells: number[];
 }
 
+export interface NextSolveHint extends PlacementExplanation {
+  targetCell: number;
+  value: Digit;
+}
+
 const BOOK_TECHNIQUE_ORDER: readonly BookTechnique[] = [
   'naked-single',
   'hidden-single',
@@ -114,7 +119,10 @@ function unitName(unitIndex: number): string {
 function placementExplanation(
   game: GameProjection,
   cell: number,
-  value: Digit
+  value: Digit,
+  techniqueOrder: readonly SolveTechnique[] = BOOK_TECHNIQUE_ORDER,
+  includeFullHouse = true,
+  notes: readonly (readonly Digit[])[] = game.notes
 ): PlacementExplanation {
   const target = cellName(cell);
   const grid = boardFor(game);
@@ -123,12 +131,12 @@ function placementExplanation(
     .filter(({ unit }) => unit.includes(cell));
 
   if (value === Number(game.puzzle.solution[cell])) {
-    const fullHouse = containingUnits.find(({ unit }) => {
+    const fullHouse = includeFullHouse ? containingUnits.find(({ unit }) => {
       const filled = unit.map((candidate) => grid[candidate]).filter(Boolean);
       const missing = DIGITS.filter((digit) => !filled.includes(digit));
       return unit.filter((candidate) => grid[candidate] === 0).length === 1 &&
         new Set(filled).size === filled.length && missing.length === 1 && missing[0] === value;
-    });
+    }) : undefined;
     if (fullHouse) {
       return {
         rule: 'full-house',
@@ -142,8 +150,8 @@ function placementExplanation(
       serializeGrid(grid),
       cell,
       value,
-      BOOK_TECHNIQUE_ORDER as readonly SolveTechnique[],
-      game.notes
+      techniqueOrder,
+      notes
     );
     if (logical) {
       const rule = logical.technique as BookTechnique;
@@ -198,6 +206,31 @@ function placementExplanation(
       : `${value} does not match the puzzle's solution at ${target}, so no solving rule accounts for this placement.`,
     contextCells: []
   };
+}
+
+export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
+  const targets = game.values.flatMap((value, cell) =>
+    game.puzzle.givens[cell] === '.' && value === null ? [cell] : []
+  );
+  if (!targets.length) return null;
+
+  for (const targetCell of targets) {
+    const value = Number(game.puzzle.solution[targetCell]) as Digit;
+    const detail = placementExplanation(game, targetCell, value, [], true, []);
+    if (detail.rule === 'full-house') return { targetCell, value, ...detail };
+  }
+
+  for (const technique of BOOK_TECHNIQUE_ORDER) {
+    for (const targetCell of targets) {
+      const value = Number(game.puzzle.solution[targetCell]) as Digit;
+      const detail = placementExplanation(game, targetCell, value, [technique], false, []);
+      if (detail.rule !== 'unknown-rule') return { targetCell, value, ...detail };
+    }
+  }
+
+  const targetCell = targets[0];
+  const value = Number(game.puzzle.solution[targetCell]) as Digit;
+  return { targetCell, value, ...placementExplanation(game, targetCell, value, [], false, []) };
 }
 
 type PlacementReference =

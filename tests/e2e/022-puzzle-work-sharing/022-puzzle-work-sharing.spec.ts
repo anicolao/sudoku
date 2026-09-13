@@ -15,7 +15,9 @@ test('a readable puzzle link carries work and optional progress metadata', async
 
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle as { givens: string; solution: string });
   const editables = [...puzzle.givens].flatMap((given, cell) => given === '.' ? [cell] : []);
-  const [valueCell, hintCell, noteCell] = editables;
+  const valueCell = editables[0];
+  let hintCell = -1;
+  let noteCell = -1;
   const coordinates = (cell: number) => `${Math.floor(cell / 9) + 1}${(cell % 9) + 1}`;
   const cell = (targetPage: typeof page, index: number) => targetPage.locator(`[data-cell="${index}"]`);
   const digit = (targetPage: typeof page, value: number) => targetPage.getByRole('button', { name: new RegExp(`^${value},`) });
@@ -23,12 +25,17 @@ test('a readable puzzle link carries work and optional progress metadata', async
   await cell(page, valueCell).click();
   const valueDigit = Number(puzzle.solution[valueCell]);
   await digit(page, valueDigit).click();
-  await cell(page, noteCell).click();
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  for (const candidate of [2, 4, 9]) await digit(page, candidate).click();
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('sudoku:e2e-clock', { detail: 75_432 })));
   await page.getByRole('button', { name: 'Hint' }).click();
   await page.getByRole('button', { name: 'Reveal one cell' }).click();
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events.at(-1)?.type
+  )).toBe('hint/revealed');
+  hintCell = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events.at(-1).payload.cell);
+  noteCell = editables.find((candidate) => candidate !== valueCell && candidate !== hintCell) ?? -1;
+  await cell(page, noteCell).click();
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  for (const candidate of [2, 4, 9]) await digit(page, candidate).click();
 
   await steps.step('work-entered', {
     description: 'The player adds a placement, three candidates, and one hint',
