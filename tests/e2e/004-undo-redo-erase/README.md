@@ -34,7 +34,7 @@ The board moves backward and forward by appending compensating facts; a new move
 **Verifications:**
 
 - [x] Row 4 column 8 is empty again
-- [x] The newest event and log row record Erased r4c8
+- [x] The newest event records Erased r4c8
 
 ## Undo restores the erased value by appending a compensation
 
@@ -52,7 +52,7 @@ The board moves backward and forward by appending compensating facts; a new move
 **Verifications:**
 
 - [x] The cell is empty and the clear is again the active move
-- [x] The newest event and log entry are move/redone
+- [x] The newest event is move/redone
 
 ## The player undoes the clear once more before choosing a new direction
 
@@ -78,4 +78,4 @@ The board moves backward and forward by appending compensating facts; a new move
 
 - [x] The new value is visible with its derived conflict and Redo is disabled
 - [x] All seven facts remain append-only and the new move is last
-- [x] The game log shows the new branch above the retained undo and redo history
+- [x] Canonical history retains both undos and the earlier redo

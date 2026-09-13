@@ -93,11 +93,11 @@ test('the final moves derive completion, history, review, and a repeated attempt
         await expect(page.getByRole('button', { name: /^1,/ })).toBeDisabled();
         await expect(page.getByRole('button', { name: 'Hint' })).toBeDisabled();
       } },
-      { spec: 'The last canonical event remains cell/value-entered while the log derives Solved puzzle', check: async () => {
+      { spec: 'The last canonical event remains cell/value-entered while replay derives completion', check: async () => {
         const document = await stream();
         expect(document.events.at(-1).type).toBe('cell/value-entered');
         expect(document.events.some((event: { type: string }) => event.type === 'game/completed')).toBe(false);
-        await expect(page.locator('[data-event-type="game/completed"]')).toHaveText('Solved puzzle');
+        await expect(page.locator('.completion-panel')).toBeVisible();
       } }
     ]
   });

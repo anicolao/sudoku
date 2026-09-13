@@ -71,10 +71,6 @@ test('a hint is explicit, cancellable, deterministic, and recorded', async ({ pa
         const hint = events[1];
         expect(hint).toMatchObject({ type: 'hint/revealed' });
         expect(hint.payload.value).toBe(Number(events[0].payload.puzzle.solution[hint.payload.cell]));
-      } },
-      { spec: 'The visible game log describes the same reveal', check: async () => {
-        await expect(page.locator('[data-event-type="hint/revealed"]')).toHaveCount(1);
-        await expect(page.locator('[data-event-type]').first()).toContainText('Revealed');
       } }
     ]
   });

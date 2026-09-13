@@ -58,9 +58,8 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
     description: 'Erase clears the selected editable cell with one canonical event',
     verifications: [
       { spec: 'Row 4 column 8 is empty again', check: async () => await expect(cell(34)).toHaveAccessibleName(/editable, empty, selected/) },
-      { spec: 'The newest event and log row record Erased r4c8', check: async () => {
+      { spec: 'The newest event records Erased r4c8', check: async () => {
         expect((await stream()).at(-1).type).toBe('cell/value-erased');
-        await expect(page.locator('[data-event-type]').first()).toHaveText(`Erased ${correct} from r4c8`);
       } }
     ]
   });
@@ -73,7 +72,6 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
       { spec: 'The stream retains clear and appends move/undone', check: async () => {
         const events = await stream();
         expect(events.map((event: { type: string }) => event.type)).toEqual(['game/started', 'cell/value-entered', 'cell/value-erased', 'move/undone']);
-        await expect(page.locator('[data-event-type]').first()).toHaveText(`Undid: Erased ${correct} from r4c8`);
       } }
     ]
   });
@@ -86,9 +84,8 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
         await expect(cell(34)).toHaveAccessibleName(/editable, empty, selected/);
         await expect(page.getByRole('button', { name: `Undo Erased ${correct} from r4c8` })).toBeEnabled();
       } },
-      { spec: 'The newest event and log entry are move/redone', check: async () => {
+      { spec: 'The newest event is move/redone', check: async () => {
         expect((await stream()).at(-1).type).toBe('move/redone');
-        await expect(page.locator('[data-event-type]').first()).toHaveText(`Redid: Erased ${correct} from r4c8`);
       } }
     ]
   });
@@ -128,10 +125,10 @@ test('erase, undo, redo, and a new branch remain append-only', async ({ page }, 
         expect(events).toHaveLength(7);
         expect(events.at(-1)).toMatchObject({ type: 'cell/value-entered', payload: { cell: 27, value: 2 } });
       } },
-      { spec: 'The game log shows the new branch above the retained undo and redo history', check: async () => {
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Placed 2 in r4c1');
-        await expect(page.locator('[data-event-type="move/redone"]')).toHaveCount(1);
-        await expect(page.locator('[data-event-type="move/undone"]')).toHaveCount(2);
+      { spec: 'Canonical history retains both undos and the earlier redo', check: async () => {
+        const events = await stream();
+        expect(events.filter((event: { type: string }) => event.type === 'move/redone')).toHaveLength(1);
+        expect(events.filter((event: { type: string }) => event.type === 'move/undone')).toHaveLength(2);
       } }
     ]
   });

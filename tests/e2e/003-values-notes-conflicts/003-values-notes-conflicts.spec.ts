@@ -4,8 +4,8 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 test('the player selects cells, records notes, enters values, and sees conflicts', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
-    'Values, notes, conflicts, and the game log',
-    'Every click below appends either no event or exactly one canonical fact, then replay updates the board and its plain-language log.'
+    'Values, notes, and conflicts',
+    'Every click below appends either no event or exactly one canonical fact, then replay updates the player-facing board.'
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
@@ -25,9 +25,8 @@ test('the player selects cells, records notes, enters values, and sees conflicts
       { spec: 'The board is ready and no editable cell is selected', check: async () => {
         await expect(page.getByRole('gridcell', { selected: true })).toHaveCount(0);
       } },
-      { spec: 'The game log begins with exactly one start entry', check: async () => {
-        await expect(page.locator('[data-event-type]')).toHaveCount(1);
-        await expect(page.locator('[data-event-type="game/started"]')).toHaveText('Started Foundations puzzle');
+      { spec: 'Canonical history begins with exactly one start event', check: async () => {
+        expect(await eventTypes()).toEqual(['game/started']);
       } }
     ]
   });
@@ -67,9 +66,6 @@ test('the player selects cells, records notes, enters values, and sees conflicts
           const types = await eventTypes();
           expect(types.at(-1)).toBe('cell/note-toggled');
           expect(types).toHaveLength(value === 2 ? 2 : value === 3 ? 3 : 4);
-        } },
-        { spec: `The newest game-log row says Added note ${value} to r4c8`, check: async () => {
-          await expect(page.locator('[data-event-type]').first()).toHaveText(`Added note ${value} to r4c8`);
         } }
       ]
     });
@@ -82,8 +78,10 @@ test('the player selects cells, records notes, enters values, and sees conflicts
       { spec: 'The cell retains notes 3 and 8 but no longer announces note 2', check: async () => {
         await expect(cell(34)).toHaveAccessibleName(/notes 3 8/);
       } },
-      { spec: 'The newest log row says Removed note 2 from r4c8', check: async () => {
-        await expect(page.locator('[data-event-type]').first()).toHaveText('Removed note 2 from r4c8');
+      { spec: 'Removing the note appends one more note event', check: async () => {
+        const types = await eventTypes();
+        expect(types).toHaveLength(5);
+        expect(types.at(-1)).toBe('cell/note-toggled');
       } }
     ]
   });
@@ -110,9 +108,8 @@ test('the player selects cells, records notes, enters values, and sees conflicts
       { spec: 'Row 4 column 8 contains the committed user value with no notes', check: async () => {
         await expect(cell(34)).toHaveAccessibleName(new RegExp(`editable, ${correctValue}, selected`));
       } },
-      { spec: 'One cell/value-entered event and matching log row record the placement', check: async () => {
+      { spec: 'One cell/value-entered event records the placement', check: async () => {
         expect((await eventTypes()).at(-1)).toBe('cell/value-entered');
-        await expect(page.locator('[data-event-type]').first()).toHaveText(`Placed ${correctValue} in r4c8`);
       } }
     ]
   });
@@ -147,9 +144,6 @@ test('the player selects cells, records notes, enters values, and sees conflicts
         const types = await eventTypes();
         expect(types).toHaveLength(7);
         expect(types.at(-1)).toBe('cell/value-entered');
-      } },
-      { spec: 'The visible log preserves the exact newest placement', check: async () => {
-        await expect(page.locator('[data-event-type]').first()).toHaveText(`Placed ${conflictChoice.value} in r4c1`);
       } }
     ]
   });

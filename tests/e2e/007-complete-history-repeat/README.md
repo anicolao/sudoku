@@ -50,7 +50,7 @@ A near-complete canonical fixture leaves the final user actions visible. Complet
 
 - [x] The solved board stays visible beside a factual completion summary
 - [x] All play controls are read-only
-- [x] The last canonical event remains cell/value-entered while the log derives Solved puzzle
+- [x] The last canonical event remains cell/value-entered while replay derives completion
 
 ## The player opens History and sees the replayed completed attempt
 
