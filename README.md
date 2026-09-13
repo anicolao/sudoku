@@ -27,8 +27,8 @@ contract, and deterministic test evidence.
 - Accessible board semantics, roving keyboard focus, visible focus and
   non-colour state cues, reduced-motion support, and responsive layouts from a
   320 px phone through tablet and desktop.
-- Event-sourced persistence in IndexedDB. Boards, timers, history cards, undo
-  state, and the game log are reconstructed from canonical events.
+- Event-sourced persistence in IndexedDB. Boards, timers, history cards,
+  undo/redo labels, and walkthroughs are reconstructed from canonical events.
 - Multiple local attempts and tab-local puzzle selection. Tabs following the
   same attempt refresh from committed IndexedDB events and use stream revisions
   to reject exceptional overlapping writes safely.
@@ -97,7 +97,7 @@ one append-only event in an IndexedDB game stream
     ↓
 pure replay reducer
     ↓
-board, timer, undo/redo, history, and readable game-log projections
+board, timer, undo/redo, history, and instructional walkthroughs
 ```
 
 Puzzle generation, photo digit recognition, exhaustive solution counting,

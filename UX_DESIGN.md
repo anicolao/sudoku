@@ -78,17 +78,16 @@ givens have one unique solution and shows their logical rating. Nothing is
 persisted before **Start photographed
 puzzle**. If another attempt is active, the final action explicitly says it
 will abandon that attempt to History. The source photo and confidence data are
-never stored; the resulting play screen identifies the puzzle as **Recognized
-and validated here**.
+never stored; only the validated puzzle and its camera provenance are retained
+in the local event stream.
 
 ## 4. Play header and board
 
 The play header shows the level, a calm state heading, optional active time, and
-Pause or Resume for editable active attempts. The board column contains:
-
-- exactly 81 row-major gridcells with strong 3×3 boundaries;
-- a **Unique solution** validation badge;
-- generated/validated provenance and a short stable puzzle identifier.
+Pause or Resume for editable active attempts. The board column contains exactly
+81 row-major gridcells with strong 3×3 boundaries. Validation, provenance, and
+internal puzzle identifiers remain in the data model rather than consuming the
+solving surface.
 
 Fixed givens use dark, heavier text. Player values use indigo. Notes occupy a
 stable 3×3 mini-grid. Hint, conflict, and mistake markers supplement text and
@@ -186,8 +185,8 @@ remains available for read-only review and sharing.
 
 ## 8. Pause and completion
 
-Pause freezes active elapsed time, clears selection, replaces the board with a
-neutral full-board resume target, and covers the game log. Resume is available
+Pause freezes active elapsed time, clears selection, and replaces the board with
+a neutral full-board resume target. Resume is available
 from both the header and the board cover. Closing while active is an
 interruption, not an implicit pause; active elapsed time continues. Closing
 while paused preserves the frozen value.
@@ -214,17 +213,12 @@ storage, and
 overlapping-tab results. Highlight changes are announced only when the user
 explicitly toggles number-wide inspection.
 
-## 10. Game log
+## 10. Event history
 
-The game log is a human-readable newest-first projection of the selected game
-stream. Its header reports the total entry count, and the compact UI shows the
-newest row. Rows expose stable `data-event-type` values for testing. A derived
-**Solved puzzle** row appears for complete games even though there is no stored
-completion event.
-
-The paused cover hides the newest entry so the concealed board cannot be
-inferred. Reviewing a terminal History attempt displays its log beside the
-read-only board.
+The canonical event stream remains the source for replay, undo/redo labels,
+History, sharing, and instructional walkthroughs. It is not exposed as a live
+diagnostic log on the solving surface. Completion remains derived from the
+projected board rather than stored as an artificial event.
 
 ## 11. History
 
@@ -294,8 +288,8 @@ announcement says the latest state is shown.
 - Primary navigation stays at the bottom.
 - The shell header is removed during play to give the board priority.
 - The board is capped by both available width and height.
+- Large notes use a slightly larger phone-specific scale for legibility.
 - The number pad uses five columns; utility actions use four columns.
-- The game log remains a compact newest-entry panel.
 - History cards stack and actions use a two-column grid.
 - Photo review stacks the grid above a compact five-column correction pad.
 
@@ -316,10 +310,10 @@ announcement says the latest state is shown.
 
 ### Short-height layouts
 
-At 650 px and below, secondary headings, provenance, management actions, and the
-compact log may be hidden so the board and required solving controls remain in
-one viewport. Incoming and sharing surfaces reduce spacing and QR size before
-required text or actions disappear.
+At 650 px and below, secondary headings and management actions may be hidden so
+the board and required solving controls remain in one viewport. Incoming and
+sharing surfaces reduce spacing and QR size before required text or actions
+disappear.
 
 ## 15. Visual system
 
@@ -341,14 +335,14 @@ required text or actions disappear.
 
 ## 16. Content rules
 
-- Use “puzzle,” “number,” “note,” “row,” “column,” “box,” “hint,” and “game log.”
+- Use “puzzle,” “number,” “note,” “row,” “column,” “box,” and “hint.”
 - Use sentence case and factual status language.
 - Say “conflict” for a duplicate and “mistake” only for a checked solution
   mismatch.
 - Never claim local progress is synchronized or backed up.
 - Never say “perfect”; report time, mistakes, and hints.
-- Use compact `r4c7` notation only in readable log text where space matters;
-  cell accessible names spell out row and column.
+- Use compact `r4c7` notation in action labels where space matters; cell
+  accessible names spell out row and column.
 - Call a shared game a copy, not a move or synchronization.
 
 ## 17. Accessibility acceptance

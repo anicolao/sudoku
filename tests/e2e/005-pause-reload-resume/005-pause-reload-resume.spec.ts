@@ -59,11 +59,10 @@ test('pause freezes active time and reload reconstructs the exact game', async (
         await expect(page.getByLabel('Elapsed time 01:05')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Resume' })).toBeEnabled();
       } },
-      { spec: 'The board and game log contents are replaced by neutral covers', check: async () => {
+      { spec: 'The board is replaced by a neutral cover', check: async () => {
         await expect(page.getByRole('grid')).toHaveCount(0);
         await expect(page.getByRole('status', { name: 'Puzzle paused' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Continue paused puzzle' })).toBeEnabled();
-        await expect(page.getByText('Resume to inspect the game log.')).toBeVisible();
       } },
       { spec: 'game/paused records exactly 65 seconds', check: async () => {
         expect((await stream()).at(-1)).toMatchObject({ type: 'game/paused', elapsedMs: 65_000 });

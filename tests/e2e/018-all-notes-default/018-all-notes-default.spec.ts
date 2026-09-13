@@ -29,7 +29,9 @@ test('Notes can be the default, filled at once, and shown in four styles', async
     expect(style.fontWeight).toBe(bold ? 700 : 400);
     const sizeRatio = style.fontSize / style.slotSize;
     if (large) {
-      expect(sizeRatio).toBeGreaterThanOrEqual(.88);
+      const viewport = page.viewportSize();
+      const compactScreen = !!viewport && (viewport.width < 600 || viewport.height <= 650);
+      expect(sizeRatio).toBeGreaterThanOrEqual(compactScreen ? .94 : .88);
       expect(sizeRatio).toBeLessThanOrEqual(1);
     } else {
       expect(sizeRatio).toBeGreaterThanOrEqual(.64);
@@ -220,4 +222,31 @@ test('Notes can be the default, filled at once, and shown in four styles', async
   });
 
   steps.generateDocs();
+});
+
+test('a medium-height iPhone gives the board and Large notes the reclaimed play space', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone');
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
+
+  const board = page.getByRole('grid', { name: /Sudoku puzzle/ });
+  const boardBox = await board.boundingBox();
+  expect(boardBox?.width).toBeGreaterThanOrEqual(296);
+  await expect(page.getByRole('heading', { name: 'Game log' })).toHaveCount(0);
+  await expect(page.getByText('Unique solution', { exact: true })).toHaveCount(0);
+
+  const cell = page.locator('[data-cell="34"]');
+  await cell.click();
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('button', { name: 'All notes', exact: true }).click();
+  const noteRatio = await cell.locator('.cell-notes').evaluate((notes) => {
+    const slot = notes.querySelector('i')?.getBoundingClientRect();
+    return slot ? Number.parseFloat(getComputedStyle(notes).fontSize) / Math.min(slot.width, slot.height) : 0;
+  });
+  expect(noteRatio).toBeGreaterThanOrEqual(.94);
+
+  const controlsBox = await page.locator('.play-controls').boundingBox();
+  const navBox = await page.locator('.primary-nav').boundingBox();
+  expect(controlsBox && navBox && controlsBox.y + controlsBox.height <= navBox.y).toBe(true);
 });

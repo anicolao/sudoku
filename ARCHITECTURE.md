@@ -18,7 +18,7 @@ origin root or configured subpath. There is no application server.
         │                              │
         │                              └── BroadcastChannel notification
         │
-        ├── replay(events) ──→ AppProjection ──→ selectors and game log
+        ├── replay(events) ──→ AppProjection ──→ selectors and views
         │
         ├── generation service ──→ generator worker
         │
@@ -44,7 +44,7 @@ directly.
 | `src/lib/domain/types.ts` | Persisted event, puzzle, settings, and projection types |
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
-| `src/lib/domain/game-log.ts` | Human-readable projection of canonical events |
+| `src/lib/domain/game-log.ts` | Human-readable action descriptions for undo/redo and walkthroughs |
 | `src/lib/domain/walkthrough.ts` | Rule analysis from placed digits and recorded candidate state, plus placement replay for recorded and walkthrough-directed shared solves |
 | `src/lib/domain/sudoku.ts` | Grid parsing, units, peers, solved-grid checks, and domain helpers |
 | `src/lib/generator/` | Versioned PRNG, rated puzzle transforms, exhaustive solver, logical solver, worker, and service boundary |
@@ -139,7 +139,7 @@ Current vocabulary:
 
 Selection, focus, highlighted peers, even/odd stripe sources, selected input
 mode, navigation, dialogs, QR state, and tab-local puzzle choice are not events. Conflicts, mistake cells,
-completion, remaining-number counts, History cards, and game-log rows are
+completion, remaining-number counts, History cards, and action descriptions are
 derived rather than stored as duplicate facts.
 
 ## 5. Replay and reversible actions

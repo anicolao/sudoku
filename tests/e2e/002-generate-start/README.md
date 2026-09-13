@@ -50,5 +50,5 @@ Each chapter choice is visible before a Master puzzle crosses the worker, indepe
 **Verifications:**
 
 - [x] The real board has 81 cells with exactly 23 fixed givens
-- [x] The UI reports a unique Master puzzle and its stable generated identity
+- [x] The play surface gives the validated puzzle priority over implementation metadata
 - [x] Exactly one game/started event commits the complete reproducible puzzle

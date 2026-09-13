@@ -34,8 +34,8 @@ sharing service observes or coordinates either copy.
 ### Every state should be explainable
 
 The immutable event stream is the source of truth. A game can be reconstructed
-from its origin and ordered actions. The readable game log is a projection of
-that stream, useful to players, tests, debugging, and future compatibility work.
+from its origin and ordered actions. Human-readable undo/redo labels and
+instructional walkthroughs are projections of that stream.
 
 New persistence features must preserve replay determinism and the meaning of
 already stored events. Disposable projections may change; canonical history may

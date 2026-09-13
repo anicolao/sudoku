@@ -102,8 +102,9 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
     description: 'The photographed puzzle starts as a private local attempt',
     verifications: [
       { spec: 'The playable board preserves the photographed givens', check: async () => {
-        await expect(page.getByRole('grid', { name: /Sudoku puzzle/ })).toBeVisible();
-        await expect(page.getByText('Recognized and validated here')).toBeVisible();
+        const board = page.getByRole('grid', { name: /Sudoku puzzle/ });
+        await expect(board).toBeVisible();
+        await expect(board.getByRole('gridcell', { name: /fixed/ })).toHaveCount(30);
       } },
       { spec: 'One camera-photo origin records the validated puzzle but never the image', check: async () => {
         const events = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events);

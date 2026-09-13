@@ -6,7 +6,7 @@
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import PhotoPuzzleImport from '$lib/components/PhotoPuzzleImport.svelte';
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
-  import { describeMove, formatGameLog } from '$lib/domain/game-log';
+  import { describeMove } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
   import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
@@ -97,9 +97,6 @@
   const shareGame = $derived(shareGameId ? projection.games[shareGameId] : undefined);
   const isReadOnly = $derived(
     !currentGame || currentGame.status !== 'active' || reviewedGameId !== null
-  );
-  const gameLog = $derived(
-    store && currentGame ? formatGameLog(store.getDocument().events, currentGame.id, currentGame) : []
   );
   const historyGames = $derived(Object.values(projection.games).reverse());
   const events = $derived.by(() => {
@@ -950,8 +947,6 @@
             {:else}
               <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
-            <span class="board-validation">Unique solution</span>
-            <p class="board-caption">{currentGame.puzzle.provenance?.kind === 'camera-photo' ? 'Recognized and validated here' : currentGame.puzzle.provenance?.kind === 'puzzle-link' || currentGame.puzzle.provenance?.kind === 'progress-transfer' ? 'Validated here' : 'Generated and rated here'} · #{currentGame.puzzle.id.slice(-8)}</p>
           </div>
 
           <aside class="play-controls" aria-label="Puzzle controls">
@@ -990,10 +985,6 @@
             {#if currentGame.status === 'complete'}
               <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
-            <section class="game-log" aria-labelledby="game-log-title" class:covered={currentGame.paused && currentGame.status === 'active'}>
-              <div class="log-heading"><h2 id="game-log-title">Game log</h2><span>{gameLog.length} {gameLog.length === 1 ? 'event' : 'events'}</span></div>
-              {#if currentGame.paused && currentGame.status === 'active'}<p class="log-paused">Resume to inspect the game log.</p>{:else}<ol>{#each gameLog as entry}<li data-event-type={entry.type}><span>{entry.text}</span></li>{/each}</ol>{/if}
-            </section>
           </aside>
         </div>
       </section>

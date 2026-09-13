@@ -19,4 +19,4 @@ The URL supplies only givens. The app proves uniqueness, derives the solution lo
 
 - [x] The playable board has 81 cells and the exact 30 URL givens
 - [x] One game/imported event stores the locally derived solution and explicit provenance
-- [x] The consumed puzzle parameter is removed and the game log names the shared origin
+- [x] The consumed puzzle parameter is removed after import

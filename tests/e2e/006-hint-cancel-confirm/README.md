@@ -44,4 +44,3 @@ A hint never changes the board silently: the player sees a confirmation, cancell
 
 - [x] Exactly one cell is labelled as revealed by hint and selected
 - [x] One hint/revealed fact records the exact cell and solution value
-- [x] The visible game log describes the same reveal

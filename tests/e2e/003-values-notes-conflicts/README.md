@@ -1,6 +1,6 @@
-# Values, notes, conflicts, and the game log
+# Values, notes, and conflicts
 
-Every click below appends either no event or exactly one canonical fact, then replay updates the board and its plain-language log.
+Every click below appends either no event or exactly one canonical fact, then replay updates the player-facing board.
 
 ## The player has generated a fresh puzzle with an inspectable start event
 
@@ -9,7 +9,7 @@ Every click below appends either no event or exactly one canonical fact, then re
 **Verifications:**
 
 - [x] The board is ready and no editable cell is selected
-- [x] The game log begins with exactly one start entry
+- [x] Canonical history begins with exactly one start event
 
 ## A click selects row 4 column 8 and highlights its peers
 
@@ -37,7 +37,6 @@ Every click below appends either no event or exactly one canonical fact, then re
 
 - [x] The selected cell exposes note 2 in its accessible name
 - [x] One cell/note-toggled event records note 2
-- [x] The newest game-log row says Added note 2 to r4c8
 
 ## The player adds pencil note 3
 
@@ -47,7 +46,6 @@ Every click below appends either no event or exactly one canonical fact, then re
 
 - [x] The selected cell exposes note 3 in its accessible name
 - [x] One cell/note-toggled event records note 3
-- [x] The newest game-log row says Added note 3 to r4c8
 
 ## The player adds pencil note 8
 
@@ -57,7 +55,6 @@ Every click below appends either no event or exactly one canonical fact, then re
 
 - [x] The selected cell exposes note 8 in its accessible name
 - [x] One cell/note-toggled event records note 8
-- [x] The newest game-log row says Added note 8 to r4c8
 
 ## Clicking an existing pencil note removes that note only
 
@@ -66,7 +63,7 @@ Every click below appends either no event or exactly one canonical fact, then re
 **Verifications:**
 
 - [x] The cell retains notes 3 and 8 but no longer announces note 2
-- [x] The newest log row says Removed note 2 from r4c8
+- [x] Removing the note appends one more note event
 
 ## The player returns to Number mode before committing a value
 
@@ -84,7 +81,7 @@ Every click below appends either no event or exactly one canonical fact, then re
 **Verifications:**
 
 - [x] Row 4 column 8 contains the committed user value with no notes
-- [x] One cell/value-entered event and matching log row record the placement
+- [x] One cell/value-entered event records the placement
 
 ## The player selects another editable cell in the same row
 
@@ -102,4 +99,3 @@ Every click below appends either no event or exactly one canonical fact, then re
 
 - [x] The entered value and the existing row 4 given both expose conflict state
 - [x] The conflict remains a derived projection of one value event
-- [x] The visible log preserves the exact newest placement

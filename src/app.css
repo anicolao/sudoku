@@ -146,8 +146,6 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .stripe-source-mark { position: absolute; z-index: 3; bottom: 2px; width: 1.05rem; height: 1.05rem; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; background: #fffdf8e6; font-size: .58rem; font-weight: 700; line-height: 1; }
 .stripe-source-mark.even { left: 2px; color: #4654a3; }
 .stripe-source-mark.odd { right: 2px; color: #8a5818; }
-.board-caption { margin: 0; color: #62656b; font-size: .84rem; text-align: center; }
-.board-validation { display: inline-flex; align-items: center; min-height: 28px; margin-bottom: -6px; padding: 4px 9px; border: 1px solid #d8daf0; border-radius: 999px; color: #3f477d; background: #f0f1fa; font-size: .76rem; font-weight: 700; }
 .play-controls { min-width: 0; display: grid; gap: 12px; }
 .mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border: 1px solid #c8c7c2; border-radius: 10px; background: #efeee9; }
 .mode-switch button { min-height: 44px; border: 0; border-radius: 7px; color: #62656b; background: transparent; font-weight: 700; cursor: pointer; }
@@ -184,16 +182,6 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .completion-panel p { margin: 5px 0 12px; color: #565a62; font-size: .88rem; }
 .completion-panel div { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .completion-panel button { min-height: 44px; border: 1px solid #aeb4d8; border-radius: 8px; color: #303a7d; background: #fff; font-weight: 700; cursor: pointer; }
-.game-log { min-height: 0; padding: 8px 10px; border: 1px solid #d7d5cd; border-radius: 12px; background: #fffdf8; }
-.log-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.log-heading h2 { margin: 0; font-size: 1rem; }
-.log-heading span { color: #666970; font-size: .75rem; }
-.game-log ol { margin: 3px 0 0; padding: 0; list-style: none; }
-.game-log li { min-width: 0; padding: 3px 0 0; overflow: hidden; border-top: 1px solid #eceae4; color: #565a62; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
-.game-log li:first-child { color: #20242b; font-weight: 700; }
-.game-log li:nth-child(n + 2) { display: none; }
-.game-log.covered { color: #777a80; background: #f1f0ec; }
-.log-paused { margin: 16px 0 6px; color: #777a80; font-size: .82rem; text-align: center; }
 .sr-live { position: fixed; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 .dialog-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: #20242b99; }
@@ -357,18 +345,13 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .puzzle-facts span:last-child { display: none; }
   .game-workspace { height: 100%; min-height: 0; grid-template-columns: 1fr; grid-template-rows: auto auto; align-content: space-between; gap: 5px; }
   .board-column { gap: 3px; }
-  .sudoku-board, .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 430px), 540px); width: var(--board-size); height: var(--board-size); min-width: 0; }
-  .board-validation { min-height: 22px; margin-bottom: -2px; padding: 2px 7px; font-size: .68rem; }
-  .board-caption { font-size: .72rem; line-height: 1; }
+  .sudoku-board, .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 370px), 540px); width: var(--board-size); height: var(--board-size); min-width: 0; }
+  .sudoku-board[data-notes-large='true'] .cell-notes { font-size: min(33cqw, 33cqh); }
   .play-controls { width: 100%; gap: 5px; }
   .number-pad { grid-template-columns: repeat(5, 1fr); gap: 5px; }
   .number-pad button { min-width: 0; min-height: 44px; }
   .number-pad small { display: none; }
   .utility-actions { grid-template-columns: repeat(4, 1fr); }
-  .game-log { height: 54px; padding: 5px 8px; }
-  .log-heading h2 { font-size: .86rem; }
-  .game-log li { font-size: .72rem; }
-  .log-paused { margin: 7px 0 0; font-size: .72rem; }
   .game-management { gap: 5px; }
   .game-management button { min-height: 44px; }
   .completion-panel { padding: 8px; }
@@ -410,11 +393,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .primary-nav { min-height: 54px; }
   .primary-nav button { min-height: 52px; }
 
-  .app-shell.playing:has(.app-warning) .game-log,
-  .app-shell.playing:has(.app-warning) .game-management,
-  .app-shell.playing:has(.app-warning) .board-caption { display: none; }
-  .app-shell.playing:has(.completion-panel) .board-validation,
-  .app-shell.playing:has(.completion-panel) .board-caption { display: none; }
+  .app-shell.playing:has(.app-warning) .game-management { display: none; }
 }
 
 @media (min-width: 600px) and (max-width: 899px) {
@@ -455,10 +434,8 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
 
   .app-shell.playing .shell-header,
   .app-shell.playing footer,
-  .app-shell.playing .board-validation,
-  .app-shell.playing .board-caption,
-  .app-shell.playing .game-management,
-  .app-shell.playing .game-log { display: none; }
+  .app-shell.playing .game-management { display: none; }
+  .app-shell.playing .sudoku-board[data-notes-large='true'] .cell-notes { font-size: min(33cqw, 33cqh); }
   .app-shell.playing main { padding: 6px 10px; }
   .app-shell.playing .play-view { height: 100%; min-height: 0; gap: 4px; }
   .app-shell.playing .puzzle-heading .eyebrow { display: none; }

@@ -77,10 +77,9 @@ test('a validated puzzle URL becomes an event-sourced local game', async ({ page
         }
       },
       {
-        spec: 'The consumed puzzle parameter is removed and the game log names the shared origin',
+        spec: 'The consumed puzzle parameter is removed after import',
         check: async () => {
           expect(new URL(page.url()).searchParams.has('p')).toBe(false);
-          await expect(page.locator('[data-event-type="game/imported"]')).toHaveText(/Opened shared .* puzzle/);
         }
       }
     ]

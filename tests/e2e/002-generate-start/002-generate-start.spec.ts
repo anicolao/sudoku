@@ -68,10 +68,11 @@ test('the player chooses a chapter level and starts a rated puzzle', async ({ pa
         }
       },
       {
-        spec: 'The UI reports a unique Master puzzle and its stable generated identity',
+        spec: 'The play surface gives the validated puzzle priority over implementation metadata',
         check: async () => {
-          await expect(page.getByText('Unique solution', { exact: true })).toBeVisible();
-          await expect(page.getByText(/Generated and rated here · #[0-9a-f]{8}/)).toBeVisible();
+          await expect(page.getByText('Unique solution', { exact: true })).toHaveCount(0);
+          await expect(page.getByText(/Generated and rated here · #[0-9a-f]{8}/)).toHaveCount(0);
+          await expect(page.getByRole('heading', { name: 'Game log' })).toHaveCount(0);
         }
       },
       {

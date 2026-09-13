@@ -33,7 +33,7 @@ Active time comes from event snapshots. Pausing covers the puzzle, reload replay
 **Verifications:**
 
 - [x] The timer is frozen at 01:05 and Resume is the primary session action
-- [x] The board and game log contents are replaced by neutral covers
+- [x] The board is replaced by a neutral cover
 - [x] game/paused records exactly 65 seconds
 
 ## Reload reconstructs the covered puzzle and frozen timer exactly
