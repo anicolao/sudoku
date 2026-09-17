@@ -1,6 +1,9 @@
+import { solveKillerLogically } from '$lib/domain/killer-analysis';
+import { canonicalCages, solveKiller } from '$lib/domain/killer';
 import { UNITS, basicCandidateNotes, givensAgree, isSolvedGrid, parseGrid } from '$lib/domain/sudoku';
 import type {
   Digit,
+  KillerCage,
   GameSettings,
   GameProjection,
   ImportedPuzzleMetadata,
@@ -84,6 +87,25 @@ const cellFromCoordinates = (row: string, column: string): number =>
 
 const coordinatesFor = (cell: number): string =>
   `${Math.floor(cell / 9) + 1}${(cell % 9) + 1}`;
+
+
+function killerHeader(givens: string, cages: readonly KillerCage[]): string {
+  return `K1!${givens}!${canonicalCages(cages).map((cage) => `${cage.total}.${cage.cells.map(coordinatesFor).join('')}`).join('-')}`;
+}
+
+function parsePuzzleHeader(header: string): { givens: string; cages?: KillerCage[] } {
+  if (!header.startsWith('K')) { assertStructure(header); return { givens: header }; }
+  const [version, givens, encoded, ...extra] = header.split('!');
+  if (version !== 'K1' || extra.length || !encoded || !/^[1-9.]{81}$/.test(givens)) {
+    throw new SharedPuzzleError('format', 'Unsupported or malformed Killer puzzle version.');
+  }
+  const cages = canonicalCages(encoded.split('-').map((token) => {
+    if (!/^[1-9][0-9]?\.(?:[1-9]{2}){1,9}$/.test(token)) throw new SharedPuzzleError('format', 'Invalid Killer cage encoding.');
+    const [total, cells] = token.split('.');
+    return { total: Number(total), cells: (cells.match(/../g) ?? []).map((cell) => cellFromCoordinates(cell[0], cell[1])) };
+  }));
+  return { givens, cages };
+}
 
 function parseWorkToken(token: string): ImportedPuzzleWorkAction {
   if (/^[1-9]{3}$/.test(token)) {
@@ -225,6 +247,7 @@ export function parseSharedGivensOption(values: readonly string[]): StartingNote
 
 export function parseSharedPuzzlePayload(payload: string, givensOption: StartingNotesMode | null = null): {
   givens: string;
+  cages?: KillerCage[];
   work: ImportedPuzzleWorkAction[];
   values: Array<Digit | null>;
   notes: Digit[][];
@@ -233,8 +256,8 @@ export function parseSharedPuzzlePayload(payload: string, givensOption: Starting
   if (payload.length > MAX_SHARED_PUZZLE_LENGTH) {
     throw new SharedPuzzleError('work-format', 'This shared puzzle is too long to open safely.');
   }
-  const [givens, ...tokens] = payload.split('_');
-  assertStructure(givens);
+  const [header, ...tokens] = payload.split('_');
+  const { givens, cages } = parsePuzzleHeader(header);
   const work: ImportedPuzzleWorkAction[] = [];
   const metadata: ImportedPuzzleMetadata = {};
   const seenMetadata = new Set<string>();
@@ -246,7 +269,7 @@ export function parseSharedPuzzlePayload(payload: string, givensOption: Starting
   if (metadata.hintedCells?.some((cell) => givens[cell] !== '.')) {
     throw new SharedPuzzleError('metadata-format', 'Shared hints can target only empty cells in the initial puzzle.');
   }
-  return { givens, work, values, notes, metadata: seenMetadata.size ? metadata : null };
+  return { givens, ...(cages ? { cages } : {}), work, values, notes, metadata: seenMetadata.size ? metadata : null };
 }
 
 export function coalescePuzzleWork(
@@ -296,9 +319,14 @@ function encodeSharedPuzzlePayload(
   givens: string,
   work: readonly ImportedPuzzleWorkAction[],
   metadata: ImportedPuzzleMetadata | null,
-  givensOption: StartingNotesMode | null = null
+  givensOption: StartingNotesMode | null = null,
+  puzzle?: PuzzleDefinition
 ): string {
-  assertStructure(givens);
+  if (puzzle?.variant === 'killer') {
+    if (puzzle.killerRulesVersion !== 1 || puzzle.givens !== givens) throw new SharedPuzzleError('format', 'Unsupported Killer rules.');
+    parseGrid(givens);
+    canonicalCages(puzzle.cages);
+  } else assertStructure(givens);
   const coalesced = coalescePuzzleWork(work);
   applyWork(givens, coalesced, givensOption);
   const tokens = coalesced.map((action) => {
@@ -361,31 +389,39 @@ function encodeSharedPuzzlePayload(
       throw new SharedPuzzleError('metadata-format', 'Shared metadata cannot be empty.');
     }
   }
-  return [givens, ...tokens].join('_');
+  const header = puzzle?.variant === 'killer' ? killerHeader(givens, puzzle.cages!) : givens;
+  const payload = [header, ...tokens].join('_');
+  if (payload.length > MAX_SHARED_PUZZLE_LENGTH) throw new SharedPuzzleError('work-format', 'This shared puzzle is too long to open safely.');
+  return payload;
 }
 
-export async function validateSharedPuzzle(
-  payload: string,
-  givensOption: StartingNotesMode | null = null
-): Promise<SharedPuzzleValidation> {
+export async function validateSharedPuzzle(payload: string, options: { walkthrough?: boolean; givensOption?: StartingNotesMode } | StartingNotesMode | null = {}): Promise<SharedPuzzleValidation> {
+  const givensOption = typeof options === 'string' ? options : options?.givensOption ?? null;
   const parsed = parseSharedPuzzlePayload(payload, givensOption);
-  const { givens, work, values, notes, metadata } = parsed;
-  const grid = assertStructure(givens);
-  const solutionCount = countSolutions(givens);
+  const { givens, cages, work, values, notes, metadata } = parsed;
+  const grid = cages ? parseGrid(givens) : assertStructure(givens);
+  const killer = cages ? solveKiller(givens, cages) : null;
+  const solutionCount = killer ? killer.count : countSolutions(givens);
   if (solutionCount === 0) throw new SharedPuzzleError('no-solution', 'The shared puzzle has no solution.');
   if (solutionCount !== 1) {
     throw new SharedPuzzleError('multiple-solutions', 'The shared puzzle does not have one unique solution.');
   }
-  const solution = solveFirst(givens);
+  const solution = killer ? killer.solution : solveFirst(givens);
   if (!solution || !isSolvedGrid(parseGrid(solution)) || !givensAgree(givens, solution)) {
     throw new SharedPuzzleError('no-solution', 'The shared puzzle has no valid solution.');
   }
-  const logical = solveLogically(givens, { maxDifficulty: 'master' });
-  const difficulty: PuzzleRating = logical.solved && logical.grid === solution
+  const logical = cages ? null : solveLogically(givens, { maxDifficulty: 'master' });
+  const difficulty: PuzzleRating = logical?.solved && logical.grid === solution
     ? logical.difficulty
     : 'custom';
-  const digest = await fingerprint(givens);
+  const digest = await fingerprint(cages ? killerHeader(givens, cages) : givens);
   const clueCount = grid.filter(Boolean).length;
+  if (cages && (typeof options === 'object' && options?.walkthrough) && work.length === 0) {
+    const explained = solveKillerLogically(givens, cages);
+    if (!explained.solved || explained.grid !== solution) throw new SharedPuzzleError('format', 'The supported Killer techniques cannot build this walkthrough. Open the puzzle without walkthrough view to solve it manually.');
+    work.push(...explained.steps.map((step) => ({ type: 'value' as const, cell: step.targetCell, value: step.value })));
+    for (const action of work) if (action.type === 'value') values[action.cell] = action.value;
+  }
   return {
     clueCount,
     fingerprint: digest,
@@ -394,11 +430,12 @@ export async function validateSharedPuzzle(
       givens,
       solution,
       difficulty,
-      validatorVersion: 3,
-      hardestTechnique: difficulty === 'custom' ? null : logical.hardestTechnique,
+      ...(cages ? { variant: 'killer' as const, killerRulesVersion: 1 as const, cages } : {}),
+      validatorVersion: cages ? 4 : 3,
+      hardestTechnique: difficulty === 'custom' ? null : logical!.hardestTechnique,
       provenance: {
         kind: 'puzzle-link',
-        formatVersion: metadata?.patternCells ? 4 : metadata ? 3 : work.length ? 2 : 1,
+        formatVersion: cages ? 5 : metadata?.patternCells ? 4 : metadata ? 3 : work.length ? 2 : 1,
         fingerprint: digest
       }
     },
@@ -415,12 +452,15 @@ export function puzzleUrl(
   givens: string,
   work: readonly ImportedPuzzleWorkAction[] = [],
   metadata: ImportedPuzzleMetadata | null = null,
+  puzzleOrOption?: PuzzleDefinition | StartingNotesMode | null,
   givensOption: StartingNotesMode | null = null
 ): string {
   const url = new URL(base);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('p', encodeSharedPuzzlePayload(givens, work, metadata, givensOption));
+  const puzzle = typeof puzzleOrOption === 'object' ? puzzleOrOption ?? undefined : undefined;
+  givensOption = typeof puzzleOrOption === 'string' ? puzzleOrOption : givensOption;
+  url.searchParams.set('p', encodeSharedPuzzlePayload(givens, work, metadata, givensOption, puzzle));
   if (givensOption) url.searchParams.set('givens', givensOption);
   return url.toString();
 }

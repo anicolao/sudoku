@@ -448,3 +448,19 @@ placing it. Cell only points to its location; Reveal one cell records a placemen
 Unsupported or contradictory positions show an explicit no-deduction message.
 The recorded placement walkthrough uses Killer reasoning and marks unexplained
 player placements honestly.
+
+### Killer: share, print, and continue offline
+
+Share puzzle only includes the full cage rules; Share puzzle with work also
+includes the current values, notes, and selected progress metadata. Incoming
+validation identifies Killer as unrated and checks uniqueness with its cages.
+Print puzzle pair draws vector cages on both pages. Its solution-page QR opens
+a complete logical walkthrough derived on the receiving device. The installed
+app can start, inspect, solve and resume a Killer offline.
+
+The Cage control shares the utility row at small sizes, preserving room for the
+board at narrow and zoomed viewports. Cage labels have equivalent spoken cell
+descriptions; the inspector provides readable totals and sets independently of
+board size.
+
+Acceptance story: [Take a Killer puzzle with you](tests/e2e/028-killer-sharing-print/README.md).

@@ -548,7 +548,6 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
 .cage-combinations { font-variant-numeric: tabular-nums; }
 .cage-pages { display: flex; gap: 8px; }
 .cage-pages button { min-width: 44px; min-height: 44px; }
-.cage-inspect { font-size: .82rem; }
-@media (max-width: 599px) {
-  .app-shell.playing:has(.killer-board) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 420px), 540px); }
+@media (max-width: 599px), (max-height: 650px) {
+  .killer-utilities { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }

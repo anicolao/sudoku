@@ -363,3 +363,11 @@ cage restrictions, and single-house innies/outies. Two-cell residual sums are
 exposed by the inspector without assuming they are all-different. Classic
 uniqueness techniques are not invoked for Killer. Human notes never constrain
 Killer hints. The collection is intentionally unrated until human calibration.
+
+Killer sharing uses format 5 (`K1!` inside `p`); fingerprints include the canonical
+cage partition and totals. The worker derives solutions using all constraints.
+Clean Killer walkthrough links request local logical derivation before import.
+Stored imports copy nested cages into plain data so UI proxies never reach
+IndexedDB. Print uses the same cage geometry on both pages and sizes Killer QRs
+at an integer number of pixels per module; its walkthrough QR carries the clean
+rules and a view request. All installed assets support offline Killer starts.

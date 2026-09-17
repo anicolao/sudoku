@@ -49,7 +49,7 @@
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
   type HintAdviceKind = 'technique' | 'cell';
   type PrintStatus = 'idle' | 'preparing';
-  type PreparedPrint = { puzzleQr: string; walkthroughQr: string };
+  type PreparedPrint = { puzzleQr: string; walkthroughQr: string; puzzleQrSize: number; walkthroughQrSize: number };
   type PreparedPrintVariants = Partial<Record<PrintablePuzzleKind, PreparedPrint>>;
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -108,6 +108,8 @@
   let printKind = $state<PrintablePuzzleKind>('givens');
   let printPuzzleQr = $state('');
   let printWalkthroughQr = $state('');
+  let printPuzzleQrSize = $state(144);
+  let printWalkthroughQrSize = $state(144);
   const preparedPrints = new Map<string, PreparedPrint>();
   const pendingPrints = new Map<string, Promise<PreparedPrintVariants>>();
   let printPreparationRequest = 0;
@@ -265,7 +267,7 @@
 
   $effect(() => {
     const game = currentGame;
-    if (game && game.puzzle.variant !== 'killer' && typeof window !== 'undefined') {
+    if (game && typeof window !== 'undefined') {
       void preparePrintablePuzzle(game, preferredPrintKind(game)).catch(() => {});
     }
   });
@@ -339,6 +341,7 @@
     incomingError = '';
     try {
       incomingPuzzle = await validateSharedPuzzleInWorker(puzzles[0], {
+        walkthrough: requestedView === 'walkthrough',
         ...(givensOption ? { givensOption } : {})
       });
       if (requestedView === 'walkthrough' &&
@@ -428,7 +431,7 @@
       shareGame.puzzle.givens,
       [],
       shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : null,
-      givensOption
+      shareGame.puzzle, givensOption
     ), 'puzzle');
   }
 
@@ -445,7 +448,7 @@
         ...(shareGame.hintedCells.length ? { hintedCells: [...shareGame.hintedCells] } : {}),
         mistakes: shareGame.mistakes,
         settings: { ...shareGame.settings }
-      }, givensOption),
+      }, shareGame.puzzle, givensOption),
       'work'
     );
     announcement = 'Puzzle work link ready';
@@ -511,6 +514,8 @@
       printKind = kind;
       printPuzzleQr = cached.puzzleQr;
       printWalkthroughQr = cached.walkthroughQr;
+      printPuzzleQrSize = cached.puzzleQrSize;
+      printWalkthroughQrSize = cached.walkthroughQrSize;
       return;
     }
 
@@ -525,7 +530,7 @@
           ? ['givens', 'candidates']
           : ['givens'];
         const walkthroughQr = await QRCode.toDataURL(links.givens.walkthrough, {
-          errorCorrectionLevel: 'Q', margin: 3, width: 360
+          errorCorrectionLevel: 'Q', margin: 3, ...(game.puzzle.variant === 'killer' ? { scale: 4 } : { width: 360 })
         });
         const variants: PreparedPrintVariants = {};
         await Promise.all(kinds.map(async (variant) => {
@@ -533,9 +538,11 @@
             puzzleQr: await QRCode.toDataURL(links[variant].puzzle, {
               errorCorrectionLevel: variant === 'candidates' ? 'M' : 'Q',
               margin: 3,
-              width: variant === 'candidates' ? 600 : 360
+              ...(game.puzzle.variant === 'killer' ? { scale: 4 } : { width: variant === 'candidates' ? 600 : 360 })
             }),
-            walkthroughQr
+            walkthroughQr,
+            puzzleQrSize: game.puzzle.variant === 'killer' ? (QRCode.create(links[variant].puzzle, { errorCorrectionLevel: variant === 'candidates' ? 'M' : 'Q' }).modules.size + 6) * 2 : variant === 'candidates' ? 168 : 144,
+            walkthroughQrSize: game.puzzle.variant === 'killer' ? (QRCode.create(links.givens.walkthrough, { errorCorrectionLevel: 'Q' }).modules.size + 6) * 2 : 144
           };
           preparedPrints.set(`${game.id}:${variant}`, variants[variant] as PreparedPrint);
         }));
@@ -556,6 +563,8 @@
     printKind = kind;
     printPuzzleQr = prepared.puzzleQr;
     printWalkthroughQr = prepared.walkthroughQr;
+    printPuzzleQrSize = prepared.puzzleQrSize;
+    printWalkthroughQrSize = prepared.walkthroughQrSize;
   }
 
   function metadata(trackElapsed = true, game = currentGame): EventMetadata {
@@ -991,7 +1000,7 @@
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{:else if incomingPuzzle.givensOption === 'basic'}<p>Opening it will fill every basic candidate allowed by the original givens.</p>{:else if incomingPuzzle.metadata?.patternCells}<p>The indicated pattern cells will stay highlighted while you solve.</p>{/if}
-          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null || incomingPuzzle.givensOption === 'basic'}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div>{/if}{#if incomingPuzzle.work.length > 0 || incomingPuzzle.givensOption === 'basic'}<div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null || incomingPuzzle.givensOption === 'basic'}><div><dt>Rating</dt><dd>{incomingPuzzle.puzzle.variant === 'killer' ? 'Killer · unrated' : difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div>{/if}{#if incomingPuzzle.work.length > 0 || incomingPuzzle.givensOption === 'basic'}<div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open {incomingView === 'walkthrough' ? 'walkthrough' : 'shared puzzle'}</button></div>
@@ -1027,7 +1036,7 @@
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
               </article>
             {/each}
           </div>
@@ -1172,16 +1181,16 @@
               {#if inputMode === 'notes'}<button type="button" class="all-notes" onclick={fillAllNotes} disabled={!canFillAllNotes} aria-label="All notes"><strong>All</strong></button>{/if}
             </div>
             {/if}
-            {#if currentGame.puzzle.variant === 'killer'}<button class="killer-start cage-inspect" type="button" disabled={selectedCell === null || currentGame.paused} onclick={() => cageInspectorOpen = true}>{selectedCell === null ? 'Select a cell to inspect its cage' : 'Inspect cage'}</button>{/if}
-            <div class="utility-actions">
+            <div class="utility-actions" class:killer-utilities={currentGame.puzzle.variant === 'killer'}>
+              {#if currentGame.puzzle.variant === 'killer'}<button type="button" aria-label="Inspect cage" disabled={selectedCell === null || currentGame.paused} onclick={() => cageInspectorOpen = true}>Cage</button>{/if}
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
               <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
               <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly}>Hint</button>
             </div>
-            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" disabled={currentGame.puzzle.variant === 'killer'} onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
+            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
-              <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
+              <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{currentGame.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
           </aside>
         </div>
@@ -1298,5 +1307,5 @@
 </div>
 
 {#if printGame && printPuzzleQr && printWalkthroughQr}
-  <PrintablePuzzle game={printGame} puzzleQr={printPuzzleQr} walkthroughQr={printWalkthroughQr} kind={printKind} />
+  <PrintablePuzzle game={printGame} puzzleQr={printPuzzleQr} walkthroughQr={printWalkthroughQr} puzzleQrSize={printPuzzleQrSize} walkthroughQrSize={printWalkthroughQrSize} kind={printKind} />
 {/if}

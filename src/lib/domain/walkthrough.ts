@@ -360,7 +360,7 @@ function importWithWorkPrefix(event: GameImportedEvent, actionCount: number): Ga
         provenance: event.payload.puzzle.provenance?.kind === 'puzzle-link'
           ? {
               ...event.payload.puzzle.provenance,
-              formatVersion: event.payload.sharedMetadata?.patternCells
+              formatVersion: event.payload.puzzle.variant === 'killer' ? 5 : event.payload.sharedMetadata?.patternCells
                 ? 4
                 : event.payload.sharedMetadata ? 3 : work.length ? 2 : 1
             }

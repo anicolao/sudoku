@@ -1,3 +1,4 @@
+import { copyPuzzleDefinition } from './event-store';
 import { replay } from '$lib/domain/reducer';
 import type {
   AppProjection,
@@ -240,7 +241,7 @@ export class IndexedDbEventStore {
   }
 
   startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): Promise<CommitResult> {
-    const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings = { ...this.projection.settings };
     return this.append((sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;
@@ -261,7 +262,7 @@ export class IndexedDbEventStore {
     importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link',
     startingNotesMode?: StartingNotesMode
   ): Promise<CommitResult> {
-    const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings = { ...importedSettings };
     return this.append((sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;
