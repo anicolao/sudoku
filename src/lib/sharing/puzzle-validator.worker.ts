@@ -1,9 +1,10 @@
 /// <reference lib="webworker" />
 
 import { SharedPuzzleError, validateSharedPuzzle } from './puzzle-link';
+import type { StartingNotesMode } from '$lib/domain/types';
 
-self.addEventListener('message', (event: MessageEvent<{ payload: string }>) => {
-  void validateSharedPuzzle(event.data.payload).then(
+self.addEventListener('message', (event: MessageEvent<{ payload: string; givensOption?: StartingNotesMode }>) => {
+  void validateSharedPuzzle(event.data.payload, event.data.givensOption ?? null).then(
     (result) => self.postMessage({ ok: true, result }),
     (error: unknown) => self.postMessage({
       ok: false,

@@ -185,7 +185,7 @@ and every changed PNG. Normal test runs must leave the worktree unchanged.
 | 003 | Values, notes, conflicts | selection, explicit modes, notes, values, replacement, derived conflicts |
 | 004 | Undo, redo, erase | compensating events, replayed correction, redo retirement after branching |
 | 005 | Pause, reload, resume | frozen active time, covered board/log, exact reconstruction |
-| 006 | Hint cancellation and confirmation | zero-event cancel, exact deterministic hint, count and log |
+| 006 | Hint choices and confirmation | one-action basic candidates, undo, zero-event guidance/cancel, exact deterministic reveal, count and log |
 | 007 | Complete, review, and repeat | derived completion, History, terminal sharing, new attempt ID, pagination |
 | 008 | Restart and abandon | reversible restart, retained event log, abandoned review and repeat |
 | 009 | Settings and storage clear | preferences, mistake state, physical local deletion |
@@ -206,7 +206,7 @@ and every changed PNG. Normal test runs must leave the worktree unchanged.
 | 024 | Camera puzzle import | local grid recognition, correction, uncertainty handling, checked import |
 | 025 | Shared pattern highlight | persistent authored pattern cells through play, restart, and re-sharing |
 | 026 | Printable puzzle pair | native and in-app Letter printing, solution, walkthrough QR, publisher brand |
-| 027 | Candidate-ready print and restart | exact imported notes, reload/restart baseline, print choices, fixed slots, QR parity, fresh reopen |
+| 027 | Candidate-ready print and restart | compact import, exact notes, delta sharing, reload/restart baseline, print choices, fixed slots, compact QR parity, legacy reopen |
 
 The generated README inside each directory is the readable step-by-step record;
 the spec is the executable source of truth.

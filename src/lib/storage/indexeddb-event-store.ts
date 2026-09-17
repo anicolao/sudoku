@@ -6,6 +6,7 @@ import type {
   ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
+  StartingNotesMode,
   StoredEventDocumentV1,
   SudokuEvent
 } from '$lib/domain/types';
@@ -257,7 +258,8 @@ export class IndexedDbEventStore {
     work: readonly ImportedPuzzleWorkAction[] = [],
     sharedMetadata?: ImportedPuzzleMetadata,
     initialView?: 'walkthrough',
-    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link'
+    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link',
+    startingNotesMode?: StartingNotesMode
   ): Promise<CommitResult> {
     const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
     const settings = { ...importedSettings };
@@ -272,7 +274,8 @@ export class IndexedDbEventStore {
             ? { ...action }
             : { ...action, values: [...action.values] }) } : {}),
           ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {}),
-          ...(initialView ? { initialView } : {})
+          ...(initialView ? { initialView } : {}),
+          ...(startingNotesMode ? { startingNotesMode } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(), elapsedMs: sharedMetadata?.elapsedMs ?? 0,
         schemaVersion: 1, reducerVersion: 1
@@ -297,6 +300,10 @@ export class IndexedDbEventStore {
 
   fillNotes(gameId: string, cell: number, values: Digit[], metadata: EventMetadata): Promise<CommitResult> {
     return this.gameEvent(gameId, metadata, 'cell/notes-filled', { cell, values });
+  }
+
+  fillBasicNotes(gameId: string, metadata: EventMetadata): Promise<CommitResult> {
+    return this.gameEvent(gameId, metadata, 'notes/basic-filled', {});
   }
 
   clearCell(gameId: string, cell: number, metadata: EventMetadata): Promise<CommitResult> {

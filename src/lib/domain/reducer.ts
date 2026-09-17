@@ -1,4 +1,4 @@
-import { givensAgree, isSolvedGrid, parseGrid, UNITS } from './sudoku';
+import { basicCandidateNotes, givensAgree, isSolvedGrid, parseGrid, UNITS } from './sudoku';
 import type {
   AppProjection,
   Digit,
@@ -32,6 +32,7 @@ const isReversible = (event: SudokuEvent): event is ReversibleEvent =>
   event.type === 'cell/value-entered' ||
   event.type === 'cell/note-toggled' ||
   event.type === 'cell/notes-filled' ||
+  event.type === 'notes/basic-filled' ||
   event.type === 'cell/cleared' ||
   event.type === 'cell/value-erased' ||
   event.type === 'hint/revealed' ||
@@ -105,7 +106,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
   if (event.payload.importKind === 'camera-photo') {
     return event.payload.transferId === null && event.payload.checkpoint === null &&
       event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
-      event.payload.initialView === undefined &&
+      event.payload.initialView === undefined && event.payload.startingNotesMode === undefined &&
       event.payload.puzzle.provenance?.kind === 'camera-photo' &&
       event.payload.puzzle.provenance.recognizerVersion === 1 &&
       /^[0-9a-f]{64}$/.test(event.payload.puzzle.provenance.fingerprint);
@@ -113,6 +114,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
   if (event.payload.importKind === 'puzzle-link') {
     if (event.payload.transferId !== null || event.payload.checkpoint !== null ||
       event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;
+    if (event.payload.startingNotesMode !== undefined && event.payload.startingNotesMode !== 'basic') return false;
     const version = event.payload.puzzle.provenance.formatVersion;
     if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
       event.payload.initialView === undefined;
@@ -131,6 +133,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
   }
   return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
     event.payload.work === undefined && event.payload.sharedMetadata === undefined && event.payload.initialView === undefined &&
+    event.payload.startingNotesMode === undefined &&
     event.payload.puzzle.provenance?.kind === 'progress-transfer';
 }
 
@@ -211,14 +214,27 @@ function applyImportedWork(game: GameProjection, work: readonly ImportedPuzzleWo
 
 function hasCompleteStartingNotes(game: GameProjection, event: GameImportedEvent): boolean {
   return event.payload.importKind === 'puzzle-link' &&
+    event.payload.startingNotesMode === undefined &&
     event.payload.sharedMetadata === undefined &&
     Boolean(event.payload.work?.length) &&
     event.payload.work?.every((action) => action.type === 'notes') === true &&
     [...game.puzzle.givens].every((given, cell) => given !== '.' || game.notes[cell].length > 0);
 }
 
+function notesEqual(left: readonly (readonly Digit[])[], right: readonly (readonly Digit[])[]): boolean {
+  return left.every((notes, cell) => notes.length === right[cell].length &&
+    notes.every((value, index) => value === right[cell][index]));
+}
+
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
   if (event.type === 'game/restarted') return;
+  if (event.type === 'notes/basic-filled') {
+    const grid = [...game.puzzle.givens].map((given, cell) =>
+      given === '.' ? game.values[cell] ?? 0 : Number(given)
+    );
+    game.notes = basicCandidateNotes(grid);
+    return;
+  }
   if (!isEditable(game, event.payload.cell)) {
     diagnostics.push('illegal-cell-edit');
     return;
@@ -325,6 +341,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         valueSourceEventIds: Array<string | null>(81).fill(null),
         notes: checkpoint ? structuredClone(checkpoint.notes) : Array.from({ length: 81 }, () => []),
         startingNotes: Array.from({ length: 81 }, () => []),
+        startingNotesMode: null,
         conflicts: [],
         mistakeCells: [],
         undoTargetId: null,
@@ -346,10 +363,17 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       activeStacks.set(event.gameId, []);
       redoStacks.set(event.gameId, []);
       const importedGame = state.games[event.gameId];
+      if (event.type === 'game/imported' && event.payload.startingNotesMode === 'basic') {
+        importedGame.startingNotes = basicCandidateNotes(parseGrid(importedGame.puzzle.givens));
+        importedGame.startingNotesMode = 'basic';
+        importedGame.notes = structuredClone(importedGame.startingNotes);
+      }
       if (event.type === 'game/imported' && event.payload.work) {
         applyImportedWork(importedGame, event.payload.work);
         if (hasCompleteStartingNotes(importedGame, event)) {
           importedGame.startingNotes = structuredClone(importedGame.notes);
+          const basicNotes = basicCandidateNotes(parseGrid(importedGame.puzzle.givens));
+          if (notesEqual(importedGame.startingNotes, basicNotes)) importedGame.startingNotesMode = 'basic';
         }
       }
       const importedBoard = [...importedGame.puzzle.givens].map((given, cell) =>

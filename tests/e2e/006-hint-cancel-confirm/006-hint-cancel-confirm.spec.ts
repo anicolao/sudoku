@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test('a hint can name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
+test('a hint can fill candidates, name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Choose how much help a hint provides',
-    'Technique and cell guidance use the same simplest book-rule placement without changing canonical history. A reveal places that target and records the exact cell and value.'
+    'The hint menu can fill every basic candidate in one undoable action. Technique and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.'
   );
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
@@ -25,11 +25,12 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
 
   await page.getByRole('button', { name: 'Hint' }).click();
   await steps.step('hint-choices-opened', {
-    description: 'The player opens three distinct levels of help',
+    description: 'The player opens four distinct kinds of help',
     verifications: [
-      { spec: 'The modal offers technique, cell, and reveal choices', check: async () => {
+      { spec: 'The modal offers candidate, technique, cell, and reveal choices', check: async () => {
         const dialog = page.getByRole('dialog', { name: 'Choose a hint' });
         await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole('button', { name: /Fill basic candidates/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Technique only/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Cell only/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Reveal one cell/ })).toBeEnabled();
@@ -38,6 +39,26 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
     ]
   });
 
+  await page.getByRole('button', { name: /Fill basic candidates/ }).click();
+  await steps.step('basic-candidates-filled', {
+    description: 'The player asks the app to fill candidates allowed by each current unit',
+    verifications: [
+      { spec: 'Every editable empty cell receives fixed-position notes', check: async () => {
+        const editableCount = await page.getByRole('gridcell', { name: /editable/ }).count();
+        await expect(page.locator('.cell-notes')).toHaveCount(editableCount);
+        await expect(page.getByRole('gridcell', { name: /editable, empty, notes [1-9]/ })).toHaveCount(editableCount);
+      } },
+      { spec: 'One undoable candidate-fill fact is recorded without incrementing hints', check: async () => {
+        const events = await stream();
+        expect(events).toHaveLength(2);
+        expect(events[1]).toMatchObject({ type: 'notes/basic-filled' });
+        await expect(page.getByRole('button', { name: 'Undo Filled basic candidates' })).toBeEnabled();
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Undo Filled basic candidates' }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
   await page.getByRole('button', { name: /Technique only/ }).click();
   await steps.step('technique-hint-shown', {
     description: 'The player asks only which technique to try',
@@ -50,7 +71,7 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
       } },
       { spec: 'Technique advice changes no cell and appends no event', check: async () => {
         await expect(page.getByRole('gridcell', { selected: true })).toHaveCount(0);
-        expect(await stream()).toHaveLength(1);
+        expect(await stream()).toHaveLength(3);
       } }
     ]
   });
@@ -72,7 +93,7 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
       } },
       { spec: 'Cell advice reveals no number and appends no event', check: async () => {
         await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(0);
-        expect(await stream()).toHaveLength(1);
+        expect(await stream()).toHaveLength(3);
       } }
     ]
   });
@@ -87,7 +108,7 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
         await expect(page.getByRole('dialog')).toHaveCount(0);
         await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(0);
       } },
-      { spec: 'Cancellation leaves the event stream unchanged', check: async () => expect(await stream()).toHaveLength(1) }
+      { spec: 'Cancellation leaves the event stream unchanged', check: async () => expect(await stream()).toHaveLength(3) }
     ]
   });
 
@@ -111,8 +132,8 @@ test('a hint can name a technique, identify a cell, or reveal it', async ({ page
       } },
       { spec: 'One hint/revealed fact records the exact cell and solution value', check: async () => {
         const events = await stream();
-        expect(events).toHaveLength(2);
-        const hint = events[1];
+        expect(events).toHaveLength(4);
+        const hint = events[3];
         expect(hint).toMatchObject({ type: 'hint/revealed' });
         expect(hint.payload.value).toBe(Number(events[0].payload.puzzle.solution[hint.payload.cell]));
       } }

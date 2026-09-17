@@ -62,8 +62,17 @@ function printablePuzzleLinksForSequence(
   const metadata: ImportedPuzzleMetadata | null = game.patternCells.length
     ? { patternCells: [...game.patternCells] }
     : null;
-  const startingWork = kind === 'candidates' ? puzzleWorkFromNotes(game.startingNotes) : [];
-  const puzzle = puzzleUrl(base, game.puzzle.givens, startingWork, metadata);
+  const compactCandidates = kind === 'candidates' && game.startingNotesMode === 'basic';
+  const startingWork = kind === 'candidates' && !compactCandidates
+    ? puzzleWorkFromNotes(game.startingNotes)
+    : [];
+  const puzzle = puzzleUrl(
+    base,
+    game.puzzle.givens,
+    startingWork,
+    metadata,
+    compactCandidates ? 'basic' : null
+  );
   const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, work, metadata));
   walkthroughUrl.searchParams.set('view', 'walkthrough');
   return { puzzle, walkthrough: walkthroughUrl.toString(), sequence };

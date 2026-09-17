@@ -22,6 +22,7 @@ The app supports three presentations of one readable format:
 | Purpose | URL form | Contents |
 | --- | --- | --- |
 | Start a clean puzzle | `?p=<81 cells>` | Literal givens only |
+| Start with basic candidates | `?p=<81 cells>&givens=basic` | Literal givens plus locally computed row/column/box candidates |
 | Show puzzle work or a pattern hint | `?p=<81 cells>_<field>...` | Givens, placements, candidates, optional progress metadata, and optional persistent pattern cells |
 | Walk through shared work | `?p=<progress>&view=walkthrough` | The same progress, presented as ordered instructional placements |
 
@@ -42,6 +43,14 @@ https://sudoku.annasdadpress.com/?p=53..7....6..195....98....6.8...6...34..8.3..
 
 Literal givens are deliberately readable and small. The URL does not claim a
 solution, ID, level, seed, technique, or clue count.
+
+The optional sibling parameter `givens=basic` starts every empty cell with all
+digits not already present in its original row, column, or box. This is only a
+candidate calculation: singleton candidates stay as small notes, and no solving
+technique is applied. The option is parsed before work, so explicit note edits
+or placements in `p` are replayed on top of the computed candidates. Repeated,
+conflicting, or unknown `givens` values are rejected with an unsupported-option
+message. Omitting the parameter retains the blank-note behavior.
 
 Opening a link:
 
@@ -99,8 +108,10 @@ values, conflicting values, and notes that do not match the solution are valid
 player work and are reconstructed rather than corrected.
 
 When the app creates a work link, it serializes the current board in row-major
-order: one placement per filled editable cell and one grouped note-add action
-per noted cell. Consecutive note edits with the same cell and operation are
+order: one placement per filled editable cell and grouped note actions per
+noted cell. For a `givens=basic` attempt, these actions are differences from the
+computed baseline, so deleted candidates are explicit note removals and added
+candidates are explicit note additions. Consecutive note edits with the same cell and operation are
 coalesced into one action with unique sorted candidates. Thus a cell's surviving
 candidates are never expanded into one action per digit. The format accepts at
 most 512 actions and 4,096 decoded characters.
@@ -170,18 +181,23 @@ a completed game; partial work opens as an active game.
 
 ### Candidate-ready starts
 
-No additional URL field marks a candidate-ready start. When a puzzle link has
-only note actions, has no progress metadata, and leaves every editable cell
-with at least one candidate, the imported final note matrix becomes that
-attempt's fresh-start baseline. Restart removes later placements and note edits,
-resets the normal progress counters, and restores those supplied notes. Opening
-the original URL again creates another fresh notes-ready attempt even if an
-older copy is saved locally.
+The preferred candidate-ready form is `?p=<81 cells>&givens=basic`. Its locally
+computed note matrix becomes the attempt's immutable fresh-start baseline.
+Restart removes later placements and note edits, resets the normal progress
+counters, and recomputes the same supplied state from the original givens.
+Opening the original URL again creates another fresh notes-ready attempt even
+if an older copy is saved locally.
+
+Legacy links that explicitly add the complete candidate matrix remain valid. A
+note-only link without progress metadata that leaves every editable cell with
+at least one candidate still establishes that matrix as its restart baseline.
+When that matrix exactly equals the basic candidates, subsequent fresh sharing
+and printed QRs use the compact option.
 
 The Share dialog then offers a candidate-filled print and a givens-only print.
 The candidate print uses the baseline, not current work, and its first-page QR
-encodes the same grouped note-add actions. The givens-only QR contains no work.
-This is the existing readable action grammar; neither link adds `view`.
+uses compact `givens=basic` when the baseline is the basic candidate matrix.
+The givens-only QR contains no work. Neither link adds `view`.
 
 ## 5. Validation
 
@@ -229,6 +245,7 @@ interface GameImportedEvent extends EventEnvelope {
     work?: ImportedPuzzleWorkAction[];
     sharedMetadata?: ImportedPuzzleMetadata;
     initialView?: 'walkthrough';
+    startingNotesMode?: 'basic';
   };
 }
 ```
@@ -252,7 +269,8 @@ layouts reduce the displayed dimensions while retaining the full matrix.
 
 Links are constructed from the current application URL, so root and subpath
 deployments remain valid. Puzzle URLs clear prior search and fragment data
-before adding `p`; generated Share links never add `view`.
+before adding `p` and, when needed, `givens=basic`; generated Share links never
+add `view`.
 
 All links are bearer data, not encryption. Anyone who can read the link or QR
 can reconstruct its contents. Givens, work, and included progress metadata
@@ -273,6 +291,7 @@ the application does not request camera permission or implement a scanner.
 | More than one `p` value | Reject as ambiguous and append nothing |
 | Empty, malformed, or unsupported value | Show an invalid-link reason and append nothing |
 | Unknown/repeated `view`, or walkthrough without progress/placements | Reject and append nothing |
+| Unknown or repeated `givens` option | Reject as unsupported and append nothing |
 | Invalid coordinates, action/metadata syntax, target, duplicate, or bounds | Reject and append nothing |
 | Duplicate givens, no solution, or multiple solutions | Reject and append nothing |
 | Unique puzzle beyond the curriculum | Accept as Custom |
@@ -302,10 +321,10 @@ from a completed History card without adding an event.
 Scenario 023 proves an authored `view=walkthrough` link remains ephemeral until
 consent, records one marked import, shows analysis progress, cleans both query
 parameters, and opens on its first ordered placement.
-Scenario 027 uses the longest, densest frozen Candidates Done start payload to
-prove exact candidate import, reload and restart parity, distinct print choices,
-fixed-slot printed notes, QR payload parity, native-print selection, and a fresh
-reopen on phone, tablet, and desktop.
+Scenario 027 uses a long, dense frozen Candidates Done puzzle to prove compact
+candidate import, exact note parity, delta sharing, reload and restart parity,
+distinct print choices, fixed-slot printed notes, compact QR payload parity,
+native-print selection, and a legacy-link reopen on phone, tablet, and desktop.
 
 The privacy suite enforces same-origin requests, and the installed-offline suite
 proves that puzzle state and History remain outside the application-shell cache.

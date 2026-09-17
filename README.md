@@ -34,8 +34,9 @@ contract, and deterministic test evidence.
   to reject exceptional overlapping writes safely.
 - Local History for active, solved, and abandoned attempts, including read-only
   review, repeat play, and sharing.
-- Tiered hints that can name the next simplest book technique, identify its
-  target cell without revealing the number, or record and place the answer.
+- Tiered hints that can fill all basic candidates, name the next simplest book
+  technique, identify its target cell without revealing the number, or record
+  and place the answer.
 - Readable links for clean puzzles or puzzles with current work and optional
   progress metadata.
   Incoming data is validated in a worker before the user consents to one local
@@ -124,6 +125,10 @@ readable placement, candidate, elapsed-time, hinted-cell, mistake-count, and
 setting fields. An authored link can also name cells that remain highlighted as
 a pattern hint throughout the solve. It does not contain the solution, source event log, undo
 history, device identity, or other History entries.
+
+Adding `&givens=basic` computes every row/column/box candidate locally and saves
+that notes-ready state as the restart baseline. Current-work links then carry
+placements and candidate changes relative to that baseline.
 
 An intentionally authored progress link may add `&view=walkthrough` to open its
 ordered placements in the instructional walkthrough immediately after local

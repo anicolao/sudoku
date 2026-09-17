@@ -125,12 +125,13 @@ Current vocabulary:
 | --- | --- | --- |
 | `settings/changed` | changed settings | Update device-local defaults or appearance preferences |
 | `game/started` | game ID, puzzle, settings snapshot | Start a locally generated attempt |
-| `game/imported` | import kind, puzzle, settings, optional work/metadata (including persistent pattern cells), and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked shared givens, transferred progress, or a reviewed camera grid |
+| `game/imported` | import kind, puzzle, settings, optional work/metadata (including persistent pattern cells), optional basic-candidate baseline, and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked shared givens, transferred progress, or a reviewed camera grid |
 | `cell/value-entered` | cell, value | Place or replace a user value |
 | `cell/value-erased` | cell, value, target event ID | Replay without one exact placement and its derived effects |
 | `cell/cleared` | cell | Clear the selected editable cell when no local placement source can be targeted |
 | `cell/note-toggled` | cell, value, enabled | Add or remove one explicit note |
 | `cell/notes-filled` | cell, values | Fill currently eligible notes as one reversible action |
+| `notes/basic-filled` | empty | Replace notes in every empty cell with candidates allowed by the current row, column, and box |
 | `hint/revealed` | cell, value | Record the exact revealed value |
 | `move/undone` | target event ID | Deactivate the latest reversible action |
 | `move/redone` | target event ID | Reactivate the latest undone action |
@@ -226,17 +227,19 @@ logical rating.
 
 A successful import appends one `game/imported` origin event. Shared work
 contains no source event IDs or undo stack, so undo on the recipient begins with
-moves made after import. A puzzle-link origin made entirely of note actions,
-without progress metadata, that supplies at least one resulting candidate for
-every editable cell is also projected as immutable `startingNotes`. The notes
-remain derivable from the existing origin event, so no event or storage schema
-change is required. Restart clones that baseline after clearing later values,
-notes, hints, mistakes, and completion; ordinary, partial, and mixed-work
-imports retain the empty-note baseline.
+moves made after import. A puzzle-link origin with
+`startingNotesMode: 'basic'` derives every legal candidate from the original
+givens before applying its optional work stream and projects that matrix as
+immutable `startingNotes`. Legacy note-only imports without progress metadata
+still establish a baseline when they supply every editable cell; exact basic
+matrices are recognized so their future links can be compact. Restart clones
+the baseline after clearing later values, notes, hints, mistakes, and
+completion; ordinary, partial, and mixed-work imports retain the empty-note
+baseline.
 
-History sharing exports either clean givens or the selected attempt's current
-values and notes. It does not export time, statistics, settings, that attempt's
-event log, or any other attempt. The precise readable contract is in
+History sharing exports either a fresh baseline or the selected attempt's
+current values, note changes, elapsed time, statistics, and settings. It does
+not export that attempt's event log or any other attempt. The precise readable contract is in
 [PUZZLE_SHARING.md](PUZZLE_SHARING.md).
 
 Printing is ephemeral and appends no event. The app prepares and caches the
@@ -248,8 +251,8 @@ Background walkthrough analysis yields between placements and coalesces
 duplicate requests, so preparing a difficult printout does not block play.
 The first print QR contains the original givens and optional persistent pattern
 cells, never current player work. For a candidate-ready origin, its candidate
-variant also contains one grouped note-add action per editable cell and the SVG
-prints those original notes in fixed 1–9 slots. A separate givens-only variant
+variant uses `givens=basic` when the baseline matches basic candidates, and the
+SVG prints those original notes in fixed 1–9 slots. A separate givens-only variant
 remains available. Browser-native printing defaults to the candidate variant
 when that baseline exists. The second QR starts from the givens and
 repeatedly applies the same book-ordered placement analysis as live hints: Full

@@ -8,6 +8,7 @@ import {
   printablePuzzleLinkVariantsAsync
 } from '../../src/lib/printing/printable-puzzle';
 import { parseSharedPuzzlePayload } from '../../src/lib/sharing/puzzle-link';
+import { basicCandidateNotes, parseGrid } from '../../src/lib/domain/sudoku';
 
 const settings = {
   checkMistakes: false,
@@ -114,5 +115,16 @@ describe('printable puzzle links', () => {
       { type: 'notes', cell: lastEditable, values: [3, 5, 6, 7, 8], enabled: true }
     ]);
     expect(cleanPayload.work).toEqual([]);
+  });
+
+  it('uses the compact option for a basic-candidate sheet QR', () => {
+    const game = gameFor(generateEasyPuzzle('compact-candidate-print-seed').puzzle);
+    game.startingNotes = basicCandidateNotes(parseGrid(game.puzzle.givens));
+    game.startingNotesMode = 'basic';
+
+    const link = new URL(printablePuzzleLinks('https://example.test/sudoku/', game, 'candidates').puzzle);
+    expect(link.searchParams.get('p')).toBe(game.puzzle.givens);
+    expect(link.searchParams.get('givens')).toBe('basic');
+    expect(parseSharedPuzzlePayload(link.searchParams.get('p') ?? '', 'basic').notes).toEqual(game.startingNotes);
   });
 });
