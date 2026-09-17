@@ -1,6 +1,6 @@
 # Print a puzzle and its human walkthrough
 
-Printing an active game produces two clean Letter pages: an unsolved hand-solving sheet with a link back to the puzzle, followed by its solution and a link that opens a human-ordered walkthrough at step 1.
+The browser's Print command and the in-app print action both produce two clean Letter pages: an unsolved hand-solving sheet with a link back to the puzzle, followed by its solution and a link that opens a human-ordered walkthrough at step 1.
 
 ## The hand-solving page
 
