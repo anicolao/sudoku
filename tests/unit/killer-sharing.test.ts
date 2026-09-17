@@ -4,10 +4,12 @@ import { parseSharedPuzzlePayload, puzzleUrl, validateSharedPuzzle } from '../..
 import { EventStore, MemoryStorage } from '../../src/lib/storage/event-store';
 import { printablePuzzleLinks } from '../../src/lib/printing/printable-puzzle';
 import { buildSolveWalkthrough } from '../../src/lib/domain/walkthrough';
+const sharedPuzzle = generateKillerPuzzle('share').puzzle;
+const printedPuzzle = generateKillerPuzzle('print').puzzle;
 const payload = (url: string) => new URL(url).searchParams.get('p')!;
 
 test('clean and work links preserve canonical cages and derive their solution', async () => {
- const p = generateKillerPuzzle('share').puzzle;
+ const p = sharedPuzzle;
  const url = puzzleUrl('https://example.org/', p.givens, [], null, p);
  const result = await validateSharedPuzzle(payload(url));
  expect(result.puzzle.solution).toBe(p.solution);
@@ -27,7 +29,7 @@ test('clean and work links preserve canonical cages and derive their solution', 
 });
 
 test('malformed, overlapping, unknown and oversized Killer links fail closed', async () => {
- const p = generateKillerPuzzle('share').puzzle;
+ const p = sharedPuzzle;
  const encoded = payload(puzzleUrl('https://example.org',p.givens,[],null,p));
  expect(()=>parseSharedPuzzlePayload(encoded.replace('K1!', 'K2!'))).toThrow(/version/);
  expect(()=>parseSharedPuzzlePayload(encoded + 'x'.repeat(4096))).toThrow(/long/);
@@ -40,7 +42,7 @@ test('malformed, overlapping, unknown and oversized Killer links fail closed', a
 
 test('both printed handoffs preserve cages and all 81 walkthrough explanations', async () => {
  const store = new EventStore(new MemoryStorage());
- const projection=store.startGame(generateKillerPuzzle('print').puzzle,{id:'start',occurredAt:new Date('2026-01-01')});
+ const projection=store.startGame(printedPuzzle,{id:'start',occurredAt:new Date('2026-01-01')});
  const game=projection.games[projection.activeGameId!];
  const links=printablePuzzleLinks('https://example.org/',game);
  expect(links.sequence).toHaveLength(81);
