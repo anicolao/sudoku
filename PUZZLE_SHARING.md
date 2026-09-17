@@ -168,6 +168,21 @@ origin. It is an initial board state, not imported undo history: undo applies
 only to moves made after opening the link. A fully filled valid stream opens as
 a completed game; partial work opens as an active game.
 
+### Candidate-ready starts
+
+No additional URL field marks a candidate-ready start. When a puzzle link has
+only note actions, has no progress metadata, and leaves every editable cell
+with at least one candidate, the imported final note matrix becomes that
+attempt's fresh-start baseline. Restart removes later placements and note edits,
+resets the normal progress counters, and restores those supplied notes. Opening
+the original URL again creates another fresh notes-ready attempt even if an
+older copy is saved locally.
+
+The Share dialog then offers a candidate-filled print and a givens-only print.
+The candidate print uses the baseline, not current work, and its first-page QR
+encodes the same grouped note-add actions. The givens-only QR contains no work.
+This is the existing readable action grammar; neither link adds `view`.
+
 ## 5. Validation
 
 Incoming givens are separated from the optional work fields and accepted only
@@ -287,6 +302,10 @@ from a completed History card without adding an event.
 Scenario 023 proves an authored `view=walkthrough` link remains ephemeral until
 consent, records one marked import, shows analysis progress, cleans both query
 parameters, and opens on its first ordered placement.
+Scenario 027 uses the longest, densest frozen Candidates Done start payload to
+prove exact candidate import, reload and restart parity, distinct print choices,
+fixed-slot printed notes, QR payload parity, native-print selection, and a fresh
+reopen on phone, tablet, and desktop.
 
 The privacy suite enforces same-origin requests, and the installed-offline suite
 proves that puzzle state and History remain outside the application-shell cache.

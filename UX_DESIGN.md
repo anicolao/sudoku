@@ -192,15 +192,22 @@ nothing.
 **Abandon** closes an unfinished attempt and opens History. The final board
 remains available for read-only review and sharing.
 
-The Share dialog's **Print puzzle pair** action prepares two Letter pages
-without changing the attempt. The first is a large givens-only grid for pencil
-solving plus a QR that opens a fresh copy of the puzzle. The second distinguishes
-original givens from solved entries and adds a QR that opens at step 1 of a
-complete walkthrough. That walkthrough is generated from the original givens,
-placing Full Houses first and then the simplest available book rule at every
-step; it does not reproduce the current player's work. QR generation and
-solution ordering remain on-device. The browser's system print dialog is the
-only handoff.
+The Share dialog's print action prepares two Letter pages without changing the
+attempt. Ordinary puzzles offer **Print puzzle pair**: a large givens-only grid
+for pencil solving plus a QR that opens a fresh copy. A candidate-ready import
+instead offers **Print with starting candidates** and **Print givens only**.
+The candidate sheet prints every original note in its fixed 1–9 position,
+including singletons, and its denser, larger QR reopens that exact notes-ready
+start. Neither option includes later placements or candidate eliminations;
+**Share puzzle with work** is the path for current progress. Browser-native
+printing chooses the starting-candidate sheet when one exists.
+
+The second page distinguishes original givens from solved entries and adds a QR
+that opens at step 1 of a complete walkthrough. That walkthrough is generated
+from the original givens, placing Full Houses first and then the simplest
+available book rule at every step; it does not reproduce the current player's
+work. QR generation and solution ordering remain on-device. The browser's
+system print dialog is the only handoff.
 
 ## 8. Pause and completion
 
@@ -285,6 +292,11 @@ The Share dialog distinguishes:
 - **Share puzzle only** — clean givens for a fresh board;
 - **Share puzzle with work** — current values, grouped notes, time, hints,
   mistakes, and settings.
+
+When the puzzle was opened from a complete candidate-ready link, the dialog
+also distinguishes a fresh print with those original candidates from a fresh
+givens-only print. It explicitly directs current progress to **Share puzzle
+with work**.
 
 QR generation is local. Copy link is always the accessible alternative, and
 native Web Share appears only when supported. The dialog states that the other

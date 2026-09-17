@@ -5,7 +5,9 @@ import {
   type AsyncWalkthroughOptions,
   type NextSolveHint
 } from '$lib/domain/walkthrough';
-import { puzzleUrl } from '$lib/sharing/puzzle-link';
+import { puzzleUrl, puzzleWorkFromNotes } from '$lib/sharing/puzzle-link';
+
+export type PrintablePuzzleKind = 'givens' | 'candidates';
 
 export interface PrintablePuzzleLinks {
   puzzle: string;
@@ -13,24 +15,30 @@ export interface PrintablePuzzleLinks {
   sequence: NextSolveHint[];
 }
 
-export function printablePuzzleLinks(base: string | URL, game: GameProjection): PrintablePuzzleLinks {
+export function printablePuzzleLinks(
+  base: string | URL,
+  game: GameProjection,
+  kind: PrintablePuzzleKind = 'givens'
+): PrintablePuzzleLinks {
   const sequence = buildHumanSolveSequence(game);
-  return printablePuzzleLinksForSequence(base, game, sequence);
+  return printablePuzzleLinksForSequence(base, game, sequence, kind);
 }
 
 export async function printablePuzzleLinksAsync(
   base: string | URL,
   game: GameProjection,
-  options: AsyncWalkthroughOptions = {}
+  options: AsyncWalkthroughOptions = {},
+  kind: PrintablePuzzleKind = 'givens'
 ): Promise<PrintablePuzzleLinks> {
   const sequence = await buildHumanSolveSequenceAsync(game, options);
-  return printablePuzzleLinksForSequence(base, game, sequence);
+  return printablePuzzleLinksForSequence(base, game, sequence, kind);
 }
 
 function printablePuzzleLinksForSequence(
   base: string | URL,
   game: GameProjection,
-  sequence: NextSolveHint[]
+  sequence: NextSolveHint[],
+  kind: PrintablePuzzleKind
 ): PrintablePuzzleLinks {
   const work: ImportedPuzzleWorkAction[] = sequence.map(({ targetCell, value }) => ({
     type: 'value',
@@ -40,7 +48,8 @@ function printablePuzzleLinksForSequence(
   const metadata: ImportedPuzzleMetadata | null = game.patternCells.length
     ? { patternCells: [...game.patternCells] }
     : null;
-  const puzzle = puzzleUrl(base, game.puzzle.givens, [], metadata);
+  const startingWork = kind === 'candidates' ? puzzleWorkFromNotes(game.startingNotes) : [];
+  const puzzle = puzzleUrl(base, game.puzzle.givens, startingWork, metadata);
   const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, work, metadata));
   walkthroughUrl.searchParams.set('view', 'walkthrough');
   return { puzzle, walkthrough: walkthroughUrl.toString(), sequence };

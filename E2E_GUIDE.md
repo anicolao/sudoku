@@ -200,6 +200,13 @@ and every changed PNG. Normal test runs must leave the worktree unchanged.
 | 018 | Notes default, All, and styles | preference snapshot, one-event fill, all note appearance combinations |
 | 019 | Completed digit key | grey completion, All exclusion, stale-note erasure, count restoration |
 | 020 | Alternating Stripes | exact peer sets, densely striped intersections, replacement, clearing, keyboard safety |
+| 021 | Solve walkthrough | placement replay, simplest-rule labels, pattern highlighting, analysis progress |
+| 022 | Puzzle-work sharing | readable work and metadata, QR parity, atomic import, responsive consent |
+| 023 | Shared walkthrough view | authored view selector, progress analysis, first-placement opening |
+| 024 | Camera puzzle import | local grid recognition, correction, uncertainty handling, checked import |
+| 025 | Shared pattern highlight | persistent authored pattern cells through play, restart, and re-sharing |
+| 026 | Printable puzzle pair | native and in-app Letter printing, solution, walkthrough QR, publisher brand |
+| 027 | Candidate-ready print and restart | exact imported notes, reload/restart baseline, print choices, fixed slots, QR parity, fresh reopen |
 
 The generated README inside each directory is the readable step-by-step record;
 the spec is the executable source of truth.

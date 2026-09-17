@@ -72,4 +72,31 @@ describe('printable puzzle links', () => {
     expect(yields).toBe(links.sequence.length + 1);
     expect(new URL(links.walkthrough).searchParams.get('view')).toBe('walkthrough');
   });
+
+  it('puts the immutable starting candidates, rather than current work, in a candidate-sheet QR', () => {
+    const game = gameFor(generateEasyPuzzle('candidate-print-links-seed').puzzle);
+    const editable = [...game.puzzle.givens].flatMap((given, cell) => given === '.' ? [cell] : []);
+    const lastEditable = editable.at(-1) as number;
+    game.startingNotes[editable[0]] = [1, 4, 9];
+    game.startingNotes[editable[1]] = [2];
+    game.startingNotes[lastEditable] = [3, 5, 6, 7, 8];
+    game.notes = structuredClone(game.startingNotes);
+    game.notes[editable[0]] = [1, 9];
+    game.values[editable[1]] = Number(game.puzzle.solution[editable[1]]) as Digit;
+
+    const candidateLinks = printablePuzzleLinks('https://example.test/sudoku/', game, 'candidates');
+    const candidatePayload = parseSharedPuzzlePayload(new URL(candidateLinks.puzzle).searchParams.get('p') ?? '');
+    const cleanPayload = parseSharedPuzzlePayload(new URL(
+      printablePuzzleLinks('https://example.test/sudoku/', game).puzzle
+    ).searchParams.get('p') ?? '');
+
+    expect(candidatePayload.values.every((value) => value === null)).toBe(true);
+    expect(candidatePayload.notes).toEqual(game.startingNotes);
+    expect(candidatePayload.work).toEqual([
+      { type: 'notes', cell: editable[0], values: [1, 4, 9], enabled: true },
+      { type: 'notes', cell: editable[1], values: [2], enabled: true },
+      { type: 'notes', cell: lastEditable, values: [3, 5, 6, 7, 8], enabled: true }
+    ]);
+    expect(cleanPayload.work).toEqual([]);
+  });
 });

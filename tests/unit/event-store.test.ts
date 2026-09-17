@@ -138,12 +138,70 @@ describe('event store', () => {
 
     expect(game.values[editable[0]]).toBe(work[0].value);
     expect(game.notes[editable[1]]).toEqual([1, 4, 9]);
+    expect(game.startingNotes.every((notes) => notes.length === 0)).toBe(true);
     expect(game.paused).toBe(false);
     expect(game.undoTargetId).toBeNull();
     expect(store.getDocument().events).toMatchObject([{
       type: 'game/imported',
       payload: { importKind: 'puzzle-link', checkpoint: null, work }
     }]);
+  });
+
+  it('restores a note-only shared start after progress, reload, restart, and reopening', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('candidate-ready-origin').puzzle;
+    const puzzle = {
+      ...generated,
+      id: 'shared-candidate-ready',
+      seed: undefined,
+      generatorVersion: undefined,
+      validatorVersion: 3 as const,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 2 as const, fingerprint: 'candidate-ready' }
+    };
+    const editable = [...puzzle.givens]
+      .flatMap((given, cell) => given === '.' ? [cell] : []);
+    const startingWork = editable.map((cell, index) => ({
+      type: 'notes' as const,
+      cell,
+      values: (index === 0 ? [1, 4, 9] : index === 1 ? [2, 7] : [3, 5]) as Digit[],
+      enabled: true
+    }));
+    let store = new EventStore(storage);
+    let projection = store.importGame(puzzle, {
+      occurredAt: new Date('2026-09-17T12:00:00.000Z'), id: 'candidate-import-1'
+    }, { ...store.getProjection().settings, checkMistakes: true }, startingWork);
+    const firstGameId = projection.activeGameId ?? '';
+
+    expect(projection.games[firstGameId].startingNotes[editable[0]]).toEqual([1, 4, 9]);
+    expect(projection.games[firstGameId].startingNotes[editable[1]]).toEqual([2, 7]);
+    store.toggleNote(firstGameId, editable[0], 4, false, {
+      occurredAt: new Date('2026-09-17T12:01:00.000Z'), id: 'candidate-eliminate-2'
+    });
+    projection = store.enterValue(firstGameId, editable[1], 1, {
+      occurredAt: new Date('2026-09-17T12:02:00.000Z'), id: 'candidate-value-3'
+    });
+    expect(projection.games[firstGameId].notes[editable[0]]).not.toContain(4);
+    expect(projection.games[firstGameId].notes).not.toEqual(projection.games[firstGameId].startingNotes);
+
+    store = new EventStore(storage);
+    expect(store.getProjection().games[firstGameId].startingNotes[editable[0]]).toEqual([1, 4, 9]);
+    projection = store.restart(firstGameId, {
+      occurredAt: new Date('2026-09-17T12:03:00.000Z'), elapsedMs: 120_000, id: 'candidate-restart-4'
+    });
+    const restarted = projection.games[firstGameId];
+    expect(restarted.values.every((value) => value === null)).toBe(true);
+    expect(restarted.notes).toEqual(restarted.startingNotes);
+    expect(restarted.notes[editable[0]]).toEqual([1, 4, 9]);
+    expect(restarted.notes[editable[1]]).toEqual([2, 7]);
+    expect(restarted).toMatchObject({ hints: 0, mistakes: 0, status: 'active', completedAt: null });
+
+    projection = store.importGame(puzzle, {
+      occurredAt: new Date('2026-09-17T12:04:00.000Z'), id: 'candidate-import-5'
+    }, store.getProjection().settings, startingWork);
+    const reopened = projection.games[projection.activeGameId ?? ''];
+    expect(reopened.id).not.toBe(firstGameId);
+    expect(reopened.values.every((value) => value === null)).toBe(true);
+    expect(reopened.notes).toEqual(reopened.startingNotes);
   });
 
   it('derives completion when shared puzzle work fills every editable cell', () => {

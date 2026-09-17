@@ -260,6 +260,12 @@ export function puzzleWorkFromGame(game: GameProjection): ImportedPuzzleWorkActi
   return work;
 }
 
+export function puzzleWorkFromNotes(notes: readonly (readonly Digit[])[]): ImportedPuzzleWorkAction[] {
+  return notes.flatMap((values, cell) => values.length
+    ? [{ type: 'notes' as const, cell, values: [...values], enabled: true }]
+    : []);
+}
+
 function encodeSharedPuzzlePayload(
   givens: string,
   work: readonly ImportedPuzzleWorkAction[],

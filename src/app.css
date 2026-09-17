@@ -521,6 +521,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .print-digit { fill: #161719; font-size: 34px; text-anchor: middle; dominant-baseline: middle; }
   .print-digit.given { font-weight: 700; }
   .print-digit.answer { fill: #4654a3; font-weight: 400; }
+  .print-candidate { fill: #30343a; font-size: 15px; font-weight: 400; text-anchor: middle; dominant-baseline: middle; }
   .print-scan-card { fill: #fff; stroke: #b8bac0; stroke-width: 1; }
   .print-qr { image-rendering: pixelated; }
   .print-scan-title { fill: #20242b; font-size: 21px; font-weight: 700; }
