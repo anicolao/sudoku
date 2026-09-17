@@ -6,6 +6,7 @@ import type {
   ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
+  StartingNotesMode,
   StoredEventDocumentV1,
   SudokuEvent
 } from '$lib/domain/types';
@@ -162,7 +163,8 @@ export class EventStore {
     work: readonly ImportedPuzzleWorkAction[] = [],
     sharedMetadata?: ImportedPuzzleMetadata,
     initialView?: 'walkthrough',
-    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link'
+    importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link',
+    startingNotesMode?: StartingNotesMode
   ): AppProjection {
     const storedPuzzle: PuzzleDefinition = {
       ...puzzle,
@@ -187,7 +189,8 @@ export class EventStore {
             ? { ...action }
             : { ...action, values: [...action.values] }) } : {}),
           ...(sharedMetadata ? { sharedMetadata: copyImportedPuzzleMetadata(sharedMetadata) } : {}),
-          ...(initialView ? { initialView } : {})
+          ...(initialView ? { initialView } : {}),
+          ...(startingNotesMode ? { startingNotesMode } : {})
         },
         occurredAt: metadata.occurredAt.toISOString(),
         elapsedMs: sharedMetadata?.elapsedMs ?? 0,
@@ -257,6 +260,20 @@ export class EventStore {
       gameId,
       type: 'cell/notes-filled',
       payload: { cell, values },
+      occurredAt: metadata.occurredAt.toISOString(),
+      elapsedMs: metadata.elapsedMs ?? 0,
+      schemaVersion: 1,
+      reducerVersion: 1
+    }));
+  }
+
+  fillBasicNotes(gameId: string, metadata: EventMetadata): AppProjection {
+    return this.append(metadata, (sequence) => ({
+      id: metadata.id,
+      sequence,
+      gameId,
+      type: 'notes/basic-filled',
+      payload: {},
       occurredAt: metadata.occurredAt.toISOString(),
       elapsedMs: metadata.elapsedMs ?? 0,
       schemaVersion: 1,

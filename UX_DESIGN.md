@@ -176,9 +176,12 @@ events. A new reversible action after undo retires the previous redo branch.
 attempt. **Start over** from History creates a distinct game stream over the
 same immutable puzzle.
 
-Hint opens three progressively stronger choices based on the same simplest
-placement in book-rule order:
+Hint offers a board-preparation action plus three progressively stronger choices
+based on the same simplest placement in book-rule order:
 
+- **Fill basic candidates** replaces notes in every empty cell with the digits
+  allowed by its current row, column, and box. It is one undoable action and
+  does not increment the hint count.
 - **Technique only** names the rule without identifying its target or value.
 - **Cell only** names and selects the target without revealing its value.
 - **Reveal one cell** places the target value with a visible and programmatic
@@ -198,7 +201,7 @@ for pencil solving plus a QR that opens a fresh copy. A candidate-ready import
 instead offers **Print with starting candidates** and **Print givens only**.
 The candidate sheet prints every original note in its fixed 1–9 position,
 including singletons, and its denser, larger QR reopens that exact notes-ready
-start. Neither option includes later placements or candidate eliminations;
+start through compact `givens=basic` when applicable. Neither option includes later placements or candidate eliminations;
 **Share puzzle with work** is the path for current progress. Browser-native
 printing chooses the starting-candidate sheet when one exists.
 

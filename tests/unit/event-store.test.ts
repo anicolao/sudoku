@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
 import type { Digit } from '../../src/lib/domain/types';
+import { basicCandidateNotes, parseGrid } from '../../src/lib/domain/sudoku';
 import { CORRUPT_STORE_PREFIX, EventStore, EVENT_STORE_KEY, loadEventStore } from '../../src/lib/storage/event-store';
 
 class MemoryStorage implements Storage {
@@ -202,6 +203,70 @@ describe('event store', () => {
     expect(reopened.id).not.toBe(firstGameId);
     expect(reopened.values.every((value) => value === null)).toBe(true);
     expect(reopened.notes).toEqual(reopened.startingNotes);
+  });
+
+  it('persists compact basic candidates as the restart baseline before replaying work', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('compact-candidate-origin').puzzle;
+    const puzzle = {
+      ...generated,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 2 as const, fingerprint: 'compact-candidates' }
+    };
+    const expected = basicCandidateNotes(parseGrid(puzzle.givens));
+    const cell = expected.findIndex((notes) => notes.length > 1);
+    const removed = expected[cell][0];
+    let store = new EventStore(storage);
+    let projection = store.importGame(
+      puzzle,
+      { occurredAt: new Date('2026-09-17T12:00:00.000Z'), id: 'compact-import-1' },
+      store.getProjection().settings,
+      [{ type: 'notes', cell, values: [removed], enabled: false }],
+      undefined,
+      undefined,
+      'puzzle-link',
+      'basic'
+    );
+    const gameId = projection.activeGameId ?? '';
+
+    expect(projection.diagnostics).toEqual([]);
+    expect(projection.games[gameId].startingNotesMode).toBe('basic');
+    expect(projection.games[gameId].startingNotes).toEqual(expected);
+    expect(projection.games[gameId].notes[cell]).not.toContain(removed);
+
+    store = new EventStore(storage);
+    expect(store.getProjection().games[gameId].startingNotes).toEqual(expected);
+    projection = store.restart(gameId, {
+      occurredAt: new Date('2026-09-17T12:01:00.000Z'), id: 'compact-restart-2'
+    });
+    expect(projection.games[gameId].notes).toEqual(expected);
+  });
+
+  it('fills basic candidates for the current board as one undoable action', () => {
+    const storage = new MemoryStorage();
+    const puzzle = generateEasyPuzzle('fill-basic-notes').puzzle;
+    const store = new EventStore(storage);
+    let projection = store.startGame(puzzle, {
+      occurredAt: new Date('2026-09-17T12:00:00.000Z'), id: 'basic-start-1'
+    });
+    const gameId = projection.activeGameId ?? '';
+    const cell = [...puzzle.givens].findIndex((given) => given === '.');
+    projection = store.enterValue(gameId, cell, Number(puzzle.solution[cell]) as Digit, {
+      occurredAt: new Date('2026-09-17T12:01:00.000Z'), id: 'basic-value-2'
+    });
+    projection = store.fillBasicNotes(gameId, {
+      occurredAt: new Date('2026-09-17T12:02:00.000Z'), id: 'basic-fill-3'
+    });
+    const grid = [...puzzle.givens].map((given, index) =>
+      given === '.' ? projection.games[gameId].values[index] ?? 0 : Number(given)
+    );
+
+    expect(projection.games[gameId].notes).toEqual(basicCandidateNotes(grid));
+    expect(projection.games[gameId].hints).toBe(0);
+    expect(projection.games[gameId].undoTargetId).toBe('basic-fill-3');
+    projection = store.undo(gameId, 'basic-fill-3', {
+      occurredAt: new Date('2026-09-17T12:03:00.000Z'), id: 'basic-undo-4'
+    });
+    expect(projection.games[gameId].notes.every((notes) => notes.length === 0)).toBe(true);
   });
 
   it('derives completion when shared puzzle work fills every editable cell', () => {

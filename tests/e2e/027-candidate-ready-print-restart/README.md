@@ -1,14 +1,14 @@
 # Print and restart a candidate-ready puzzle
 
-A puzzle authored with a complete starting candidate grid keeps that fresh state separate from later work. It can be printed with candidates and a matching QR, printed as givens only, reloaded, restarted, or opened again from the original link.
+A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form.
 
-## The candidate-ready link is checked before it changes local history
+## The compact candidate-ready link is checked before it changes local history
 
-![The candidate-ready link is checked before it changes local history](./screenshots/000-candidate-link-checked-phone-macos.png)
+![The compact candidate-ready link is checked before it changes local history](./screenshots/000-candidate-link-checked-phone-macos.png)
 
 **Verifications:**
 
-- [x] The summary reports every supplied candidate cell and offers the shared work
+- [x] The summary reports every computed candidate cell without treating them as progress
 
 ## The fresh puzzle opens with its complete starting candidate grid
 
@@ -17,10 +17,19 @@ A puzzle authored with a complete starting candidate grid keeps that fresh state
 **Verifications:**
 
 - [x] Every cell exactly matches the candidates authored for it
+- [x] The consumed puzzle and givens options are removed from the address
+
+## Current work is encoded as changes from the compact candidate baseline
+
+![Current work is encoded as changes from the compact candidate baseline](./screenshots/002-candidate-work-shared-phone-macos.png)
+
+**Verifications:**
+
+- [x] The link keeps givens=basic and explicitly carries the candidate removal and placement
 
 ## Restart returns to the authored candidate-ready starting point
 
-![Restart returns to the authored candidate-ready starting point](./screenshots/002-candidate-start-restored-phone-macos.png)
+![Restart returns to the authored candidate-ready starting point](./screenshots/003-candidate-start-restored-phone-macos.png)
 
 **Verifications:**
 
@@ -29,7 +38,7 @@ A puzzle authored with a complete starting candidate grid keeps that fresh state
 
 ## Printing clearly separates a fresh candidate copy from a givens-only copy
 
-![Printing clearly separates a fresh candidate copy from a givens-only copy](./screenshots/003-candidate-print-choices-phone-macos.png)
+![Printing clearly separates a fresh candidate copy from a givens-only copy](./screenshots/004-candidate-print-choices-phone-macos.png)
 
 **Verifications:**
 

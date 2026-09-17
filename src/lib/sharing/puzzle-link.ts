@@ -1,4 +1,4 @@
-import { UNITS, givensAgree, isSolvedGrid, parseGrid } from '$lib/domain/sudoku';
+import { UNITS, basicCandidateNotes, givensAgree, isSolvedGrid, parseGrid } from '$lib/domain/sudoku';
 import type {
   Digit,
   GameSettings,
@@ -6,7 +6,8 @@ import type {
   ImportedPuzzleMetadata,
   ImportedPuzzleWorkAction,
   PuzzleDefinition,
-  PuzzleRating
+  PuzzleRating,
+  StartingNotesMode
 } from '$lib/domain/types';
 import { solveLogically } from '$lib/generator/logical-solver';
 import { countSolutions, solveFirst } from '$lib/generator/solve';
@@ -15,6 +16,7 @@ export type SharedPuzzleErrorCode =
   | 'format'
   | 'work-format'
   | 'metadata-format'
+  | 'unsupported-option'
   | 'clue-count'
   | 'duplicate-givens'
   | 'no-solution'
@@ -35,6 +37,7 @@ export interface SharedPuzzleValidation {
   filledCount: number;
   notedCellCount: number;
   metadata: ImportedPuzzleMetadata | null;
+  givensOption: StartingNotesMode | null;
 }
 
 const MAX_SHARED_PUZZLE_LENGTH = 4_096;
@@ -169,7 +172,11 @@ function parseMetadataToken(
   throw new SharedPuzzleError('metadata-format', `Unknown shared metadata field: ${name}.`);
 }
 
-function applyWork(givens: string, work: readonly ImportedPuzzleWorkAction[]): {
+function applyWork(
+  givens: string,
+  work: readonly ImportedPuzzleWorkAction[],
+  givensOption: StartingNotesMode | null = null
+): {
   values: Array<Digit | null>;
   notes: Digit[][];
 } {
@@ -177,7 +184,9 @@ function applyWork(givens: string, work: readonly ImportedPuzzleWorkAction[]): {
     throw new SharedPuzzleError('work-format', 'A shared puzzle contains too many work actions.');
   }
   const values = Array<Digit | null>(81).fill(null);
-  const notes = Array.from({ length: 81 }, () => [] as Digit[]);
+  const notes = givensOption === 'basic'
+    ? basicCandidateNotes(parseGrid(givens))
+    : Array.from({ length: 81 }, () => [] as Digit[]);
   for (const action of work) {
     if (!Number.isInteger(action.cell) || action.cell < 0 || action.cell >= 81 || givens[action.cell] !== '.') {
       throw new SharedPuzzleError('work-format', 'Shared work can edit only empty cells in the initial puzzle.');
@@ -205,7 +214,16 @@ function applyWork(givens: string, work: readonly ImportedPuzzleWorkAction[]): {
   return { values, notes };
 }
 
-export function parseSharedPuzzlePayload(payload: string): {
+export function parseSharedGivensOption(values: readonly string[]): StartingNotesMode | null {
+  if (values.length === 0) return null;
+  if (values.length === 1 && values[0] === 'basic') return 'basic';
+  throw new SharedPuzzleError(
+    'unsupported-option',
+    'This link requests an unsupported givens option.'
+  );
+}
+
+export function parseSharedPuzzlePayload(payload: string, givensOption: StartingNotesMode | null = null): {
   givens: string;
   work: ImportedPuzzleWorkAction[];
   values: Array<Digit | null>;
@@ -224,7 +242,7 @@ export function parseSharedPuzzlePayload(payload: string): {
     if (/^[A-Za-z]/.test(token)) parseMetadataToken(token, metadata, seenMetadata);
     else work.push(parseWorkToken(token));
   }
-  const { values, notes } = applyWork(givens, work);
+  const { values, notes } = applyWork(givens, work, givensOption);
   if (metadata.hintedCells?.some((cell) => givens[cell] !== '.')) {
     throw new SharedPuzzleError('metadata-format', 'Shared hints can target only empty cells in the initial puzzle.');
   }
@@ -249,13 +267,21 @@ export function coalescePuzzleWork(
   return coalesced;
 }
 
-export function puzzleWorkFromGame(game: GameProjection): ImportedPuzzleWorkAction[] {
+export function puzzleWorkFromGame(
+  game: GameProjection,
+  baselineNotes: readonly (readonly Digit[])[] | null = null
+): ImportedPuzzleWorkAction[] {
   const work: ImportedPuzzleWorkAction[] = [];
   game.values.forEach((value, cell) => {
     if (value !== null) work.push({ type: 'value', cell, value });
   });
   game.notes.forEach((values, cell) => {
-    if (values.length) work.push({ type: 'notes', cell, values: [...values], enabled: true });
+    if (game.values[cell] !== null) return;
+    const baseline = baselineNotes?.[cell] ?? [];
+    const additions = values.filter((value) => !baseline.includes(value));
+    const removals = baseline.filter((value) => !values.includes(value));
+    if (additions.length) work.push({ type: 'notes', cell, values: additions, enabled: true });
+    if (removals.length) work.push({ type: 'notes', cell, values: removals, enabled: false });
   });
   return work;
 }
@@ -269,11 +295,12 @@ export function puzzleWorkFromNotes(notes: readonly (readonly Digit[])[]): Impor
 function encodeSharedPuzzlePayload(
   givens: string,
   work: readonly ImportedPuzzleWorkAction[],
-  metadata: ImportedPuzzleMetadata | null
+  metadata: ImportedPuzzleMetadata | null,
+  givensOption: StartingNotesMode | null = null
 ): string {
   assertStructure(givens);
   const coalesced = coalescePuzzleWork(work);
-  applyWork(givens, coalesced);
+  applyWork(givens, coalesced, givensOption);
   const tokens = coalesced.map((action) => {
     const coordinates = coordinatesFor(action.cell);
     return action.type === 'value'
@@ -337,8 +364,11 @@ function encodeSharedPuzzlePayload(
   return [givens, ...tokens].join('_');
 }
 
-export async function validateSharedPuzzle(payload: string): Promise<SharedPuzzleValidation> {
-  const parsed = parseSharedPuzzlePayload(payload);
+export async function validateSharedPuzzle(
+  payload: string,
+  givensOption: StartingNotesMode | null = null
+): Promise<SharedPuzzleValidation> {
+  const parsed = parseSharedPuzzlePayload(payload, givensOption);
   const { givens, work, values, notes, metadata } = parsed;
   const grid = assertStructure(givens);
   const solutionCount = countSolutions(givens);
@@ -375,7 +405,8 @@ export async function validateSharedPuzzle(payload: string): Promise<SharedPuzzl
     work,
     filledCount: values.filter((value) => value !== null).length,
     notedCellCount: notes.filter((cellNotes) => cellNotes.length > 0).length,
-    metadata
+    metadata,
+    givensOption
   };
 }
 
@@ -383,11 +414,13 @@ export function puzzleUrl(
   base: string | URL,
   givens: string,
   work: readonly ImportedPuzzleWorkAction[] = [],
-  metadata: ImportedPuzzleMetadata | null = null
+  metadata: ImportedPuzzleMetadata | null = null,
+  givensOption: StartingNotesMode | null = null
 ): string {
   const url = new URL(base);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('p', encodeSharedPuzzlePayload(givens, work, metadata));
+  url.searchParams.set('p', encodeSharedPuzzlePayload(givens, work, metadata, givensOption));
+  if (givensOption) url.searchParams.set('givens', givensOption);
   return url.toString();
 }

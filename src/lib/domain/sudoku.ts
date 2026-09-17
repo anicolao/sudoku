@@ -47,6 +47,13 @@ export function candidatesFor(grid: readonly number[], cell: number): Digit[] {
   return DIGITS.filter((digit) => !unavailable.has(digit));
 }
 
+export function basicCandidateNotes(grid: readonly number[]): Digit[][] {
+  if (grid.length !== CELL_COUNT || grid.some((value) => !Number.isInteger(value) || value < 0 || value > 9)) {
+    throw new Error('A Sudoku grid must contain 81 values from 0 to 9');
+  }
+  return Array.from({ length: CELL_COUNT }, (_, cell) => candidatesFor(grid, cell));
+}
+
 export function isSolvedGrid(grid: readonly number[]): boolean {
   if (grid.length !== CELL_COUNT || grid.some((value) => value < 1 || value > 9)) return false;
   return UNITS.every((unit) => new Set(unit.map((cell) => grid[cell])).size === 9);

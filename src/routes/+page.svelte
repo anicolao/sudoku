@@ -30,6 +30,7 @@
   } from '$lib/storage/indexeddb-event-store';
   import {
     puzzleUrl,
+    parseSharedGivensOption,
     puzzleWorkFromGame,
     type SharedPuzzleValidation
   } from '$lib/sharing/puzzle-link';
@@ -321,11 +322,21 @@
       incomingError = 'This link requests an unsupported puzzle view.';
       return;
     }
+    let givensOption: 'basic' | null;
+    try {
+      givensOption = parseSharedGivensOption(url.searchParams.getAll('givens'));
+    } catch (error) {
+      incomingStatus = 'invalid';
+      incomingError = error instanceof Error ? error.message : 'This link requests an unsupported givens option.';
+      return;
+    }
     const requestedView: IncomingView = requestedViews[0] === 'walkthrough' ? 'walkthrough' : 'play';
     incomingStatus = 'checking';
     incomingError = '';
     try {
-      incomingPuzzle = await validateSharedPuzzleInWorker(puzzles[0]);
+      incomingPuzzle = await validateSharedPuzzleInWorker(puzzles[0], {
+        ...(givensOption ? { givensOption } : {})
+      });
       if (requestedView === 'walkthrough' &&
         !incomingPuzzle.work.some((action) => action.type === 'value')) {
         throw new Error('A walkthrough link must include at least one placement.');
@@ -342,6 +353,7 @@
     const url = new URL(window.location.href);
     url.searchParams.delete('p');
     url.searchParams.delete('view');
+    url.searchParams.delete('givens');
     history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -367,7 +379,9 @@
       { ...projection.settings, ...(incomingPuzzle.metadata?.settings ?? {}) },
       incomingPuzzle.work,
       incomingPuzzle.metadata ?? undefined,
-      destination === 'walkthrough' ? 'walkthrough' : undefined
+      destination === 'walkthrough' ? 'walkthrough' : undefined,
+      'puzzle-link',
+      incomingPuzzle.givensOption ?? undefined
     );
     if (!applyCommit(result, 'Shared puzzle opened on this device')) return;
     selectTabGame(result.gameId);
@@ -404,24 +418,30 @@
 
   async function sharePuzzleOnly(): Promise<void> {
     if (!shareGame) return;
+    const givensOption = shareGame.startingNotesMode === 'basic' ? 'basic' : null;
     await showShareLink(puzzleUrl(
       window.location.href,
       shareGame.puzzle.givens,
       [],
-      shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : null
+      shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : null,
+      givensOption
     ), 'puzzle');
   }
 
   async function sharePuzzleWork(): Promise<void> {
     if (!shareGame) return;
+    const givensOption = shareGame.startingNotesMode === 'basic' ? 'basic' : null;
     await showShareLink(
-      puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(shareGame), {
+      puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(
+        shareGame,
+        givensOption ? shareGame.startingNotes : null
+      ), {
         ...(shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : {}),
         elapsedMs: elapsedAt(shareGame, timerNow),
         ...(shareGame.hintedCells.length ? { hintedCells: [...shareGame.hintedCells] } : {}),
         mistakes: shareGame.mistakes,
         settings: { ...shareGame.settings }
-      }),
+      }, givensOption),
       'work'
     );
     announcement = 'Puzzle work link ready';
@@ -727,6 +747,12 @@
     applyCommit(await store.fillNotes(currentGame.id, selectedCell, notesToFill, metadata()), 'Filled available notes');
   }
 
+  async function fillBasicCandidates(): Promise<void> {
+    if (!store || !currentGame || isReadOnly || currentGame.paused) return;
+    if (!applyCommit(await store.fillBasicNotes(currentGame.id, metadata()), 'Filled basic candidates')) return;
+    closeHintDialog();
+  }
+
   function handleGlobalKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return;
     if (hintDialogOpen) closeHintDialog();
@@ -957,8 +983,8 @@
         {:else if incomingStatus === 'invalid'}
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
-          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{:else if incomingPuzzle.metadata?.patternCells}<p>The indicated pattern cells will stay highlighted while you solve.</p>{/if}
-          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{:else if incomingPuzzle.givensOption === 'basic'}<p>Opening it will fill every basic candidate allowed by the original givens.</p>{:else if incomingPuzzle.metadata?.patternCells}<p>The indicated pattern cells will stay highlighted while you solve.</p>{/if}
+          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null || incomingPuzzle.givensOption === 'basic'}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div>{/if}{#if incomingPuzzle.work.length > 0 || incomingPuzzle.givensOption === 'basic'}<div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open {incomingView === 'walkthrough' ? 'walkthrough' : 'shared puzzle'}</button></div>
@@ -1179,7 +1205,7 @@
         {#if shareStage === 'choose'}
           <p class="dialog-symbol" aria-hidden="true">↗</p><h2 id="share-title">Share this puzzle</h2><p>Choose what the link should carry to another device.</p>
           <div class="share-choices">
-            <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
+            <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>{shareGame?.startingNotesMode === 'basic' ? 'The recipient starts with the original basic candidates.' : 'The recipient starts with an empty board.'}</small></button>
             <button type="button" class="confirm" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes values, notes, time, stats, and settings in a readable link.</small></button>
             {#if shareGame && hasStartingCandidates(shareGame)}
               <button type="button" onclick={() => printCurrentPuzzle('candidates')} disabled={printStatus === 'preparing'}><strong>{printStatus === 'preparing' ? 'Preparing print…' : 'Print with starting candidates'}</strong><small>A fresh candidate-filled solving sheet and a solution with walkthrough.</small></button>
@@ -1222,6 +1248,7 @@
           <h2 id="hint-title">Choose a hint</h2>
           <p>How much help would you like?</p>
           <div class="hint-choices">
+            <button type="button" onclick={fillBasicCandidates}><strong>Fill basic candidates</strong><small>Add every candidate allowed by the current row, column, and box.</small></button>
             <button type="button" onclick={() => showHintAdvice('technique')}><strong>Technique only</strong><small>Name the simplest book rule to try.</small></button>
             <button type="button" onclick={() => showHintAdvice('cell')}><strong>Cell only</strong><small>Point to the next cell without showing its number.</small></button>
             <button type="button" class="confirm" onclick={confirmHint}><strong>Reveal one cell</strong><small>Place its correct number and record the hint.</small></button>

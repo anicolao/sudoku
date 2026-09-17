@@ -22,7 +22,8 @@ for (const action of NOTE_ACTIONS) {
   STARTING_NOTES[cell] = [...match[3]].map(Number);
 }
 
-const startUrl = () => `/?p=${encodeURIComponent(START_PAYLOAD)}`;
+const startUrl = () => `/?p=${GIVENS}&givens=basic`;
+const legacyStartUrl = () => `/?p=${encodeURIComponent(START_PAYLOAD)}`;
 
 async function renderedNotes(page: import('@playwright/test').Page): Promise<number[][]> {
   return page.locator('.sudoku-cell').evaluateAll((cells) => cells.map((cell) => {
@@ -38,30 +39,36 @@ async function decodeQrSource(image: import('@playwright/test').Locator): Promis
   return jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height)?.data ?? '';
 }
 
-test('a candidate-ready book link prints and restarts from its supplied notes', async ({ page }, testInfo) => {
+test('a compact candidate-ready book link prints, shares, and restarts from its basic notes', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Print and restart a candidate-ready puzzle',
-    'A puzzle authored with a complete starting candidate grid keeps that fresh state separate from later work. It can be printed with candidates and a matching QR, printed as givens only, reloaded, restarted, or opened again from the original link.'
+    'A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form.'
   );
 
   await page.goto(startUrl());
   await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
   await steps.step('candidate-link-checked', {
-    description: 'The candidate-ready link is checked before it changes local history',
-    verifications: [{ spec: 'The summary reports every supplied candidate cell and offers the shared work', check: async () => {
+    description: 'The compact candidate-ready link is checked before it changes local history',
+    verifications: [{ spec: 'The summary reports every computed candidate cell without treating them as progress', check: async () => {
       await expect(page.locator('.incoming-facts')).toContainText(`Notes${NOTE_ACTIONS.length}`);
-      await expect(page.getByRole('button', { name: 'Open shared work' })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Start this puzzle' })).toBeEnabled();
     } }]
   });
 
-  await page.getByRole('button', { name: 'Open shared work' }).click();
+  await page.getByRole('button', { name: 'Start this puzzle' }).click();
   await steps.step('candidate-start-opened', {
     description: 'The fresh puzzle opens with its complete starting candidate grid',
-    verifications: [{ spec: 'Every cell exactly matches the candidates authored for it', check: async () => {
-      expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
-    } }]
+    verifications: [
+      { spec: 'Every cell exactly matches the candidates authored for it', check: async () => {
+        expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
+      } },
+      { spec: 'The consumed puzzle and givens options are removed from the address', check: async () => {
+        expect(new URL(page.url()).searchParams.has('p')).toBe(false);
+        expect(new URL(page.url()).searchParams.has('givens')).toBe(false);
+      } }
+    ]
   });
 
   await page.reload();
@@ -84,6 +91,21 @@ test('a candidate-ready book link prints and restarts from its supplied notes', 
   await secondBoardCell.click();
   await secondBoardCell.press(solution[secondCell]);
   expect(await renderedNotes(page)).not.toEqual(STARTING_NOTES);
+
+  await page.getByRole('button', { name: 'Share' }).click();
+  await page.getByRole('button', { name: /Share puzzle with work/ }).click();
+  await steps.step('candidate-work-shared', {
+    description: 'Current work is encoded as changes from the compact candidate baseline',
+    verifications: [{ spec: 'The link keeps givens=basic and explicitly carries the candidate removal and placement', check: async () => {
+      const link = new URL(await page.getByTestId('share-link').getAttribute('data-link') ?? '');
+      const row = Math.floor(firstCell / 9) + 1;
+      const column = firstCell % 9 + 1;
+      expect(link.searchParams.get('givens')).toBe('basic');
+      expect(link.searchParams.get('p')).toContain(`_${row}${column}-${STARTING_NOTES[firstCell][0]}`);
+      expect(link.searchParams.get('p')).toContain(`_${Math.floor(secondCell / 9) + 1}${secondCell % 9 + 1}${solution[secondCell]}`);
+    } }]
+  });
+  await page.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('button', { name: 'Restart' }).click();
   await steps.step('candidate-start-restored', {
@@ -141,7 +163,8 @@ test('a candidate-ready book link prints and restarts from its supplied notes', 
 
   await page.emulateMedia({ media: 'print' });
   const candidateLink = await decodeQrSource(page.locator('.print-puzzle-page .print-qr'));
-  expect(new URL(candidateLink).searchParams.get('p')).toBe(START_PAYLOAD);
+  expect(new URL(candidateLink).searchParams.get('p')).toBe(GIVENS);
+  expect(new URL(candidateLink).searchParams.get('givens')).toBe('basic');
   expect(new URL(candidateLink).searchParams.has('view')).toBe(false);
 
   if (testInfo.project.name === 'desktop') {
@@ -163,6 +186,12 @@ test('a candidate-ready book link prints and restarts from its supplied notes', 
   await expect(page.locator('.print-puzzle-page')).toHaveAttribute('data-print-kind', 'candidates');
 
   await page.goto(startUrl());
+  await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
+  await page.getByRole('button', { name: /Abandon current and open shared puzzle/ }).click();
+  await expect(page.getByRole('grid')).toBeVisible();
+  expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
+
+  await page.goto(legacyStartUrl());
   await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
   await page.getByRole('button', { name: /Abandon current and open shared puzzle/ }).click();
   await expect(page.getByRole('grid')).toBeVisible();

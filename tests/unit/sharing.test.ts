@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   coalescePuzzleWork,
+  parseSharedGivensOption,
   parseSharedPuzzlePayload,
   puzzleUrl,
+  puzzleWorkFromGame,
   SharedPuzzleError,
   validateSharedPuzzle
 } from '../../src/lib/sharing/puzzle-link';
+import { basicCandidateNotes, parseGrid } from '../../src/lib/domain/sudoku';
+import type { GameProjection } from '../../src/lib/domain/types';
 
 const GIVENS = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
 const SOLUTION = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
@@ -49,6 +53,47 @@ describe('shared puzzle links', () => {
     expect(puzzleUrl('https://example.test/sudoku/pr5/?old=1&view=walkthrough#stale', GIVENS)).toBe(
       `https://example.test/sudoku/pr5/?p=${GIVENS}`
     );
+  });
+
+  it('computes exact basic candidates from the original givens', async () => {
+    const expected = basicCandidateNotes(parseGrid(GIVENS));
+    const parsed = parseSharedPuzzlePayload(GIVENS, 'basic');
+    const validated = await validateSharedPuzzle(GIVENS, 'basic');
+
+    expect(parsed.values.every((value) => value === null)).toBe(true);
+    expect(parsed.notes).toEqual(expected);
+    expect(parsed.notes[2]).toEqual([1, 2, 4]);
+    expect(validated).toMatchObject({
+      givensOption: 'basic',
+      filledCount: 0,
+      notedCellCount: [...GIVENS].filter((given) => given === '.').length
+    });
+  });
+
+  it('applies shared actions after basic candidates', () => {
+    const initial = basicCandidateNotes(parseGrid(GIVENS));
+    const removed = initial[2][0];
+    const alreadyPresent = initial[3][0];
+    const parsed = parseSharedPuzzlePayload(
+      `${GIVENS}_13-${removed}-_14+${alreadyPresent}+_16${SOLUTION[5]}`,
+      'basic'
+    );
+
+    expect(parsed.notes[2]).toEqual(initial[2].filter((value) => value !== removed));
+    expect(parsed.notes[3]).toEqual(initial[3]);
+    expect(parsed.values[5]).toBe(Number(SOLUTION[5]));
+    expect(parsed.notes[5]).toEqual([]);
+  });
+
+  it('accepts only one supported givens option and writes its compact URL form', () => {
+    expect(parseSharedGivensOption([])).toBeNull();
+    expect(parseSharedGivensOption(['basic'])).toBe('basic');
+    expect(() => parseSharedGivensOption(['future'])).toThrowError(/unsupported givens option/);
+    expect(() => parseSharedGivensOption(['basic', 'basic'])).toThrowError(/unsupported givens option/);
+
+    const url = new URL(puzzleUrl('https://example.test/sudoku/?givens=old', GIVENS, [], null, 'basic'));
+    expect(url.searchParams.get('p')).toBe(GIVENS);
+    expect(url.searchParams.get('givens')).toBe('basic');
   });
 
   it('parses placements and ordered candidate edits after the givens', async () => {
@@ -175,5 +220,24 @@ describe('shared puzzle links', () => {
     expect(new URL(url).searchParams.get('p')).toBe(
       `${GIVENS}_pattern=12,18,72,78_time=5000`
     );
+  });
+
+  it('serializes current notes as changes from a basic-candidate baseline', () => {
+    const startingNotes = basicCandidateNotes(parseGrid(GIVENS));
+    const game = {
+      puzzle: { givens: GIVENS },
+      values: Array(81).fill(null),
+      notes: structuredClone(startingNotes)
+    } as unknown as GameProjection;
+    const cell = 2;
+    const removed = startingNotes[cell][0];
+    game.notes[cell] = game.notes[cell].filter((value) => value !== removed);
+
+    const work = puzzleWorkFromGame(game, startingNotes);
+    expect(work).toEqual([{ type: 'notes', cell, values: [removed], enabled: false }]);
+    expect(parseSharedPuzzlePayload(
+      new URL(puzzleUrl('https://example.test/', GIVENS, work, null, 'basic')).searchParams.get('p') ?? '',
+      'basic'
+    ).notes).toEqual(game.notes);
   });
 });

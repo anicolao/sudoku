@@ -1,5 +1,7 @@
 export type Digit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
+export type StartingNotesMode = 'basic';
+
 export type PuzzleDifficulty =
   | 'foundations'
   | 'intermediate'
@@ -114,6 +116,7 @@ export interface GameImportedEvent extends EventEnvelope {
     work?: ImportedPuzzleWorkAction[];
     sharedMetadata?: ImportedPuzzleMetadata;
     initialView?: 'walkthrough';
+    startingNotesMode?: StartingNotesMode;
   };
 }
 
@@ -130,6 +133,11 @@ export interface NoteToggledEvent extends EventEnvelope {
 export interface NotesFilledEvent extends EventEnvelope {
   type: 'cell/notes-filled';
   payload: { cell: number; values?: Digit[] };
+}
+
+export interface BasicNotesFilledEvent extends EventEnvelope {
+  type: 'notes/basic-filled';
+  payload: Record<string, never>;
 }
 
 export interface CellClearedEvent extends EventEnvelope {
@@ -181,6 +189,7 @@ export type ReversibleEvent =
   | ValueEnteredEvent
   | NoteToggledEvent
   | NotesFilledEvent
+  | BasicNotesFilledEvent
   | CellClearedEvent
   | ValueErasedEvent
   | HintRevealedEvent
@@ -205,6 +214,7 @@ export interface GameProjection {
   valueSourceEventIds: Array<string | null>;
   notes: Digit[][];
   startingNotes: Digit[][];
+  startingNotesMode: StartingNotesMode | null;
   conflicts: number[];
   mistakeCells: number[];
   undoTargetId: string | null;
