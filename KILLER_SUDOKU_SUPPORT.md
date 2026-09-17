@@ -1,7 +1,23 @@
 # Killer Sudoku support
 
-Status: design proposal only. No application behaviour or persisted format is
-changed by this document.
+Status: design and delivery plan. The three user stories below define the usable
+MVP; broader construction and editorial automation remain proposed work.
+
+## MVP delivered through the UI
+
+- [Play, return, and discover](tests/e2e/027-killer-sudoku/README.md): start from
+  three checked layouts, retain cages through the normal game lifecycle, inspect
+  combinations, and request cage-aware logical guidance.
+- [Share and print](tests/e2e/028-killer-sharing-print/README.md): transfer rules
+  and optional work, or print vector cages with locally derived walkthroughs.
+- [Installed offline play](tests/e2e/012-installed-offline/README.md): generate
+  and resume a Killer with working hints without a connection.
+
+The collection supports cage assignments, singles after cage restrictions, and
+single-house Rule of 45 deductions. It has no calibrated difficulty bands;
+imports are labelled Killer · unrated. General construction search, advanced
+Killer techniques, and book assembly are future stories. The following design
+includes those longer-term goals as well as the implemented MVP.
 
 ## Purpose
 

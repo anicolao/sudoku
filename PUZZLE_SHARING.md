@@ -306,3 +306,32 @@ Future sharing work must:
 A future full-replay export should be a separate versioned transport. It must
 not serialize raw stored origins because those contain the local solution and
 internal event IDs.
+
+## Killer links (format 5)
+
+Killer has a versioned header inside the existing `p` parameter:
+
+```text
+K1!<81 givens>!<total>.<cell coordinates>-<total>.<cell coordinates>...
+```
+
+Coordinates are consecutive two-digit row/column pairs (11 through 99). For
+example, `13.111213` describes a total-13 cage at r1c1, r1c2, r1c3. Cages are
+sorted by their first cell and cells within each cage are sorted. The header
+carries Killer rules version 1, including complete connected coverage and no
+repeated digits. Existing underscore-separated work and metadata tokens follow
+unchanged. The decoded 4,096-character and 512-action limits still apply.
+
+The validator derives a unique solution using cage and classic constraints in
+a bounded worker. Canonical givens and cage rules determine the fingerprint;
+work does not. Missing variant on older saved games remains classic. Format 5
+imports retain cages through replay, work transfer and re-sharing. Unsupported
+headers and malformed partitions are rejected, never treated as classic grids.
+Solutions are never serialized in Killer links.
+
+For a clean Killer link with `view=walkthrough`, validation also derives a full
+supported logical placement sequence locally. An unsupported solve is rejected
+with an explanation; the clean puzzle can still be opened without that view.
+The resulting placements are stored as imported work with format 5 provenance.
+This keeps printed Killer QR payloads small without embedding solution digits.
+The classic walkthrough-link contract is unchanged.

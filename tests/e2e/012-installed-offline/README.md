@@ -110,3 +110,11 @@ After one online installation, the player starts and pauses a real event-sourced
 
 - [x] The solved history card is reconstructed again
 - [x] Application caches contain only same-origin GET asset requests and no event-store data
+
+## The installed app starts a new Killer and preserves its cage rules and hint offline
+
+![The installed app starts a new Killer and preserves its cage rules and hint offline](./screenshots/013-killer-created-and-resumed-offline-offline-macos.png)
+
+**Verifications:**
+
+- [x] Killer generation, logical hints, and cage rendering work without a connection

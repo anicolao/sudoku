@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
@@ -14,6 +15,8 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
     description: 'A blank-givens Killer has labelled cages and ordinary number controls',
     verifications: [
       { spec: 'The checked rules and cages are stored with the puzzle', check: async () => {
+        const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+        expect(accessibility.violations).toEqual([]);
         expect(puzzle.variant).toBe('killer');
         expect(puzzle.givens).toBe('.'.repeat(81));
         await expect(page.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);

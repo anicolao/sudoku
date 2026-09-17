@@ -2,7 +2,7 @@ import type { SharedPuzzleValidation } from './puzzle-link';
 
 export function validateSharedPuzzleInWorker(
   payload: string,
-  options: { signal?: AbortSignal; timeoutMs?: number } = {}
+  options: { signal?: AbortSignal; timeoutMs?: number; walkthrough?: boolean } = {}
 ): Promise<SharedPuzzleValidation> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./puzzle-validator.worker.ts', import.meta.url), { type: 'module' });
@@ -27,6 +27,6 @@ export function validateSharedPuzzleInWorker(
     worker.addEventListener('error', () => finish(() =>
       reject(new Error('This puzzle could not be checked safely.'))
     ));
-    worker.postMessage({ payload });
+    worker.postMessage({ payload, walkthrough: options.walkthrough });
   });
 }
