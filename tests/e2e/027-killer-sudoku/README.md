@@ -1,10 +1,10 @@
 # Play and resume Killer Sudoku
 
-As a solver, I can start a checked Killer puzzle, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.
+As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.
 
-## A blank-givens Killer has labelled cages and ordinary number controls
+## A newly constructed Easy Killer has no given digits or one-cell cages
 
-![A blank-givens Killer has labelled cages and ordinary number controls](./screenshots/000-killer-ready-phone-macos.png)
+![A newly constructed Easy Killer has no given digits or one-cell cages](./screenshots/000-killer-ready-phone-macos.png)
 
 **Verifications:**
 

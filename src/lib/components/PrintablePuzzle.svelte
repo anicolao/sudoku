@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { killerDifficultyLabel } from '$lib/domain/killer-analysis';
   import CageOverlay from './CageOverlay.svelte';
   import { difficultyLabel } from '$lib/domain/difficulty';
   import type { GameProjection } from '$lib/domain/types';
@@ -36,7 +37,7 @@
       <text class="print-kicker" x="61" y="58">{game.puzzle.variant === 'killer' ? 'KILLER SUDOKU' : 'SUDOKU'}</text>
       <text class="print-title" x="61" y="96">Solve this puzzle</text>
       <rect class="print-difficulty-pill" x="650" y="72" width="105" height="30" rx="15" />
-      <text class="print-difficulty" x="702.5" y="91">{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)}</text>
+      <text class="print-difficulty" x="702.5" y="91">{game.puzzle.variant === 'killer' ? killerDifficultyLabel(game.puzzle.killerDifficulty) : difficultyLabel(game.puzzle.difficulty)}</text>
       <line class="print-heading-rule" x1="61" y1="115" x2="755" y2="115" />
 
       <g class="print-board-svg">
@@ -73,7 +74,7 @@
       <text class="print-kicker" x="61" y="58">{game.puzzle.variant === 'killer' ? 'KILLER SUDOKU' : 'SUDOKU'}</text>
       <text class="print-title" x="61" y="96">Solution &amp; walkthrough</text>
       <rect class="print-difficulty-pill" x="650" y="72" width="105" height="30" rx="15" />
-      <text class="print-difficulty" x="702.5" y="91">{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)}</text>
+      <text class="print-difficulty" x="702.5" y="91">{game.puzzle.variant === 'killer' ? killerDifficultyLabel(game.puzzle.killerDifficulty) : difficultyLabel(game.puzzle.difficulty)}</text>
       <line class="print-heading-rule" x1="61" y1="115" x2="755" y2="115" />
 
       <g class="print-board-svg">

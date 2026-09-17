@@ -4,6 +4,8 @@
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
   import { checkForShellUpdate } from '$lib/shell-update';
+  import KillerReasoning from '$lib/components/KillerReasoning.svelte';
+  import { KILLER_DIFFICULTIES, killerDifficultyLabel, type KillerDifficulty } from '$lib/domain/killer-analysis';
   import KillerInspector from '$lib/components/KillerInspector.svelte';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import PhotoPuzzleImport from '$lib/components/PhotoPuzzleImport.svelte';
@@ -59,6 +61,9 @@
   let generationStatus = $state<GenerationStatus>('idle');
   let generationError = $state('');
   let killerIntroOpen = $state(false);
+  let selectedKillerDifficulty = $state<KillerDifficulty>('easy');
+  let generationController: AbortController | null = null;
+  let generationVariant = $state<'classic' | 'killer'>('classic');
   let cageInspectorOpen = $state(false);
   let hintMessage = $state('');
   let store = $state<IndexedDbEventStore>();
@@ -532,11 +537,14 @@
   }
 
   async function generatePuzzle(variant: 'classic' | 'killer' = 'classic'): Promise<void> {
+    if (generationStatus === 'generating') return;
+    generationVariant = variant;
+    generationController = new AbortController();
     generationStatus = 'generating';
     generationError = '';
     try {
       const seed = import.meta.env.VITE_E2E_MODE === '1' ? 'walkthrough-seed' : crypto.randomUUID();
-      const { puzzle } = await generateInWorker(selectedDifficulty, seed, { variant });
+      const { puzzle } = await generateInWorker(selectedDifficulty, seed, { variant, killerDifficulty: selectedKillerDifficulty, signal: generationController.signal });
       if (!store) throw new Error('Puzzle storage is not ready');
       const result = await store.startGame(puzzle, metadata(false));
       if (!applyCommit(result, 'New puzzle ready')) throw new Error('Puzzle generation overlapped another tab');
@@ -545,6 +553,7 @@
       view = 'play';
       generationStatus = 'idle';
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') { generationStatus = 'idle'; return; }
       generationError = error instanceof Error ? error.message : 'Could not generate a puzzle yet';
       generationStatus = 'failed';
     }
@@ -947,7 +956,7 @@
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
           <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{:else if incomingPuzzle.metadata?.patternCells}<p>The indicated pattern cells will stay highlighted while you solve.</p>{/if}
-          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{incomingPuzzle.puzzle.variant === 'killer' ? 'Killer · unrated' : difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{incomingPuzzle.puzzle.variant === 'killer' ? `Killer · ${killerDifficultyLabel(incomingPuzzle.puzzle.killerDifficulty)}` : difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open {incomingView === 'walkthrough' ? 'walkthrough' : 'shared puzzle'}</button></div>
@@ -981,7 +990,7 @@
           <div class="history-list">
             {#each historyGames.slice(historyPage, historyPage + 1) as game}
               <article class="history-card" data-game-id={game.id}>
-                <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
+                <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.variant === 'killer' ? `${killerDifficultyLabel(game.puzzle.killerDifficulty)} Killer` : difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
                 <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
               </article>
@@ -1046,7 +1055,9 @@
               <p class="walkthrough-count">Placement {walkthroughIndex + 1} of {walkthrough.steps.length} · {formatElapsed(walkthroughStep.elapsedMs)}</p>
               <p class={`walkthrough-rule rule-${walkthroughStep.rule}`}>{walkthroughStep.ruleLabel}</p>
               <h2>{walkthroughStep.action}</h2>
-              <p class="walkthrough-explanation">{walkthroughStep.explanation}</p>
+              {#if walkthroughStep.game.puzzle.variant === 'killer'}
+                {#key walkthroughStep.eventId}<KillerReasoning prerequisites={walkthroughStep.prerequisites} explanation={walkthroughStep.explanation} />{/key}
+              {:else}<p class="walkthrough-explanation">{walkthroughStep.explanation}</p>{/if}
               <p class="walkthrough-note">Each placement is checked against the book rules in order. The first rule that proves the move is shown; otherwise it is marked Unknown rule.</p>
               <div class="walkthrough-actions">
                 <button type="button" onclick={() => moveWalkthrough(-1)} disabled={walkthroughIndex === 0}>Previous placement</button>
@@ -1084,7 +1095,7 @@
     {:else if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
         <div class="puzzle-heading">
-          <div><p class="eyebrow">{currentGame.puzzle.variant === 'killer' ? 'Killer Sudoku' : difficultyLabel(currentGame.puzzle.difficulty)} puzzle</p><h1 id="puzzle-title">{currentGame.status === 'complete' ? 'Puzzle complete' : currentGame.status === 'abandoned' ? 'Past attempt' : currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
+          <div><p class="eyebrow">{currentGame.puzzle.variant === 'killer' ? `${killerDifficultyLabel(currentGame.puzzle.killerDifficulty)} Killer Sudoku` : difficultyLabel(currentGame.puzzle.difficulty)} puzzle</p><h1 id="puzzle-title">{currentGame.status === 'complete' ? 'Puzzle complete' : currentGame.status === 'abandoned' ? 'Past attempt' : currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
           <div class="session-status">
             {#if currentGame.settings.showTimer}<span class="timer" aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>{/if}
             {#if currentGame.status === 'active' && !reviewedGameId}<button type="button" class="pause-action" onclick={togglePause}>{currentGame.paused ? 'Resume' : 'Pause'}</button>{/if}
@@ -1137,7 +1148,7 @@
             </div>
             {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
-              <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{currentGame.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
+              <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{currentGame.puzzle.variant === 'killer' ? `${killerDifficultyLabel(currentGame.puzzle.killerDifficulty)} Killer` : difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
           </aside>
         </div>
@@ -1191,12 +1202,31 @@
     <KillerInspector game={currentGame} cell={selectedCell} onclose={() => cageInspectorOpen = false} />
   {/if}
 
+  {#if generationStatus === 'generating'}
+    <div class="dialog-backdrop" role="presentation"><div use:dialogFocus class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="generation-title">
+      <h2 id="generation-title">Constructing your puzzle…</h2><p>Checking uniqueness and the logical solving path on this device.</p>
+      <button class="killer-start" type="button" onclick={() => generationController?.abort()}>Cancel generation</button>
+    </div></div>
+  {/if}
+
+  {#if generationStatus === 'failed'}
+    <div class="dialog-backdrop" role="presentation"><div use:dialogFocus class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="generation-error-title">
+      <h2 id="generation-error-title">Puzzle not ready</h2><p role="alert">{generationError}</p>
+      <button class="killer-start" type="button" onclick={() => generatePuzzle(generationVariant)}>Try a new puzzle</button>
+      <button class="text-action" type="button" onclick={() => { generationStatus = 'idle'; generationError = ''; }}>Close</button>
+    </div></div>
+  {/if}
+
   {#if killerIntroOpen}
     <div class="dialog-backdrop" role="presentation">
-      <div use:dialogFocus class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-title">
+      <div use:dialogFocus class="hint-dialog killer-intro" role="dialog" aria-modal="true" aria-labelledby="killer-title">
         <h2 id="killer-title">Try Killer Sudoku</h2>
         <p>Fill every row, column and box with 1–9. Each dashed cage adds to its small printed total. Digits cannot repeat anywhere inside a cage.</p>
-        <p>Start with an extreme sum or a nearly covered box. This starter collection has three checked layouts, rotated or reflected.</p>
+        <p>Every puzzle is constructed on this device, with no given digits or one-cell cages.</p>
+        <fieldset class="killer-levels"><legend>Killer difficulty</legend>
+          {#each KILLER_DIFFICULTIES as level}<button type="button" aria-pressed={selectedKillerDifficulty === level} onclick={() => selectedKillerDifficulty = level}>{killerDifficultyLabel(level)}</button>{/each}
+        </fieldset>
+        <p class="killer-level-summary">{selectedKillerDifficulty === 'easy' ? 'Cage combinations, singles and one-cell sums.' : selectedKillerDifficulty === 'medium' ? 'Adds pairs and locked candidates.' : 'Adds two-cell innie/outie sum reasoning.'}</p>
         <button class="killer-start" type="button" disabled={generationStatus === 'generating'} onclick={() => { killerIntroOpen = false; void generatePuzzle('killer'); }}>Start Killer puzzle</button>
         <button class="text-action" type="button" onclick={() => killerIntroOpen = false}>Cancel</button>
       </div>
@@ -1211,11 +1241,15 @@
           <h2 id="hint-title">{hintAdviceKind === 'technique'
             ? hintAdvice.rule === 'unknown-rule' ? 'No listed technique found' : `Try ${hintAdvice.ruleLabel}`
             : `Try r${Math.floor(hintAdvice.targetCell / 9) + 1}c${(hintAdvice.targetCell % 9) + 1}`}</h2>
-          <p>{currentGame?.puzzle.variant === 'killer' ? (hintAdviceKind === 'technique' ? hintAdvice.explanation : 'That cell is ready to solve. Its number is still yours to find.') : hintAdviceKind === 'technique'
+          {#if currentGame?.puzzle.variant === 'killer' && hintAdviceKind === 'technique'}
+            <KillerReasoning prerequisites={hintAdvice.prerequisites} explanation={hintAdvice.explanation} />
+          {:else}
+          <p>{hintAdviceKind === 'technique'
             ? hintAdvice.rule === 'unknown-rule'
               ? 'The current position is not accounted for by the book rules yet.'
               : 'This is the simplest book rule that can produce a placement from the current board.'
             : 'That cell is ready to solve. Its number is still yours to find.'}</p>
+          {/if}
           <button type="button" class="confirm" onclick={closeHintDialog}>Back to puzzle</button>
         {:else}
           <p class="dialog-symbol" aria-hidden="true">◆</p>

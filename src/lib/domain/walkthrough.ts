@@ -34,6 +34,7 @@ export type WalkthroughRule =
 type BookTechnique = Extract<WalkthroughRule, SolveTechnique>;
 
 export interface WalkthroughStep {
+  prerequisites?: string[];
   eventId: string;
   rule: WalkthroughRule;
   ruleLabel: string;
@@ -61,6 +62,7 @@ export interface AsyncWalkthroughOptions {
 }
 
 interface PlacementExplanation {
+  prerequisites?: string[];
   rule: WalkthroughRule;
   ruleLabel: string;
   explanation: string;

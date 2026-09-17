@@ -16,7 +16,7 @@ export function validateSharedPuzzleInWorker(
     };
     const timeout = window.setTimeout(() => finish(() =>
       reject(new Error('This puzzle could not be checked safely.'))
-    ), options.timeoutMs ?? 2_000);
+    ), options.timeoutMs ?? (payload.startsWith('K1!') ? 10_000 : 2_000));
     options.signal?.addEventListener('abort', () => finish(() =>
       reject(new DOMException('Puzzle check cancelled', 'AbortError'))
     ), { once: true });
