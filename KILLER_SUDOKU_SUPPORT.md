@@ -444,7 +444,9 @@ same seed and difficulty produce the same puzzle, with no singleton cages.
 Its unit acceptance evidence covers eight seeds independently, generating each
 twice with a per-case 60-second test budget (two 30-second worker budgets). This avoids imposing one default
 five-second timeout on sixteen constructions on slower CI runners. This test
-maintenance does not change the UI or the production worker timeout.
+maintenance does not change the UI or the production worker timeout. The
+independent uniqueness proofs for generated fixtures also run as separate
+30-second test cases, retaining the validator’s deterministic search-node cap.
 
 These commits stay on one PR and each leaves its advertised story usable. The
 first commit may explicitly withhold share/print and advanced hint controls until
