@@ -20,7 +20,7 @@
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
-  import { printablePuzzleLinksAsync, type PrintablePuzzleKind } from '$lib/printing/printable-puzzle';
+  import { printablePuzzleLinkVariantsAsync, type PrintablePuzzleKind } from '$lib/printing/printable-puzzle';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
     EVENT_CHANNEL_NAME,
@@ -48,6 +48,7 @@
   type HintAdviceKind = 'technique' | 'cell';
   type PrintStatus = 'idle' | 'preparing';
   type PreparedPrint = { puzzleQr: string; walkthroughQr: string };
+  type PreparedPrintVariants = Partial<Record<PrintablePuzzleKind, PreparedPrint>>;
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -103,7 +104,7 @@
   let printPuzzleQr = $state('');
   let printWalkthroughQr = $state('');
   const preparedPrints = new Map<string, PreparedPrint>();
-  const pendingPrints = new Map<string, Promise<PreparedPrint>>();
+  const pendingPrints = new Map<string, Promise<PreparedPrintVariants>>();
   let printPreparationRequest = 0;
   let explicitPrintInProgress = false;
   let timerNow = $state(
@@ -492,31 +493,41 @@
     printGame = null;
     printPuzzleQr = '';
     printWalkthroughQr = '';
-    let preparation = pendingPrints.get(cacheKey);
+    let preparation = pendingPrints.get(game.id);
     if (!preparation) {
-      preparation = (async (): Promise<PreparedPrint> => {
-        const links = await printablePuzzleLinksAsync(window.location.href, game, {}, kind);
-        const [puzzleQr, walkthroughQr] = await Promise.all([
-          QRCode.toDataURL(links.puzzle, {
-            errorCorrectionLevel: kind === 'candidates' ? 'M' : 'Q',
-            margin: 3,
-            width: kind === 'candidates' ? 600 : 360
-          }),
-          QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
-        ]);
-        const result = { puzzleQr, walkthroughQr };
-        preparedPrints.set(cacheKey, result);
-        return result;
+      preparation = (async (): Promise<PreparedPrintVariants> => {
+        const links = await printablePuzzleLinkVariantsAsync(window.location.href, game);
+        const kinds: PrintablePuzzleKind[] = hasStartingCandidates(game)
+          ? ['givens', 'candidates']
+          : ['givens'];
+        const walkthroughQr = await QRCode.toDataURL(links.givens.walkthrough, {
+          errorCorrectionLevel: 'Q', margin: 3, width: 360
+        });
+        const variants: PreparedPrintVariants = {};
+        await Promise.all(kinds.map(async (variant) => {
+          variants[variant] = {
+            puzzleQr: await QRCode.toDataURL(links[variant].puzzle, {
+              errorCorrectionLevel: variant === 'candidates' ? 'M' : 'Q',
+              margin: 3,
+              width: variant === 'candidates' ? 600 : 360
+            }),
+            walkthroughQr
+          };
+          preparedPrints.set(`${game.id}:${variant}`, variants[variant] as PreparedPrint);
+        }));
+        return variants;
       })();
-      pendingPrints.set(cacheKey, preparation);
+      pendingPrints.set(game.id, preparation);
     }
-    let prepared: PreparedPrint;
+    let variants: PreparedPrintVariants;
     try {
-      prepared = await preparation;
+      variants = await preparation;
     } finally {
-      if (pendingPrints.get(cacheKey) === preparation) pendingPrints.delete(cacheKey);
+      if (pendingPrints.get(game.id) === preparation) pendingPrints.delete(game.id);
     }
     if (request !== printPreparationRequest) return;
+    const prepared = variants[kind];
+    if (!prepared) throw new Error(`Print variant ${kind} was not prepared`);
     printGame = game;
     printKind = kind;
     printPuzzleQr = prepared.puzzleQr;

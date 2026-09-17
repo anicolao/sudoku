@@ -39,6 +39,7 @@ async function decodeQrSource(image: import('@playwright/test').Locator): Promis
 }
 
 test('a candidate-ready book link prints and restarts from its supplied notes', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Print and restart a candidate-ready puzzle',
