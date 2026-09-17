@@ -1,3 +1,5 @@
+import { nextKillerPlacement, solveKillerLogically, killerRelationships } from '../../src/lib/domain/killer-analysis';
+import { buildHumanSolveSequence } from '../../src/lib/domain/walkthrough';
 import { describe, expect, test } from 'vitest';
 import { canonicalCages, cagePossibilities, solveKiller, validPuzzleRules } from '../../src/lib/domain/killer';
 import { generateKillerPuzzle } from '../../src/lib/generator/killer-puzzle';
@@ -37,5 +39,45 @@ describe('Killer rules visible in play', () => {
     expect(new EventStore(new MemoryStorage(), document).getProjection().games[document.events[0].gameId!].puzzle.cages).toEqual(p.cages);
     (document.events[0] as any).payload.puzzle.cages[0].total++;
     expect(new EventStore(new MemoryStorage(), document).getProjection().diagnostics).toContain('invalid-puzzle-rules');
+  });
+});
+
+
+describe('Killer discovery story', () => {
+  test('every starter has a complete logical trace without a solution oracle', () => {
+    for (const entry of corpus) {
+      const logical = solveKillerLogically('.'.repeat(81), entry.cages);
+      expect(logical.solved).toBe(true);
+      expect(logical.grid).toBe(entry.solution);
+      expect(logical.steps).toHaveLength(81);
+      expect(new Set(logical.steps.map((s) => s.rule)).size).toBeGreaterThan(1);
+    }
+  });
+  test('each hinted digit excludes all other candidates under exhaustive validation', () => {
+    const p = generateKillerPuzzle('proof').puzzle;
+    const grid = Array(81).fill(0);
+    for (let i = 0; i < 8; i++) {
+      const step = nextKillerPlacement(grid, p.cages!)!;
+      expect(step).not.toBeNull();
+      for (let d=1; d<=9; d++) if (d !== step.value) {
+        grid[step.targetCell] = d;
+        expect(solveKiller(grid.map((v)=>v || '.').join(''), p.cages!).count).toBe(0);
+      }
+      grid[step.targetCell] = step.value;
+    }
+  });
+  test('derived equations agree with the solution without adding no-repeat constraints', () => {
+    for (const entry of corpus) for (const r of killerRelationships(Array(81).fill(0), entry.cages)) {
+      expect(r.cells.reduce((sum, c) => sum + Number(entry.solution[c]), 0)).toBe(r.total);
+    }
+  });
+  test('human walkthrough finishes all 81 blank cells and ignores human notes', () => {
+    const store = new EventStore(new MemoryStorage());
+    const state = store.startGame(generateKillerPuzzle('a').puzzle, { id: 'origin', occurredAt: new Date('2026-01-01') });
+    const game = state.games[state.activeGameId!];
+    game.notes = Array.from({length:81},()=>[9]);
+    const steps = buildHumanSolveSequence(game);
+    expect(steps).toHaveLength(81);
+    expect(steps.every((s)=>s.rule !== 'unknown-rule')).toBe(true);
   });
 });

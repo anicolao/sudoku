@@ -1,3 +1,4 @@
+import { solveKillerLogically } from '$lib/domain/killer-analysis';
 import corpus from './killer-corpus.json';
 import { canonicalCages, solveKiller } from '$lib/domain/killer';
 import { createPrng } from './prng';
@@ -21,6 +22,8 @@ export function generateKillerPuzzle(seed: string): GenerationResult {
   const givens = '.'.repeat(81);
   const checked = solveKiller(givens, cages);
   if (checked.count !== 1 || checked.solution !== solution.join('')) throw new Error('This Killer puzzle could not be validated.');
+  const logical = solveKillerLogically(givens, cages);
+  if (!logical.solved || logical.grid !== checked.solution) throw new Error('This Killer has no supported logical solve.');
   return {
     puzzle: {
       id: `killer-v1-${seed}`, variant: 'killer', killerRulesVersion: 1, cages,
@@ -28,6 +31,6 @@ export function generateKillerPuzzle(seed: string): GenerationResult {
       validatorVersion: 4, hardestTechnique: null,
       provenance: { kind: 'killer-generated', seed, generatorVersion: 1 }
     },
-    attempts: 1, traceLength: 0
+    attempts: 1, traceLength: logical.steps.length
   };
 }

@@ -3,7 +3,7 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('play a Killer puzzle and return to its cage rules', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can start a checked Killer puzzle, read its cage totals, make reversible moves, and return to the same rules and progress.');
+  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can start a checked Killer puzzle, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
   await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).click();
@@ -47,5 +47,29 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
       } }
     ]
   });
+  await page.locator(`[data-cell="${a}"]`).click();
+  await page.getByRole('button', { name: 'Inspect cage', exact: true }).click();
+  await steps.step('inspect-cage', {
+    description: 'Inspect the selected cage without changing pencil marks or digits',
+    verifications: [{ spec: 'The inspector explains remaining sum and feasible sets', check: async () => {
+      await expect(page.getByRole('heading', { name: `Cage total ${cage.total}` })).toBeVisible();
+      await expect(page.getByText(/remaining across/)).toBeVisible();
+      await expect(page.getByText(/Sets are checked against placed digits/)).toBeVisible();
+    } }]
+  });
+  await page.getByRole('button', { name: 'Back to puzzle' }).click();
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+  await page.getByRole('button', { name: /Explain next step/ }).click();
+  await steps.step('explain-step', {
+    description: 'A logical hint explains a cage or positional deduction without placing it',
+    verifications: [{ spec: 'The explanation is a supported Killer deduction', check: async () => {
+      await expect(page.getByRole('dialog')).not.toContainText('No listed technique');
+      await expect(page.getByRole('heading', { name: /^Try / })).toBeVisible();
+    } }]
+  });
+  await page.getByRole('button', { name: 'Back to puzzle' }).click();
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+  await page.getByRole('button', { name: /Reveal one cell/ }).click();
+  await expect(page.locator('.sudoku-cell.hinted')).toHaveCount(1);
   steps.generateDocs();
 });
