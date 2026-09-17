@@ -7,14 +7,19 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
   steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can start a checked Killer puzzle, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
-  await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Start Killer puzzle', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Start Killer puzzle', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
   const board = page.getByRole('grid', { name: 'Killer Sudoku puzzle' });
   await expect(board).toBeVisible();
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1')!).events[0].payload.puzzle);
   await steps.step('killer-ready', {
     description: 'A blank-givens Killer has labelled cages and ordinary number controls',
     verifications: [
-      { spec: 'The checked rules and cages are stored with the puzzle', check: async () => {
+      { spec: 'Keyboard focus enters the introduction, stays inside with Tab, and starts with Enter; checked cages are stored', check: async () => {
         const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
         expect(accessibility.violations).toEqual([]);
         expect(puzzle.variant).toBe('killer');
@@ -52,9 +57,15 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
   });
   await page.locator(`[data-cell="${a}"]`).click();
   await page.getByRole('button', { name: 'Inspect cage', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Back to puzzle' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Back to puzzle' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Inspect cage', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Inspect cage', exact: true }).click();
   await steps.step('inspect-cage', {
     description: 'Inspect the selected cage without changing pencil marks or digits',
-    verifications: [{ spec: 'The inspector explains remaining sum and feasible sets', check: async () => {
+    verifications: [{ spec: 'The inspector contains keyboard focus, Escape returns to Cage, and remaining sum and feasible sets are explained', check: async () => {
       await expect(page.getByRole('heading', { name: `Cage total ${cage.total}` })).toBeVisible();
       await expect(page.getByText(/remaining across/)).toBeVisible();
       await expect(page.getByText(/Sets are checked against placed digits/)).toBeVisible();

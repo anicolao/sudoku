@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '$lib/actions/dialog-focus';
   import { cagePossibilities } from '$lib/domain/killer';
   import { killerCellName, killerRelationships } from '$lib/domain/killer-analysis';
   import type { GameProjection } from '$lib/domain/types';
@@ -12,7 +13,7 @@
   let page = $state(0);
 </script>
 <div class="dialog-backdrop" role="presentation">
-  <div class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="cage-title">
+  <div use:dialogFocus class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="cage-title">
     <h2 id="cage-title">Cage total {cage.total}</h2>
     <p>{cage.cells.map(killerCellName).join(', ')} · no repeats</p>
     <p><strong>{remaining} remaining across {empty} empty {empty === 1 ? 'cell' : 'cells'}.</strong></p>

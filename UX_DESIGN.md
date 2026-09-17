@@ -449,3 +449,10 @@ descriptions; the inspector provides readable totals and sets independently of
 board size.
 
 Acceptance story: [Take a Killer puzzle with you](tests/e2e/028-killer-sharing-print/README.md).
+
+### Killer: inspect with the keyboard
+
+The introduction and cage inspector move keyboard focus to their first control,
+contain Tab and Shift-Tab, and return focus to the opener when dismissed. Escape
+closes the dialog. The Killer acceptance story verifies starting with Enter and
+returning from cage inspection to the Cage control.

@@ -439,10 +439,15 @@ corrupt inputs, and deterministic generation. Browser evidence must include
 small screens, zoom, screen-reader names, keyboard operation, monochrome print,
 privacy instrumentation, and installed offline use.
 
-Before implementation, choose concrete budgets for region enumeration,
-validation work, and share payload size using corpus measurements. Calibrate
-difficulty and editorial thresholds with human review. These are outstanding
-implementation decisions, not blockers to reviewing this design.
+The MVP bounds exact validation at 50,000 search nodes and incoming worker
+validation at two seconds, retains the decoded 4,096-character share limit, and
+enumerates only single-house residual regions of at most two empty cells.
+Broader construction needs new measured budgets. Difficulty and editorial
+thresholds still require human calibration.
+
+Keyboard follow-up story: as a keyboard solver, I can enter and leave the
+introduction and cage inspector without focus escaping behind the dialog. This
+is covered in the same play-and-discovery acceptance scenario.
 
 ## References and boundaries of the evidence
 
