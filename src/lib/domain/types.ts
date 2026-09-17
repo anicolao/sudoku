@@ -204,6 +204,7 @@ export interface GameProjection {
   values: Array<Digit | null>;
   valueSourceEventIds: Array<string | null>;
   notes: Digit[][];
+  startingNotes: Digit[][];
   conflicts: number[];
   mistakeCells: number[];
   undoTargetId: string | null;

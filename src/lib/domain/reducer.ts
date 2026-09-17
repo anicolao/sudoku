@@ -209,6 +209,14 @@ function applyImportedWork(game: GameProjection, work: readonly ImportedPuzzleWo
   }
 }
 
+function hasCompleteStartingNotes(game: GameProjection, event: GameImportedEvent): boolean {
+  return event.payload.importKind === 'puzzle-link' &&
+    event.payload.sharedMetadata === undefined &&
+    Boolean(event.payload.work?.length) &&
+    event.payload.work?.every((action) => action.type === 'notes') === true &&
+    [...game.puzzle.givens].every((given, cell) => given !== '.' || game.notes[cell].length > 0);
+}
+
 function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: string[]): void {
   if (event.type === 'game/restarted') return;
   if (!isEditable(game, event.payload.cell)) {
@@ -316,6 +324,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         values: checkpoint ? structuredClone(checkpoint.values) : Array<Digit | null>(81).fill(null),
         valueSourceEventIds: Array<string | null>(81).fill(null),
         notes: checkpoint ? structuredClone(checkpoint.notes) : Array.from({ length: 81 }, () => []),
+        startingNotes: Array.from({ length: 81 }, () => []),
         conflicts: [],
         mistakeCells: [],
         undoTargetId: null,
@@ -339,6 +348,9 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
       const importedGame = state.games[event.gameId];
       if (event.type === 'game/imported' && event.payload.work) {
         applyImportedWork(importedGame, event.payload.work);
+        if (hasCompleteStartingNotes(importedGame, event)) {
+          importedGame.startingNotes = structuredClone(importedGame.notes);
+        }
       }
       const importedBoard = [...importedGame.puzzle.givens].map((given, cell) =>
         given === '.' ? importedGame.values[cell] : Number(given)
@@ -427,7 +439,7 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         if (inactive.has(event.id)) continue;
         game.values.fill(null);
         game.valueSourceEventIds.fill(null);
-        game.notes = Array.from({ length: 81 }, () => []);
+        game.notes = structuredClone(game.startingNotes);
         game.conflicts = [];
         game.hintedCells = [];
         game.hints = 0;

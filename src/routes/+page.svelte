@@ -20,7 +20,7 @@
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
-  import { printablePuzzleLinksAsync } from '$lib/printing/printable-puzzle';
+  import { printablePuzzleLinksAsync, type PrintablePuzzleKind } from '$lib/printing/printable-puzzle';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
     EVENT_CHANNEL_NAME,
@@ -99,6 +99,7 @@
   let systemShareAvailable = $state(false);
   let printStatus = $state<PrintStatus>('idle');
   let printGame = $state<GameProjection | null>(null);
+  let printKind = $state<PrintablePuzzleKind>('givens');
   let printPuzzleQr = $state('');
   let printWalkthroughQr = $state('');
   const preparedPrints = new Map<string, PreparedPrint>();
@@ -204,7 +205,7 @@
 
     const prepareDisplayedPuzzleForPrint = (): void => {
       if (!explicitPrintInProgress && currentGame) {
-        void preparePrintablePuzzle(currentGame).catch(() => {});
+        void preparePrintablePuzzle(currentGame, preferredPrintKind(currentGame)).catch(() => {});
       }
     };
     window.addEventListener('beforeprint', prepareDisplayedPuzzleForPrint);
@@ -259,7 +260,7 @@
   $effect(() => {
     const game = currentGame;
     if (game && typeof window !== 'undefined') {
-      void preparePrintablePuzzle(game).catch(() => {});
+      void preparePrintablePuzzle(game, preferredPrintKind(game)).catch(() => {});
     }
   });
 
@@ -441,7 +442,15 @@
     catch (error) { if ((error as DOMException).name !== 'AbortError') shareError = 'System sharing is unavailable.'; }
   }
 
-  async function printCurrentPuzzle(): Promise<void> {
+  function hasStartingCandidates(game: GameProjection): boolean {
+    return game.startingNotes.some((notes) => notes.length > 0);
+  }
+
+  function preferredPrintKind(game: GameProjection): PrintablePuzzleKind {
+    return hasStartingCandidates(game) ? 'candidates' : 'givens';
+  }
+
+  async function printCurrentPuzzle(kind: PrintablePuzzleKind): Promise<void> {
     const game = shareGame ?? currentGame;
     if (!game || printStatus === 'preparing') return;
     shareDialogOpen = false;
@@ -449,7 +458,7 @@
     announcement = 'Preparing puzzle and walkthrough for printing';
     await tick();
     try {
-      await preparePrintablePuzzle(game);
+      await preparePrintablePuzzle(game, kind);
       await tick();
       announcement = 'Printable puzzle ready';
       explicitPrintInProgress = true;
@@ -465,11 +474,16 @@
     }
   }
 
-  async function preparePrintablePuzzle(game: GameProjection): Promise<void> {
+  async function preparePrintablePuzzle(
+    game: GameProjection,
+    kind: PrintablePuzzleKind
+  ): Promise<void> {
     const request = ++printPreparationRequest;
-    const cached = preparedPrints.get(game.id);
+    const cacheKey = `${game.id}:${kind}`;
+    const cached = preparedPrints.get(cacheKey);
     if (cached) {
       printGame = game;
+      printKind = kind;
       printPuzzleQr = cached.puzzleQr;
       printWalkthroughQr = cached.walkthroughQr;
       return;
@@ -478,28 +492,33 @@
     printGame = null;
     printPuzzleQr = '';
     printWalkthroughQr = '';
-    let preparation = pendingPrints.get(game.id);
+    let preparation = pendingPrints.get(cacheKey);
     if (!preparation) {
       preparation = (async (): Promise<PreparedPrint> => {
-        const links = await printablePuzzleLinksAsync(window.location.href, game);
+        const links = await printablePuzzleLinksAsync(window.location.href, game, {}, kind);
         const [puzzleQr, walkthroughQr] = await Promise.all([
-          QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
+          QRCode.toDataURL(links.puzzle, {
+            errorCorrectionLevel: kind === 'candidates' ? 'M' : 'Q',
+            margin: 3,
+            width: kind === 'candidates' ? 600 : 360
+          }),
           QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
         ]);
         const result = { puzzleQr, walkthroughQr };
-        preparedPrints.set(game.id, result);
+        preparedPrints.set(cacheKey, result);
         return result;
       })();
-      pendingPrints.set(game.id, preparation);
+      pendingPrints.set(cacheKey, preparation);
     }
     let prepared: PreparedPrint;
     try {
       prepared = await preparation;
     } finally {
-      if (pendingPrints.get(game.id) === preparation) pendingPrints.delete(game.id);
+      if (pendingPrints.get(cacheKey) === preparation) pendingPrints.delete(cacheKey);
     }
     if (request !== printPreparationRequest) return;
     printGame = game;
+    printKind = kind;
     printPuzzleQr = prepared.puzzleQr;
     printWalkthroughQr = prepared.walkthroughQr;
   }
@@ -1151,7 +1170,13 @@
           <div class="share-choices">
             <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
             <button type="button" class="confirm" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes values, notes, time, stats, and settings in a readable link.</small></button>
-            <button type="button" onclick={printCurrentPuzzle} disabled={printStatus === 'preparing'}><strong>{printStatus === 'preparing' ? 'Preparing print…' : 'Print puzzle pair'}</strong><small>Two Letter pages: a solving sheet and a solution with walkthrough.</small></button>
+            {#if shareGame && hasStartingCandidates(shareGame)}
+              <button type="button" onclick={() => printCurrentPuzzle('candidates')} disabled={printStatus === 'preparing'}><strong>{printStatus === 'preparing' ? 'Preparing print…' : 'Print with starting candidates'}</strong><small>A fresh candidate-filled solving sheet and a solution with walkthrough.</small></button>
+              <button type="button" onclick={() => printCurrentPuzzle('givens')} disabled={printStatus === 'preparing'}><strong>Print givens only</strong><small>A blank solving sheet and a solution with walkthrough.</small></button>
+              <p class="transfer-note">Both are fresh copies. Later placements and candidate eliminations are not printed; “Share puzzle with work” carries current progress.</p>
+            {:else}
+              <button type="button" onclick={() => printCurrentPuzzle('givens')} disabled={printStatus === 'preparing'}><strong>{printStatus === 'preparing' ? 'Preparing print…' : 'Print puzzle pair'}</strong><small>Two Letter pages: a solving sheet and a solution with walkthrough.</small></button>
+            {/if}
           </div>
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
@@ -1210,5 +1235,5 @@
 </div>
 
 {#if printGame && printPuzzleQr && printWalkthroughQr}
-  <PrintablePuzzle game={printGame} puzzleQr={printPuzzleQr} walkthroughQr={printWalkthroughQr} />
+  <PrintablePuzzle game={printGame} puzzleQr={printPuzzleQr} walkthroughQr={printWalkthroughQr} kind={printKind} />
 {/if}

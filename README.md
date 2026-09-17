@@ -41,8 +41,10 @@ contract, and deterministic test evidence.
   Incoming data is validated in a worker before the user consents to one local
   import event.
 - Two-page Letter printing from the browser's Print command or the in-app
-  action: a pencil-ready grid and clean puzzle QR, followed by the solved grid
-  and a QR that opens a human-ordered instructional walkthrough.
+  action: a pencil-ready grid and matching puzzle QR, followed by the solved
+  grid and a QR that opens a human-ordered instructional walkthrough. Imported
+  candidate-ready puzzles can print either their original fixed-slot candidates
+  or a givens-only sheet.
 - An application shell service worker that supports installed offline play
   without putting puzzle records in Cache Storage.
 - Explicit memory-only and corrupt-store recovery states, plus one physical

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { difficultyLabel } from '$lib/domain/difficulty';
   import type { GameProjection } from '$lib/domain/types';
+  import type { PrintablePuzzleKind } from '$lib/printing/printable-puzzle';
 
-  let { game, puzzleQr, walkthroughQr }: {
+  let { game, puzzleQr, walkthroughQr, kind }: {
     game: GameProjection;
     puzzleQr: string;
     walkthroughQr: string;
+    kind: PrintablePuzzleKind;
   } = $props();
 
   const boardX = 98.4;
@@ -26,8 +28,8 @@
 {/snippet}
 
 <div class="print-pages" aria-hidden="true">
-  <section class="print-page print-puzzle-page">
-    <svg class="print-sheet" viewBox="0 0 816 1056" role="img" aria-label="Printable unsolved Sudoku puzzle">
+  <section class="print-page print-puzzle-page" data-print-kind={kind}>
+    <svg class="print-sheet" viewBox="0 0 816 1056" role="img" aria-label={kind === 'candidates' ? 'Printable Sudoku puzzle with starting candidates' : 'Printable unsolved Sudoku puzzle'}>
       <rect class="print-paper" width="816" height="1056" />
       <text class="print-kicker" x="61" y="58">SUDOKU</text>
       <text class="print-title" x="61" y="96">Solve this puzzle</text>
@@ -43,6 +45,16 @@
           <rect class:pattern={game.patternCells.includes(cell)} x={x} y={y} width={cellSize} height={cellSize} />
           {#if given !== '.'}
             <text class="print-digit given" x={x + cellSize / 2} y={y + cellSize / 2 + 1}>{given}</text>
+          {:else if kind === 'candidates'}
+            {#each game.startingNotes[cell] as candidate}
+              <text
+                class="print-candidate"
+                data-cell={cell}
+                data-candidate={candidate}
+                x={x + ((candidate - 1) % 3 + 0.5) * cellSize / 3}
+                y={y + (Math.floor((candidate - 1) / 3) + 0.5) * cellSize / 3}
+              >{candidate}</text>
+            {/each}
           {/if}
         {/each}
         {#each Array(10) as _, index}
@@ -51,11 +63,15 @@
         {/each}
       </g>
 
-      <rect class="print-scan-card" x="98" y="826" width="620" height="158" rx="8" />
-      <image class="print-qr" href={puzzleQr} x="122" y="833" width="144" height="144" />
-      <text class="print-scan-title" x="280" y="906">Continue on a screen</text>
-      <text class="print-scan-copy" x="280" y="932">Scan to open a fresh copy of this puzzle in Sudoku.</text>
-      <text class="print-scan-copy" x="280" y="958">Work at your own pace; no solution is encoded on this page.</text>
+      <rect class="print-scan-card" x="98" y={kind === 'candidates' ? 807 : 826} width="620" height={kind === 'candidates' ? 177 : 158} rx="8" />
+      <image class="print-qr" href={puzzleQr} x={kind === 'candidates' ? 110 : 122} y={kind === 'candidates' ? 812 : 833} width={kind === 'candidates' ? 168 : 144} height={kind === 'candidates' ? 168 : 144} />
+      <text class="print-scan-title" x={kind === 'candidates' ? 296 : 280} y={kind === 'candidates' ? 895 : 906}>Continue on a screen</text>
+      {#if kind === 'candidates'}
+        <text class="print-scan-copy" x="296" y="921">Scan to open a fresh copy with these starting candidates.</text>
+      {:else}
+        <text class="print-scan-copy" x="280" y="932">Scan to open a fresh copy of this puzzle in Sudoku.</text>
+      {/if}
+      <text class="print-scan-copy" x={kind === 'candidates' ? 296 : 280} y={kind === 'candidates' ? 947 : 958}>Work at your own pace; no solution is encoded on this page.</text>
       {@render publisherBrand()}
     </svg>
   </section>

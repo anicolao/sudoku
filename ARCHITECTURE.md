@@ -41,7 +41,7 @@ directly.
 | `src/routes/+page.svelte` | Application composition, navigation, UI commands, incoming links, sharing dialogs, and live announcements |
 | `src/lib/components/SudokuBoard.svelte` | Accessible 9×9 board rendering and cell interaction |
 | `src/lib/components/PhotoPuzzleImport.svelte` | Camera/file choice, recognition progress, editable givens review, and import consent |
-| `src/lib/components/PrintablePuzzle.svelte` | Two-page vector print surface for the clean puzzle, solution, and QR handoffs |
+| `src/lib/components/PrintablePuzzle.svelte` | Two-page vector print surface for givens-only or candidate-ready solving sheets, the solution, and QR handoffs |
 | `src/lib/domain/types.ts` | Persisted event, puzzle, settings, and projection types |
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
@@ -136,7 +136,7 @@ Current vocabulary:
 | `move/redone` | target event ID | Reactivate the latest undone action |
 | `game/paused` | empty | Freeze active elapsed time |
 | `game/resumed` | empty | Resume active elapsed time |
-| `game/restarted` | empty | Reversibly clear mutable progress within the attempt |
+| `game/restarted` | empty | Reversibly restore the attempt's origin baseline (normally blank; complete imported starting notes when present) |
 | `game/abandoned` | empty | Close an unfinished attempt |
 
 Selection, focus, highlighted peers, even/odd stripe sources, selected input
@@ -226,7 +226,13 @@ logical rating.
 
 A successful import appends one `game/imported` origin event. Shared work
 contains no source event IDs or undo stack, so undo on the recipient begins with
-moves made after import.
+moves made after import. A puzzle-link origin made entirely of note actions,
+without progress metadata, that supplies at least one resulting candidate for
+every editable cell is also projected as immutable `startingNotes`. The notes
+remain derivable from the existing origin event, so no event or storage schema
+change is required. Restart clones that baseline after clearing later values,
+notes, hints, mistakes, and completion; ordinary, partial, and mixed-work
+imports retain the empty-note baseline.
 
 History sharing exports either clean givens or the selected attempt's current
 values and notes. It does not export time, statistics, settings, that attempt's
@@ -241,7 +247,11 @@ an explicit History share remains pinned to the game selected in that dialog.
 Background walkthrough analysis yields between placements and coalesces
 duplicate requests, so preparing a difficult printout does not block play.
 The first print QR contains the original givens and optional persistent pattern
-cells, never current player work. The second starts from those givens and
+cells, never current player work. For a candidate-ready origin, its candidate
+variant also contains one grouped note-add action per editable cell and the SVG
+prints those original notes in fixed 1–9 slots. A separate givens-only variant
+remains available. Browser-native printing defaults to the candidate variant
+when that baseline exists. The second QR starts from the givens and
 repeatedly applies the same book-ordered placement analysis as live hints: Full
 House first, then the simplest supported technique. Its readable work actions
 contain the resulting complete placement order and `view=walkthrough`, so
