@@ -22,7 +22,7 @@ origin root or configured subpath. There is no application server.
         │
         ├── generation service ──→ generator worker
         │
-        ├── sharing services ──→ validation workers and local QR encoder
+        ├── sharing/printing services ──→ validation workers and local QR encoder
         │
         └── photo service ──→ local grid extraction and OCR worker
 
@@ -41,6 +41,7 @@ directly.
 | `src/routes/+page.svelte` | Application composition, navigation, UI commands, incoming links, sharing dialogs, and live announcements |
 | `src/lib/components/SudokuBoard.svelte` | Accessible 9×9 board rendering and cell interaction |
 | `src/lib/components/PhotoPuzzleImport.svelte` | Camera/file choice, recognition progress, editable givens review, and import consent |
+| `src/lib/components/PrintablePuzzle.svelte` | Two-page vector print surface for the clean puzzle, solution, and QR handoffs |
 | `src/lib/domain/types.ts` | Persisted event, puzzle, settings, and projection types |
 | `src/lib/domain/reducer.ts` | Pure deterministic replay, undo/redo stacks, terminal status, conflicts, and diagnostics |
 | `src/lib/domain/selectors.ts` | Time, remaining-digit, and other read-only calculations |
@@ -51,6 +52,7 @@ directly.
 | `src/lib/storage/indexeddb-event-store.ts` | Canonical browser repository, per-stream revisions, migration, memory-only fallback, and deletion |
 | `src/lib/storage/event-store.ts` | Flat V0/V1 document parser, legacy migration support, and framework-neutral test store |
 | `src/lib/sharing/` | Puzzle/work-link parsing, fingerprints, worker validation, and URL construction |
+| `src/lib/printing/` | Clean-puzzle and human-ordered walkthrough link construction for printing |
 | `src/lib/photo/` | Adaptive thresholding, connected-grid detection, perspective correction, cell extraction, and bundled OCR orchestration |
 | `src/service-worker.ts` | Versioned static shell installation, activation, update, and cache-first reads |
 | `tests/unit/` | Pure domain, generator, storage, migration, sharing, and compatibility evidence |
@@ -230,6 +232,16 @@ History sharing exports either clean givens or the selected attempt's current
 values and notes. It does not export time, statistics, settings, that attempt's
 event log, or any other attempt. The precise readable contract is in
 [PUZZLE_SHARING.md](PUZZLE_SHARING.md).
+
+Printing is ephemeral and appends no event. The first print QR contains the
+original givens and optional persistent pattern cells, never current player
+work. The second starts from those givens and repeatedly applies the same
+book-ordered placement analysis as live hints: Full House first, then the
+simplest supported technique. Its readable work actions contain the resulting
+complete placement order and `view=walkthrough`, so scanning opens the checked
+import at walkthrough step 1. Both QRs are encoded locally. The print-only SVG
+surface keeps grids and type vector-sharp while enforcing exactly two Letter
+pages.
 
 Photo import accepts a browser camera capture or image file up to 20 MB. The
 client downsizes it, creates an adaptive black/white mask, finds the largest

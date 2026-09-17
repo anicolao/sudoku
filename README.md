@@ -40,6 +40,9 @@ contract, and deterministic test evidence.
   progress metadata.
   Incoming data is validated in a worker before the user consents to one local
   import event.
+- Two-page Letter printing for an active puzzle: a pencil-ready grid and clean
+  puzzle QR, followed by the solved grid and a QR that opens a human-ordered
+  instructional walkthrough.
 - An application shell service worker that supports installed offline play
   without putting puzzle records in Cache Storage.
 - Explicit memory-only and corrupt-store recovery states, plus one physical

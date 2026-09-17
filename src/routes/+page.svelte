@@ -5,11 +5,12 @@
   import { checkForShellUpdate } from '$lib/shell-update';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import PhotoPuzzleImport from '$lib/components/PhotoPuzzleImport.svelte';
+  import PrintablePuzzle from '$lib/components/PrintablePuzzle.svelte';
   import { DIFFICULTY_BY_ID, DIFFICULTY_LEVELS, difficultyLabel } from '$lib/domain/difficulty';
   import { describeMove } from '$lib/domain/game-log';
   import { emptyProjection } from '$lib/domain/reducer';
   import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
-  import type { AppProjection, Digit, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
+  import type { AppProjection, Digit, GameProjection, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import {
     buildSolveWalkthroughAsync,
     countSolveWalkthroughPlacements,
@@ -19,6 +20,7 @@
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
+  import { printablePuzzleLinks } from '$lib/printing/printable-puzzle';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
     EVENT_CHANNEL_NAME,
@@ -44,6 +46,7 @@
   type ShareKind = 'puzzle' | 'work';
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
   type HintAdviceKind = 'technique' | 'cell';
+  type PrintStatus = 'idle' | 'preparing';
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -93,6 +96,10 @@
   let shareKind = $state<ShareKind>('puzzle');
   let shareCopied = $state(false);
   let systemShareAvailable = $state(false);
+  let printStatus = $state<PrintStatus>('idle');
+  let printGame = $state<GameProjection | null>(null);
+  let printPuzzleQr = $state('');
+  let printWalkthroughQr = $state('');
   let timerNow = $state(
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
@@ -412,6 +419,32 @@
     if (!navigator.share) return;
     try { await navigator.share({ title: 'Sudoku puzzle', url: shareLink }); }
     catch (error) { if ((error as DOMException).name !== 'AbortError') shareError = 'System sharing is unavailable.'; }
+  }
+
+  async function printCurrentPuzzle(): Promise<void> {
+    const game = shareGame ?? currentGame;
+    if (!game || printStatus === 'preparing') return;
+    shareDialogOpen = false;
+    printStatus = 'preparing';
+    announcement = 'Preparing puzzle and walkthrough for printing';
+    await tick();
+    try {
+      const links = printablePuzzleLinks(window.location.href, game);
+      const [puzzleQr, walkthroughQr] = await Promise.all([
+        QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
+        QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
+      ]);
+      printGame = game;
+      printPuzzleQr = puzzleQr;
+      printWalkthroughQr = walkthroughQr;
+      await tick();
+      announcement = 'Printable puzzle ready';
+      window.print();
+    } catch {
+      announcement = 'The printable puzzle could not be prepared on this device';
+    } finally {
+      printStatus = 'idle';
+    }
   }
 
   function metadata(trackElapsed = true, game = currentGame): EventMetadata {
@@ -1061,6 +1094,7 @@
           <div class="share-choices">
             <button type="button" onclick={sharePuzzleOnly}><strong>Share puzzle only</strong><small>The recipient starts with an empty board.</small></button>
             <button type="button" class="confirm" onclick={sharePuzzleWork}><strong>Share puzzle with work</strong><small>Includes values, notes, time, stats, and settings in a readable link.</small></button>
+            <button type="button" onclick={printCurrentPuzzle} disabled={printStatus === 'preparing'}><strong>{printStatus === 'preparing' ? 'Preparing print…' : 'Print puzzle pair'}</strong><small>Two Letter pages: a solving sheet and a solution with walkthrough.</small></button>
           </div>
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
@@ -1117,3 +1151,7 @@
   <nav class="primary-nav" aria-label="Primary navigation"><button type="button" aria-current={view === 'play' ? 'page' : undefined} onclick={() => { reviewedGameId = null; showView('play'); }}><span aria-hidden="true">▦</span>Play</button><button type="button" aria-current={view === 'puzzles' || view === 'photo-import' ? 'page' : undefined} onclick={() => showView('puzzles')}><span aria-hidden="true">☷</span>Puzzles</button><button type="button" aria-current={view === 'history' || view === 'walkthrough' ? 'page' : undefined} onclick={() => showView('history')}><span aria-hidden="true">◷</span>History</button><button type="button" aria-current={view === 'settings' ? 'page' : undefined} onclick={() => showView('settings')}><span aria-hidden="true">⚙</span>Settings</button></nav>
   <footer><span>Private by design</span></footer>
 </div>
+
+{#if printGame && printPuzzleQr && printWalkthroughQr}
+  <PrintablePuzzle game={printGame} puzzleQr={printPuzzleQr} walkthroughQr={printWalkthroughQr} />
+{/if}

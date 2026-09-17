@@ -318,6 +318,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .primary-nav button[aria-current='page'] { color: #4654a3; font-weight: 700; box-shadow: inset 0 -3px #4654a3; }
 .primary-nav button:disabled { opacity: .62; }
 footer { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 14px; color: #666970; background: #fffdf8; font-size: .68rem; }
+.print-pages { display: none; }
 
 @media (max-width: 599px) {
   .photo-import-card { align-items: stretch; flex-direction: column; gap: 10px; padding: 13px; }
@@ -492,4 +493,41 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .primary-nav button { min-height: 50px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; border-radius: 9px; font-size: .95rem; }
   .primary-nav button[aria-current='page'] { background: #eceefa; box-shadow: inset 3px 0 #4654a3; }
   footer { grid-column: 1; grid-row: 3; flex-direction: column; align-items: flex-start; padding: 12px 24px; border-right: 1px solid #dedcd4; }
+}
+
+@page { size: letter portrait; margin: 0; }
+
+@media print {
+  :root,
+  html,
+  body { width: auto; min-width: 0; height: auto; overflow: visible; color: #161719; background: #fff; }
+  .app-shell,
+  .dialog-backdrop,
+  #svelte-announcer { display: none !important; }
+  .print-pages { display: block; }
+  .print-page { width: 8.5in; height: 11in; break-after: page; page-break-after: always; }
+  .print-page:last-child { break-after: auto; page-break-after: auto; }
+  .print-sheet { width: 8.5in; height: 11in; display: block; font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; }
+  .print-paper,
+  .print-board-svg rect { fill: #fff; }
+  .print-board-svg rect.pattern { fill: #e8f2ef; }
+  .print-kicker { fill: #4654a3; font-size: 15px; font-weight: 700; letter-spacing: 1.5px; }
+  .print-title { fill: #161719; font-size: 36px; font-weight: 700; letter-spacing: -1px; }
+  .print-heading-rule { stroke: #343840; stroke-width: 2; }
+  .print-difficulty-pill { fill: #fff; stroke: #6f769e; stroke-width: 1; }
+  .print-difficulty { fill: #303a7d; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+  .print-board-svg line { stroke: #9b9da1; stroke-width: 1; }
+  .print-board-svg line.box-line { stroke: #20242b; stroke-width: 3; }
+  .print-digit { fill: #161719; font-size: 34px; text-anchor: middle; dominant-baseline: middle; }
+  .print-digit.given { font-weight: 700; }
+  .print-digit.answer { fill: #4654a3; font-weight: 400; }
+  .print-scan-card { fill: #fff; stroke: #b8bac0; stroke-width: 1; }
+  .print-qr { image-rendering: pixelated; }
+  .print-scan-title { fill: #20242b; font-size: 21px; font-weight: 700; }
+  .print-scan-copy { fill: #454950; font-size: 14px; }
+  .print-footer-copy,
+  .print-legend-copy { fill: #62656b; font-size: 12px; text-anchor: middle; }
+  .print-legend-copy { text-anchor: start; }
+  .print-given-key { fill: #fff; stroke: #20242b; stroke-width: 1; }
+  .print-answer-key { fill: #eef0fa; stroke: #4654a3; stroke-width: 1; }
 }

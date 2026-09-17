@@ -16,7 +16,7 @@ The player can make a readable puzzle link containing placements, grouped candid
 
 **Verifications:**
 
-- [x] Clean and readable-work choices remain distinct
+- [x] Clean, readable-work, and two-page print choices remain distinct
 
 ## The app prepares a readable puzzle-work and progress link without pausing
 

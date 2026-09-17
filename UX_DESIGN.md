@@ -192,6 +192,16 @@ nothing.
 **Abandon** closes an unfinished attempt and opens History. The final board
 remains available for read-only review and sharing.
 
+The Share dialog's **Print puzzle pair** action prepares two Letter pages
+without changing the attempt. The first is a large givens-only grid for pencil
+solving plus a QR that opens a fresh copy of the puzzle. The second distinguishes
+original givens from solved entries and adds a QR that opens at step 1 of a
+complete walkthrough. That walkthrough is generated from the original givens,
+placing Full Houses first and then the simplest available book rule at every
+step; it does not reproduce the current player's work. QR generation and
+solution ordering remain on-device. The browser's system print dialog is the
+only handoff.
+
 ## 8. Pause and completion
 
 Pause freezes active elapsed time, clears selection, and replaces the board with
