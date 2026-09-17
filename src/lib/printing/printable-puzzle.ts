@@ -15,6 +15,8 @@ export interface PrintablePuzzleLinks {
   sequence: NextSolveHint[];
 }
 
+export type PrintablePuzzleLinkVariants = Record<PrintablePuzzleKind, PrintablePuzzleLinks>;
+
 export function printablePuzzleLinks(
   base: string | URL,
   game: GameProjection,
@@ -32,6 +34,18 @@ export async function printablePuzzleLinksAsync(
 ): Promise<PrintablePuzzleLinks> {
   const sequence = await buildHumanSolveSequenceAsync(game, options);
   return printablePuzzleLinksForSequence(base, game, sequence, kind);
+}
+
+export async function printablePuzzleLinkVariantsAsync(
+  base: string | URL,
+  game: GameProjection,
+  options: AsyncWalkthroughOptions = {}
+): Promise<PrintablePuzzleLinkVariants> {
+  const sequence = await buildHumanSolveSequenceAsync(game, options);
+  return {
+    givens: printablePuzzleLinksForSequence(base, game, sequence, 'givens'),
+    candidates: printablePuzzleLinksForSequence(base, game, sequence, 'candidates')
+  };
 }
 
 function printablePuzzleLinksForSequence(
