@@ -14,7 +14,7 @@
     evenStripeOrigin,
     oddStripeOrigin,
     walkthroughTarget = null,
-    walkthroughContext = [],
+    patternCells = [],
     interactive = true,
     onselect,
     onfocuscell,
@@ -34,7 +34,7 @@
     evenStripeOrigin: number | null;
     oddStripeOrigin: number | null;
     walkthroughTarget?: number | null;
-    walkthroughContext?: number[];
+    patternCells?: number[];
     interactive?: boolean;
     onselect: (cell: number) => void;
     onfocuscell: (cell: number) => void;
@@ -82,7 +82,7 @@
       evenStripeOrigin === cell ? 'even stripe source' : '',
       oddStripeOrigin === cell ? 'odd stripe source' : '',
       walkthroughTarget === cell ? 'walkthrough target' : '',
-      walkthroughContext.includes(cell) ? 'walkthrough context' : '',
+      patternCells.includes(cell) ? 'rule pattern' : '',
       !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
   }
@@ -149,7 +149,7 @@
         class:stripe-even={evenStripeCells.has(cell)}
         class:stripe-odd={oddStripeCells.has(cell)}
         class:walkthrough-target={walkthroughTarget === cell}
-        class:walkthrough-context={walkthroughContext.includes(cell)}
+        class:walkthrough-context={patternCells.includes(cell)}
         class:box-right={column === 2 || column === 5}
         class:box-bottom={row === 2 || row === 5}
         class:last-column={column === 8}

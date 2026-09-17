@@ -100,6 +100,12 @@
   const activeGame = $derived(tabGameId ? projection.games[tabGameId] : undefined);
   const currentGame = $derived(reviewedGameId ? projection.games[reviewedGameId] : activeGame);
   const shareGame = $derived(shareGameId ? projection.games[shareGameId] : undefined);
+  const incomingHasProgress = $derived(Boolean(
+    incomingPuzzle && (
+      incomingPuzzle.work.length > 0 ||
+      (incomingPuzzle.metadata && Object.keys(incomingPuzzle.metadata).some((key) => key !== 'patternCells'))
+    )
+  ));
   const isReadOnly = $derived(
     !currentGame || currentGame.status !== 'active' || reviewedGameId !== null
   );
@@ -369,13 +375,19 @@
 
   async function sharePuzzleOnly(): Promise<void> {
     if (!shareGame) return;
-    await showShareLink(puzzleUrl(window.location.href, shareGame.puzzle.givens), 'puzzle');
+    await showShareLink(puzzleUrl(
+      window.location.href,
+      shareGame.puzzle.givens,
+      [],
+      shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : null
+    ), 'puzzle');
   }
 
   async function sharePuzzleWork(): Promise<void> {
     if (!shareGame) return;
     await showShareLink(
       puzzleUrl(window.location.href, shareGame.puzzle.givens, puzzleWorkFromGame(shareGame), {
+        ...(shareGame.patternCells.length ? { patternCells: [...shareGame.patternCells] } : {}),
         elapsedMs: elapsedAt(shareGame, timerNow),
         ...(shareGame.hintedCells.length ? { hintedCells: [...shareGame.hintedCells] } : {}),
         mistakes: shareGame.mistakes,
@@ -825,13 +837,13 @@
         {:else if incomingStatus === 'invalid'}
           <p class="dialog-symbol invalid" aria-hidden="true">!</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">This puzzle cannot be opened.</h1><p role="alert">{incomingError}</p><button type="button" class="primary-action" onclick={dismissIncoming}>Return to Sudoku</button>
         {:else if incomingPuzzle}
-          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{/if}
-          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
+          <p class="dialog-symbol valid" aria-hidden="true">✓</p><p class="eyebrow">Shared puzzle</p><h1 id="incoming-title">Shared puzzle ready</h1><p>The puzzle has one unique solution and was checked entirely on this device.</p>{#if incomingView === 'walkthrough'}<p>Opening it will analyze the shared placements and begin at placement 1.</p>{:else if incomingPuzzle.metadata?.patternCells}<p>The indicated pattern cells will stay highlighted while you solve.</p>{/if}
+          <dl class="incoming-facts" class:work-facts={incomingPuzzle.work.length > 0 || incomingPuzzle.metadata !== null}><div><dt>Rating</dt><dd>{difficultyLabel(incomingPuzzle.puzzle.difficulty)}</dd></div><div><dt>Givens</dt><dd>{incomingPuzzle.clueCount}</dd></div>{#if incomingPuzzle.work.length > 0}<div><dt>Filled</dt><dd>{incomingPuzzle.filledCount}</dd></div><div><dt>Notes</dt><dd>{incomingPuzzle.notedCellCount}</dd></div>{/if}{#if incomingPuzzle.metadata?.patternCells}<div><dt>Pattern</dt><dd>{incomingPuzzle.metadata.patternCells.length} cells</dd></div>{/if}{#if incomingHasProgress && incomingPuzzle.metadata}<div><dt>Time</dt><dd>{formatElapsed(incomingPuzzle.metadata.elapsedMs ?? 0)}</dd></div><div><dt>Hints</dt><dd>{incomingPuzzle.metadata.hintedCells?.length ?? 0}</dd></div><div><dt>Mistakes</dt><dd>{incomingPuzzle.metadata.mistakes ?? 0}</dd></div>{/if}<div><dt>Identity</dt><dd>#{incomingPuzzle.fingerprint.slice(0, 8)}</dd></div></dl>
           {#if activeGame?.status === 'active'}
             <p class="incoming-warning"><strong>A puzzle is already in progress.</strong> Opening this one will keep the current attempt in History as abandoned.</p>
             <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Keep current puzzle</button><button type="button" class="confirm" onclick={() => acceptIncoming(true)}>Abandon current and open {incomingView === 'walkthrough' ? 'walkthrough' : 'shared puzzle'}</button></div>
           {:else}
-            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingView === 'walkthrough' ? 'Open walkthrough' : incomingPuzzle.work.length > 0 || incomingPuzzle.metadata ? 'Open shared work' : 'Start this puzzle'}</button></div>
+            <div class="incoming-actions"><button type="button" onclick={dismissIncoming}>Cancel</button><button type="button" class="confirm" onclick={() => acceptIncoming()}>{incomingView === 'walkthrough' ? 'Open walkthrough' : incomingHasProgress ? 'Open shared work' : incomingPuzzle.metadata?.patternCells ? 'Start with pattern hint' : 'Start this puzzle'}</button></div>
           {/if}
         {/if}
       </section>
@@ -906,7 +918,7 @@
                 evenStripeOrigin={null}
                 oddStripeOrigin={null}
                 walkthroughTarget={walkthroughStep.targetCell}
-                walkthroughContext={walkthroughStep.contextCells}
+                patternCells={walkthroughStep.contextCells}
                 interactive={false}
                 onselect={() => {}}
                 onfocuscell={() => {}}
@@ -977,7 +989,7 @@
                 <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
               </button>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
+              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} patternCells={currentGame.patternCells} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
           </div>
 

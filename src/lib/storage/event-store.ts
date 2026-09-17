@@ -20,7 +20,8 @@ export function copyImportedPuzzleMetadata(metadata: ImportedPuzzleMetadata): Im
     ...(metadata.elapsedMs !== undefined ? { elapsedMs: metadata.elapsedMs } : {}),
     ...(metadata.hintedCells !== undefined ? { hintedCells: [...metadata.hintedCells] } : {}),
     ...(metadata.mistakes !== undefined ? { mistakes: metadata.mistakes } : {}),
-    ...(metadata.settings !== undefined ? { settings: { ...metadata.settings } } : {})
+    ...(metadata.settings !== undefined ? { settings: { ...metadata.settings } } : {}),
+    ...(metadata.patternCells !== undefined ? { patternCells: [...metadata.patternCells] } : {})
   };
 }
 

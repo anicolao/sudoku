@@ -211,6 +211,28 @@ describe('event store', () => {
     }]);
   });
 
+  it('persists format 4 pattern cells independently of mutable puzzle work', () => {
+    const storage = new MemoryStorage();
+    const generated = generateEasyPuzzle('shared-pattern-origin').puzzle;
+    const puzzle = {
+      ...generated,
+      provenance: { kind: 'puzzle-link' as const, formatVersion: 4 as const, fingerprint: 'pattern-link' }
+    };
+    const patternCells = [0, 8, 54, 62];
+    const store = new EventStore(storage);
+    const projection = store.importGame(puzzle, {
+      occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'import-pattern-1'
+    }, store.getProjection().settings, [], { patternCells });
+    const game = projection.games[projection.activeGameId ?? ''];
+
+    expect(game.patternCells).toEqual(patternCells);
+    expect(store.getDocument().events).toMatchObject([{
+      type: 'game/imported',
+      payload: { sharedMetadata: { patternCells } }
+    }]);
+    expect(new EventStore(storage).getProjection().games[game.id].patternCells).toEqual(patternCells);
+  });
+
   it('continues to replay a historical opaque-transfer import already in storage', () => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('transfer-origin').puzzle;

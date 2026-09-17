@@ -22,7 +22,7 @@ The app supports three presentations of one readable format:
 | Purpose | URL form | Contents |
 | --- | --- | --- |
 | Start a clean puzzle | `?p=<81 cells>` | Literal givens only |
-| Show puzzle work | `?p=<81 cells>_<field>...` | Givens, placements, candidates, and optional progress metadata |
+| Show puzzle work or a pattern hint | `?p=<81 cells>_<field>...` | Givens, placements, candidates, optional progress metadata, and optional persistent pattern cells |
 | Walk through shared work | `?p=<progress>&view=walkthrough` | The same progress, presented as ordered instructional placements |
 
 Neither choice represents synchronization. The recipient creates an independent
@@ -81,6 +81,7 @@ metadata      = "time=" milliseconds
               | "hints=" coordinates ("," coordinates)*
               | "mistakes=" count
               | "settings=" setting-bits
+              | "pattern=" coordinates ("," coordinates)*
 coordinates   = row column
 setting-bits  = 8 × ("0" | "1" | "-")
 ```
@@ -114,9 +115,17 @@ notes-first, bold notes, large notes, and highlight matching notes. `0` is off,
 `1` is on, and `-` omits that individual setting. At least one position must be
 included. Unknown metadata is rejected instead of ignored.
 
-The app's **Share puzzle with work** link emits time and mistakes even when
+`pattern` lists distinct cells to display with the walkthrough's pale-green
+**Rule pattern** highlight. For example, `pattern=12,18,72,78` highlights
+r1c2, r1c8, r7c2, and r7c8. Pattern cells may be given or editable and reveal
+neither a digit nor a target cell. They remain highlighted through edits,
+reloads, and restarts. A clean puzzle link may contain `pattern` without any
+work or progress fields.
+
+The app's sharing links preserve pattern cells when the source puzzle contains
+them. **Share puzzle with work** emits time and mistakes even when
 zero, emits hinted cells when there are any, and emits all eight settings. Its
-canonical order is placements and notes, then time, hints, mistakes, and the
+canonical order is placements and notes, then pattern, time, hints, mistakes, and the
 settings bundle. Hand-written links may omit any or all of these additions;
 omitted progress starts at zero and omitted settings retain the recipient's
 current preference.
@@ -172,7 +181,8 @@ when:
 - every work action satisfies the grammar, bounds, and ordered-state rules in
   section 3;
 - optional metadata has known, unique fields and valid bounds, hinted cells
-  target cells editable in the initial puzzle, and settings are booleans.
+  target cells editable in the initial puzzle, pattern cells are distinct valid
+  coordinates, and settings are booleans.
 
 After exhaustive validation, the logical solver rates the puzzle up to Master.
 If it cannot reach the same solution within that curriculum, the rating is
@@ -209,9 +219,10 @@ interface GameImportedEvent extends EventEnvelope {
 ```
 
 Clean links use puzzle-link format version 1. Work-only links use version 2 and
-carry a non-empty validated work array. A link containing any optional metadata
-uses version 3, with or without work. Replay validates the stored import again
-before constructing the game.
+carry a non-empty validated work array. A link containing the original optional
+progress metadata uses version 3, with or without work. A link containing
+`pattern` uses version 4, optionally alongside work or other metadata. Replay
+validates the stored import again before constructing the game.
 
 The persisted puzzle contains the locally derived solution so future replay is
 independent of solver changes. The reducer retains read compatibility with

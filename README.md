@@ -116,7 +116,8 @@ vocabulary, persistence rules, worker boundaries, and compatibility promises.
 
 A puzzle URL uses `?p=` followed by 81 literal givens and can optionally append
 readable placement, candidate, elapsed-time, hinted-cell, mistake-count, and
-setting fields. It does not contain the solution, source event log, undo
+setting fields. An authored link can also name cells that remain highlighted as
+a pattern hint throughout the solve. It does not contain the solution, source event log, undo
 history, device identity, or other History entries.
 
 An intentionally authored progress link may add `&view=walkthrough` to open its

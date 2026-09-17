@@ -121,13 +121,13 @@ function validImportOrigin(event: GameImportedEvent): boolean {
       Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
       validImportedWork(event.payload.puzzle, event.payload.work) &&
       (event.payload.initialView !== 'walkthrough' || event.payload.work.some((action) => action.type === 'value'));
-    if (version !== 3) return false;
+    if (version !== 3 && version !== 4) return false;
     if (event.payload.initialView !== undefined && event.payload.initialView !== 'walkthrough') return false;
     if (event.payload.initialView === 'walkthrough' &&
       (!Array.isArray(event.payload.work) || !event.payload.work.some((action) => action.type === 'value'))) return false;
     return (event.payload.work === undefined ||
       (Array.isArray(event.payload.work) && validImportedWork(event.payload.puzzle, event.payload.work))) &&
-      validImportedMetadata(event.payload.puzzle, event.payload.settings, event.payload.sharedMetadata);
+      validImportedMetadata(event.payload.puzzle, event.payload.settings, event.payload.sharedMetadata, version);
   }
   return /^[0-9a-f]{24}$/.test(event.payload.transferId ?? '') && event.payload.checkpoint !== null &&
     event.payload.work === undefined && event.payload.sharedMetadata === undefined && event.payload.initialView === undefined &&
@@ -137,12 +137,15 @@ function validImportOrigin(event: GameImportedEvent): boolean {
 function validImportedMetadata(
   puzzle: PuzzleDefinition,
   settings: GameSettings,
-  metadata: ImportedPuzzleMetadata | undefined
+  metadata: ImportedPuzzleMetadata | undefined,
+  formatVersion: 3 | 4
 ): boolean {
   if (!metadata || typeof metadata !== 'object') return false;
   const record = metadata as unknown as Record<string, unknown>;
   if (Object.keys(record).length === 0 ||
-    Object.keys(record).some((key) => !['elapsedMs', 'hintedCells', 'mistakes', 'settings'].includes(key))) return false;
+    Object.keys(record).some((key) => !['elapsedMs', 'hintedCells', 'mistakes', 'settings', 'patternCells'].includes(key))) return false;
+  if (formatVersion === 3 && metadata.patternCells !== undefined) return false;
+  if (formatVersion === 4 && metadata.patternCells === undefined) return false;
   if (metadata.elapsedMs !== undefined && (!Number.isSafeInteger(metadata.elapsedMs) ||
     metadata.elapsedMs < 0 || metadata.elapsedMs > 365 * 24 * 60 * 60 * 1_000)) return false;
   if (metadata.mistakes !== undefined && (!Number.isSafeInteger(metadata.mistakes) ||
@@ -162,6 +165,10 @@ function validImportedMetadata(
     if (metadata.hintedCells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81 ||
       puzzle.givens[cell] !== '.')) return false;
   }
+  if (metadata.patternCells !== undefined &&
+    (!Array.isArray(metadata.patternCells) || metadata.patternCells.length === 0 ||
+      new Set(metadata.patternCells).size !== metadata.patternCells.length ||
+      metadata.patternCells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81))) return false;
   return true;
 }
 
@@ -321,6 +328,9 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
         mistakes: checkpoint?.mistakes ?? (event.type === 'game/imported' ? event.payload.sharedMetadata?.mistakes : undefined) ?? 0,
         hintedCells: checkpoint ? [...checkpoint.hintedCells] :
           event.type === 'game/imported' ? [...(event.payload.sharedMetadata?.hintedCells ?? [])] : [],
+        patternCells: event.type === 'game/imported'
+          ? [...(event.payload.sharedMetadata?.patternCells ?? [])]
+          : [],
         completedAt: null
       };
       state.activeGameId = event.gameId;
