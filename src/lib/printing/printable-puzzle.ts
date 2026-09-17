@@ -40,8 +40,8 @@ function printablePuzzleLinksForSequence(
   const metadata: ImportedPuzzleMetadata | null = game.patternCells.length
     ? { patternCells: [...game.patternCells] }
     : null;
-  const puzzle = puzzleUrl(base, game.puzzle.givens, [], metadata);
-  const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, work, metadata));
+  const puzzle = puzzleUrl(base, game.puzzle.givens, [], metadata, game.puzzle);
+  const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, game.puzzle.variant === 'killer' ? [] : work, metadata, game.puzzle));
   walkthroughUrl.searchParams.set('view', 'walkthrough');
   return { puzzle, walkthrough: walkthroughUrl.toString(), sequence };
 }

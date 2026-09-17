@@ -1,3 +1,4 @@
+import { killerConflicts, puzzlePeers, validPuzzleRules } from './killer';
 import { givensAgree, isSolvedGrid, parseGrid, UNITS } from './sudoku';
 import type {
   AppProjection,
@@ -55,6 +56,7 @@ function deriveConflicts(game: GameProjection): number[] {
     }
     for (const cells of positions.values()) if (cells.length > 1) cells.forEach((cell) => conflicts.add(cell));
   }
+  if (game.puzzle.variant === 'killer') killerConflicts(board.map((v) => v ?? 0), game.puzzle.cages ?? []).forEach((cell) => conflicts.add(cell));
   return [...conflicts].sort((left, right) => left - right);
 }
 
@@ -114,6 +116,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
     if (event.payload.transferId !== null || event.payload.checkpoint !== null ||
       event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;
     const version = event.payload.puzzle.provenance.formatVersion;
+    if (event.payload.puzzle.variant === 'killer' && version !== 5) return false;
     if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
       event.payload.initialView === undefined;
     if (version === 2) return event.payload.sharedMetadata === undefined &&
@@ -121,7 +124,8 @@ function validImportOrigin(event: GameImportedEvent): boolean {
       Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
       validImportedWork(event.payload.puzzle, event.payload.work) &&
       (event.payload.initialView !== 'walkthrough' || event.payload.work.some((action) => action.type === 'value'));
-    if (version !== 3 && version !== 4) return false;
+    if (version !== 3 && version !== 4 && version !== 5) return false;
+    if ((version === 5) !== (event.payload.puzzle.variant === 'killer')) return false;
     if (event.payload.initialView !== undefined && event.payload.initialView !== 'walkthrough') return false;
     if (event.payload.initialView === 'walkthrough' &&
       (!Array.isArray(event.payload.work) || !event.payload.work.some((action) => action.type === 'value'))) return false;
@@ -138,8 +142,9 @@ function validImportedMetadata(
   puzzle: PuzzleDefinition,
   settings: GameSettings,
   metadata: ImportedPuzzleMetadata | undefined,
-  formatVersion: 3 | 4
+  formatVersion: 3 | 4 | 5
 ): boolean {
+  if (formatVersion === 5 && metadata === undefined) return true;
   if (!metadata || typeof metadata !== 'object') return false;
   const record = metadata as unknown as Record<string, unknown>;
   if (Object.keys(record).length === 0 ||
@@ -220,11 +225,8 @@ function applyMove(game: GameProjection, event: ReversibleEvent, diagnostics: st
     game.valueSourceEventIds[event.payload.cell] = event.id;
     game.notes[event.payload.cell] = [];
     if (game.settings.autoRemoveNotes) {
-      for (const unit of UNITS) {
-        if (!unit.includes(event.payload.cell)) continue;
-        for (const peer of unit) {
-          game.notes[peer] = game.notes[peer].filter((note) => note !== event.payload.value);
-        }
+      for (const peer of puzzlePeers(game.puzzle, event.payload.cell)) {
+        game.notes[peer] = game.notes[peer].filter((note) => note !== event.payload.value);
       }
     }
     return;
@@ -302,6 +304,10 @@ export function replay(events: readonly SudokuEvent[]): AppProjection {
     }
 
     if (event.type === 'game/started' || event.type === 'game/imported') {
+      if (!validPuzzleRules(event.payload.puzzle)) {
+        state.diagnostics.push('invalid-puzzle-rules');
+        continue;
+      }
       const checkpoint = event.type === 'game/imported' ? event.payload.checkpoint : null;
       if (event.type === 'game/imported' &&
         (!validImportOrigin(event) || !validImportedCheckpoint(event.payload.puzzle, event.payload.settings, checkpoint))) {

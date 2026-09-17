@@ -411,3 +411,63 @@ They were generated with the built-in image tool using a high-fidelity
 interface. Their digits and small labels are illustrative. Committed scenario
 screenshots, exact copy, Sudoku validity, semantics, and current responsive
 behaviour take precedence.
+
+## Killer: play and return
+
+The start screen and Puzzles offer Start Killer Sudoku beside classic levels.
+A short introduction explains totals and no repeated cage digits and offers
+Easy, Medium, and Hard with technique descriptions. Start constructs a fresh
+puzzle locally, with a cancellable progress dialog and retry on failure. A
+Killer starts with a varied mix of cage sizes, without givens or one-cell cages and shows dashed cages with sum labels; cell
+accessible names include the cage total and size. Normal number and note input,
+conflicts, undo/redo, erase, pause, restart, completion and local History apply.
+Killer has a distinct board and history name and retains all cage rules on reload.
+
+Acceptance story: [Play and resume Killer Sudoku](tests/e2e/027-killer-sudoku/README.md).
+
+### Killer: discover a deduction
+
+Selecting a cell enables Inspect cage. Its dialog shows remaining total, feasible
+digit sets (including placed digits), and a small 45-rule relationship when one
+is available. These are derived from placements, never from missing player notes.
+Explain next step discloses a logically justified digit and its reasoning without
+placing it. Cell only points to its location; Reveal one cell records a placement.
+Unsupported or contradictory positions show an explicit no-deduction message.
+The recorded placement walkthrough uses Killer reasoning and marks unexplained
+player placements honestly. Multi-step proofs expose each prerequisite through
+Previous reason and Next reason controls, followed by the resulting placement.
+
+### Killer: share, print, and continue offline
+
+Share puzzle only includes the full cage rules; Share puzzle with work also
+includes the current values, notes, and selected progress metadata. Incoming
+validation checks uniqueness with its cages and independently derives its
+logical difficulty; unsupported logical profiles remain unrated. Generated
+levels appear on the board, in History, and on printed sheets.
+Print puzzle pair draws vector cages on both pages. Its solution-page QR opens
+a complete logical walkthrough derived on the receiving device. The installed
+app can start, inspect, solve and resume a Killer offline.
+
+The Cage control shares the utility row at small sizes, preserving room for the
+board at narrow and zoomed viewports. Cage labels have equivalent spoken cell
+descriptions; the inspector provides readable totals and sets independently of
+board size.
+
+Acceptance story: [Take a Killer puzzle with you](tests/e2e/028-killer-sharing-print/README.md).
+
+### Killer: inspect with the keyboard
+
+The introduction and cage inspector move keyboard focus to their first control,
+contain Tab and Shift-Tab, and return focus to the opener when dismissed. Escape
+closes the dialog. The Killer acceptance story verifies starting with Enter and
+returning from cage inspection to the Cage control.
+
+Acceptance story: [Construct a Killer at your chosen difficulty](tests/e2e/029-killer-generation/README.md).
+
+### Killer: recognize the selected cage
+
+Selecting a cell by mouse or keyboard gives its entire cage a pale blue fill
+and a thicker blue dashed border. The selected cell retains its own focus
+marker, and conflicts retain their warning styling. Moving selection updates
+exactly one cage; printed puzzles remain neutral. The play-and-resume story
+includes responsive screenshots and selection checks.
