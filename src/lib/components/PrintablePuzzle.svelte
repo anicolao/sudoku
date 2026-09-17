@@ -14,6 +14,17 @@
   const cellSize = boardSize / 9;
 </script>
 
+{#snippet publisherBrand()}
+  <g class="print-brand">
+    <!-- Original publisher mark shared with the Anna's Dad Press site. -->
+    <g class="print-brand-mark" transform="translate(240 1004) scale(.32)">
+      <path d="M8 12c8-2 16 0 24 5 8-5 16-7 24-5v35c-9-1-17 1-24 6-7-5-15-7-24-6V12Z" />
+      <path d="M32 17v36M4 17v35c10-1 19 1 28 7 9-6 18-8 28-7V17M14 22c4 0 8 1 12 3m-12 5c4 0 8 1 12 3m-12 5 7 1M38 25c4-2 8-3 12-3m-12 11c4-2 8-3 12-3m-7 9 7-1" />
+    </g>
+    <text class="print-brand-copy" x="272" y="1023">Anna's Dad Press · Sudoku Learner's Library</text>
+  </g>
+{/snippet}
+
 <div class="print-pages" aria-hidden="true">
   <section class="print-page print-puzzle-page">
     <svg class="print-sheet" viewBox="0 0 816 1056" role="img" aria-label="Printable unsolved Sudoku puzzle">
@@ -44,7 +55,8 @@
       <image class="print-qr" href={puzzleQr} x="122" y="833" width="144" height="144" />
       <text class="print-scan-title" x="280" y="906">Continue on a screen</text>
       <text class="print-scan-copy" x="280" y="932">Scan to open a fresh copy of this puzzle in Sudoku.</text>
-      <text class="print-footer-copy" x="408" y="1023">Work at your own pace. No solution is encoded on this page.</text>
+      <text class="print-scan-copy" x="280" y="958">Work at your own pace; no solution is encoded on this page.</text>
+      {@render publisherBrand()}
     </svg>
   </section>
 
@@ -76,10 +88,11 @@
       <text class="print-scan-title" x="280" y="894">Open the walkthrough</text>
       <text class="print-scan-copy" x="280" y="920">Scan to replay from step 1, with the simplest available rule</text>
       <text class="print-scan-copy" x="280" y="943">and its pattern highlighted at each placement.</text>
-      <rect class="print-given-key" x="250" y="1010" width="13" height="13" />
-      <text class="print-legend-copy" x="270" y="1021">Original givens are bold.</text>
-      <rect class="print-answer-key" x="468" y="1010" width="13" height="13" />
-      <text class="print-legend-copy" x="488" y="1021">Solved entries are lighter.</text>
+      <rect class="print-given-key" x="280" y="957" width="13" height="13" />
+      <text class="print-legend-copy" x="300" y="968">Original givens are bold.</text>
+      <rect class="print-answer-key" x="476" y="957" width="13" height="13" />
+      <text class="print-legend-copy" x="496" y="968">Solved entries are lighter.</text>
+      {@render publisherBrand()}
     </svg>
   </section>
 </div>

@@ -1,6 +1,6 @@
 # Print a puzzle and its human walkthrough
 
-The browser's Print command and the in-app print action both produce two clean Letter pages: an unsolved hand-solving sheet with a link back to the puzzle, followed by its solution and a link that opens a human-ordered walkthrough at step 1.
+The browser's Print command and the in-app print action both produce two clean Letter pages: an unsolved hand-solving sheet with a link back to the puzzle, followed by its solution and a link that opens a human-ordered walkthrough at step 1. A small Anna's Dad Press and Sudoku Learner's Library footer brands both sheets without competing with the puzzle.
 
 ## The hand-solving page
 

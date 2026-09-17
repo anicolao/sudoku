@@ -20,6 +20,10 @@ test('native and in-app printing create a puzzle sheet and a solved walkthrough 
   await expect(page.locator('.print-page')).toHaveCount(2);
   await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
   await expect(page.locator('.print-solution-page')).toContainText('Open the walkthrough');
+  await expect(page.locator('.print-brand-copy')).toHaveText([
+    "Anna's Dad Press · Sudoku Learner's Library",
+    "Anna's Dad Press · Sudoku Learner's Library"
+  ]);
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'print', {
