@@ -20,7 +20,7 @@
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
   import { generateInWorker } from '$lib/generator/generation-service';
-  import { printablePuzzleLinks } from '$lib/printing/printable-puzzle';
+  import { printablePuzzleLinksAsync } from '$lib/printing/printable-puzzle';
   import type { EventMetadata } from '$lib/storage/event-store';
   import {
     EVENT_CHANNEL_NAME,
@@ -102,6 +102,7 @@
   let printPuzzleQr = $state('');
   let printWalkthroughQr = $state('');
   const preparedPrints = new Map<string, PreparedPrint>();
+  const pendingPrints = new Map<string, Promise<PreparedPrint>>();
   let printPreparationRequest = 0;
   let explicitPrintInProgress = false;
   let timerNow = $state(
@@ -477,13 +478,26 @@
     printGame = null;
     printPuzzleQr = '';
     printWalkthroughQr = '';
-    const links = printablePuzzleLinks(window.location.href, game);
-    const [puzzleQr, walkthroughQr] = await Promise.all([
-      QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
-      QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
-    ]);
-    const prepared = { puzzleQr, walkthroughQr };
-    preparedPrints.set(game.id, prepared);
+    let preparation = pendingPrints.get(game.id);
+    if (!preparation) {
+      preparation = (async (): Promise<PreparedPrint> => {
+        const links = await printablePuzzleLinksAsync(window.location.href, game);
+        const [puzzleQr, walkthroughQr] = await Promise.all([
+          QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
+          QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
+        ]);
+        const result = { puzzleQr, walkthroughQr };
+        preparedPrints.set(game.id, result);
+        return result;
+      })();
+      pendingPrints.set(game.id, preparation);
+    }
+    let prepared: PreparedPrint;
+    try {
+      prepared = await preparation;
+    } finally {
+      if (pendingPrints.get(game.id) === preparation) pendingPrints.delete(game.id);
+    }
     if (request !== printPreparationRequest) return;
     printGame = game;
     printPuzzleQr = prepared.puzzleQr;

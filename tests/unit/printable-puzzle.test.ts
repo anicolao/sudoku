@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Digit, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
 import { replay } from '../../src/lib/domain/reducer';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
-import { printablePuzzleLinks } from '../../src/lib/printing/printable-puzzle';
+import { printablePuzzleLinks, printablePuzzleLinksAsync } from '../../src/lib/printing/printable-puzzle';
 import { parseSharedPuzzlePayload } from '../../src/lib/sharing/puzzle-link';
 
 const settings = {
@@ -60,5 +60,16 @@ describe('printable puzzle links', () => {
     });
     expect(solved.join('')).toBe(puzzle.solution);
     expect(walkthrough.work).toHaveLength([...puzzle.givens].filter((given) => given === '.').length);
+  });
+
+  it('can yield between placements while preparing links in the background', async () => {
+    const game = gameFor(generateEasyPuzzle('async-print-links-seed').puzzle);
+    let yields = 0;
+    const links = await printablePuzzleLinksAsync('https://example.test/sudoku/', game, {
+      yieldControl: async () => { yields += 1; }
+    });
+
+    expect(yields).toBe(links.sequence.length + 1);
+    expect(new URL(links.walkthrough).searchParams.get('view')).toBe('walkthrough');
   });
 });
