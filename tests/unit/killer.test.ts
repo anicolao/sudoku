@@ -12,9 +12,11 @@ const examples = ['coverage-a', 'coverage-b', 'coverage-c'].map((seed) => {
 });
 
 describe('Killer rules visible in play', () => {
-  test('constructed puzzles are unique with no given digits or single-cell cages', () => {
-    for (const entry of examples) expect(solveKiller('.'.repeat(81), canonicalCages(entry.cages))).toEqual({ count: 1, solution: entry.solution });
-  });
+  test.each(examples.map((entry, index) => ({ ...entry, index })))(
+    'constructed puzzle $index has an independently proved unique solution', (entry) => {
+      expect(solveKiller('.'.repeat(81), canonicalCages(entry.cages))).toEqual({ count: 1, solution: entry.solution });
+    }, 30_000
+  );
   // Each seed performs two full constructions. Give each case its own budget,
   // allowing up to the worker budget for each run rather than a shared 5 seconds.
   test.each(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])(
