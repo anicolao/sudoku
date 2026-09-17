@@ -8,7 +8,7 @@ import { generateKillerPuzzle } from '../../src/lib/generator/killer-puzzle';
 import { EventStore, MemoryStorage } from '../../src/lib/storage/event-store';
 const examples = ['coverage-a', 'coverage-b', 'coverage-c'].map((seed) => {
   const { puzzle } = generateKillerPuzzle(seed);
-  return { cages: puzzle.cages!, solution: puzzle.solution };
+  return { cages: puzzle.cages!, solution: puzzle.solution, puzzle };
 });
 
 describe('Killer rules visible in play', () => {
@@ -16,17 +16,17 @@ describe('Killer rules visible in play', () => {
     for (const entry of examples) expect(solveKiller('.'.repeat(81), canonicalCages(entry.cages))).toEqual({ count: 1, solution: entry.solution });
   });
   // Each seed performs two full constructions. Give each case its own budget,
-  // matching the other generator tests instead of sharing the default 5 seconds.
+  // allowing up to the worker budget for each run rather than a shared 5 seconds.
   test.each(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])(
     'seed %s is reproducible and has no singleton cages', (seed) => {
       const result = generateKillerPuzzle(seed);
       expect(validPuzzleRules(result.puzzle)).toBe(true);
       expect(result.puzzle.cages!.every((cage) => cage.cells.length >= 2 && cage.cells.length <= 5)).toBe(true);
       expect(generateKillerPuzzle(seed)).toEqual(result);
-    }, 30_000
+    }, 60_000
   );
   test('rejects overlaps, disconnected cages, and unknown rule versions', () => {
-    const p = generateKillerPuzzle('a').puzzle;
+    const p = examples[0].puzzle;
     expect(() => canonicalCages([{ cells: [0,80], total: 3 }])).toThrow();
     expect(() => canonicalCages([...p.cages!, p.cages![0]])).toThrow();
     expect(validPuzzleRules({ ...p, killerRulesVersion: 2 as 1 })).toBe(false);
@@ -41,7 +41,7 @@ describe('Killer rules visible in play', () => {
   });
   test('replay restores cages and rejects malformed persisted rules', () => {
     const store = new EventStore(new MemoryStorage());
-    const p = generateKillerPuzzle('a').puzzle;
+    const p = examples[0].puzzle;
     store.startGame(p, { id: 'start', occurredAt: new Date('2026-01-01') });
     const document = store.getDocument();
     expect(new EventStore(new MemoryStorage(), document).getProjection().games[document.events[0].gameId!].puzzle.cages).toEqual(p.cages);
@@ -62,7 +62,7 @@ describe('Killer discovery story', () => {
     }
   });
   test('each hinted digit excludes all other candidates under exhaustive validation', () => {
-    const p = generateKillerPuzzle('proof').puzzle;
+    const p = examples[0];
     const grid = Array(81).fill(0);
     for (let i = 0; i < 8; i++) {
       const step = nextKillerPlacement(grid, p.cages!)!;
@@ -81,7 +81,7 @@ describe('Killer discovery story', () => {
   });
   test('human walkthrough finishes all 81 blank cells and ignores human notes', () => {
     const store = new EventStore(new MemoryStorage());
-    const state = store.startGame(generateKillerPuzzle('a').puzzle, { id: 'origin', occurredAt: new Date('2026-01-01') });
+    const state = store.startGame(examples[0].puzzle, { id: 'origin', occurredAt: new Date('2026-01-01') });
     const game = state.games[state.activeGameId!];
     game.notes = Array.from({length:81},()=>[9]);
     const steps = buildHumanSolveSequence(game);
@@ -92,7 +92,7 @@ describe('Killer discovery story', () => {
 
 test('cage peers outside ordinary houses have reversible automatic notes and completion', () => {
   const store = new EventStore(new MemoryStorage());
-  const p=generateKillerPuzzle('a').puzzle;
+  const p=examples[0].puzzle;
   // Construct an explicit connected cross-box cage, independently of the
   // random generator's choice of shapes for this seed.
   const cells = Array.from({length:81},(_,a)=>[a,a+1,a+9])

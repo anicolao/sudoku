@@ -334,13 +334,15 @@ See [E2E_GUIDE.md](E2E_GUIDE.md) for the current project matrix and
 Killer definitions carry `variant: 'killer'`, `killerRulesVersion: 1`, and a
 connected cage partition. Absent variant means classic. Validator version 4
 checks the complete Killer rules; `killer-generated` provenance has its own
-generator version 2, independent of classic generator versions. Each attempt
+generator version 3, independent of classic generator versions. Each attempt
 constructs a solved grid from empty cells and a randomized connected partition
-of two-to-five-cell cages. There are no stored Killer layouts or preset fallbacks.
+of two-to-five-cell cages. It merges compact adjacent cages while retaining
+a logical solve, then rejects layouts with more than 45% pairs, fewer than
+three triples, or fewer than three four/five-cell cages. There are no stored Killer layouts or preset fallbacks.
 The generator accepts only puzzles with a complete logical solve in exactly the
 requested Easy, Medium, or Hard band and an independent uniqueness proof.
 `killerDifficulty` and `killerRatingVersion: 1` record this separately from
-classic difficulty (`custom`). Legacy version-1 origins remain replayable.
+classic difficulty (`custom`). Legacy version-1 and version-2 origins remain replayable.
 
 Replay validates cage structure and the committed solution, derives cage
 conflicts, and removes placed digits from cage-peer notes when enabled. It

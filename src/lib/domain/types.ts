@@ -10,7 +10,7 @@ export type PuzzleDifficulty =
 export type PuzzleRating = PuzzleDifficulty | 'custom';
 
 export type PuzzleProvenance =
-  | { kind: 'killer-generated'; seed: string; generatorVersion: 1 | 2 }
+  | { kind: 'killer-generated'; seed: string; generatorVersion: 1 | 2 | 3 }
   | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
   | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3 | 4 | 5; fingerprint: string }
   | { kind: 'camera-photo'; recognizerVersion: 1; fingerprint: string }

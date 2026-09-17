@@ -1,6 +1,6 @@
 # Construct a Killer at your chosen difficulty
 
-As a solver, I can choose Easy, Medium or Hard, generate a new puzzle without givens or one-cell cages, and read the actual logical difficulty on the board and in History.
+As a solver, I can choose Easy, Medium or Hard, generate a new puzzle with a balanced mix of cage sizes and no givens or one-cell cages, and read the actual logical difficulty on the board and in History.
 
 ## Choose a technique-based Killer difficulty before construction
 
@@ -16,7 +16,7 @@ As a solver, I can choose Easy, Medium or Hard, generate a new puzzle without gi
 
 **Verifications:**
 
-- [x] The generated board records its level, version 2 provenance, and an entirely multi-cell cage partition
+- [x] The generated board records its level, version 3 provenance, and an entirely multi-cell cage partition
 
 ## Construct and play a new Hard Killer
 
@@ -24,4 +24,4 @@ As a solver, I can choose Easy, Medium or Hard, generate a new puzzle without gi
 
 **Verifications:**
 
-- [x] The generated board records its level, version 2 provenance, and an entirely multi-cell cage partition
+- [x] The generated board records its level, version 3 provenance, and an entirely multi-cell cage partition

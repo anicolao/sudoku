@@ -47,6 +47,8 @@
     onredo: () => void;
   } = $props();
 
+  const selectedCage = $derived(!stripeMode && selected !== null && game.puzzle.variant === 'killer'
+    ? game.puzzle.cages?.find((cage) => cage.cells.includes(selected)) : undefined);
   const rovingCell = $derived(selected ?? 0);
   const evenStripeCells = $derived(new Set(evenStripeOrigin === null ? [] : PEERS[evenStripeOrigin]));
   const oddStripeCells = $derived(new Set(oddStripeOrigin === null ? [] : PEERS[oddStripeOrigin]));
@@ -143,6 +145,7 @@
         class:given={given !== '.'}
         class:selected={!stripeMode && selected === cell}
         class:peer={isPeer}
+        class:cage-member={selectedCage?.cells.includes(cell) ?? false}
         class:matching={matches}
         class:number-peer={isNumberPeer}
         class:number-match={isNumberMatch}
@@ -192,7 +195,7 @@
     {/each}
     </div>
   {/each}
-  {#if game.puzzle.variant === 'killer'}<svg class="cage-overlay" viewBox="0 0 9 9" aria-hidden="true"><CageOverlay cages={game.puzzle.cages ?? []} /></svg>{/if}
+  {#if game.puzzle.variant === 'killer'}<svg class="cage-overlay" viewBox="0 0 9 9" aria-hidden="true"><CageOverlay cages={game.puzzle.cages ?? []} selectedCell={stripeMode ? null : selected} /></svg>{/if}
   <svg class="stripe-overlay" data-testid="stripe-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
     <defs>
       <pattern id="sudoku-even-stripes" width=".24" height=".24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
