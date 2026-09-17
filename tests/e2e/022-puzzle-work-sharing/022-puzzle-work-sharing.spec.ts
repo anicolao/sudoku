@@ -49,10 +49,11 @@ test('a readable puzzle link carries work and optional progress metadata', async
   await page.getByRole('button', { name: 'Share' }).click();
   await steps.step('sharing-choices', {
     description: 'The player chooses how much state to share',
-    verifications: [{ spec: 'Clean and readable-work choices remain distinct', check: async () => {
+    verifications: [{ spec: 'Clean, readable-work, and two-page print choices remain distinct', check: async () => {
       const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
       await expect(dialog.getByRole('button', { name: /Share puzzle only/ })).toBeVisible();
       await expect(dialog.getByRole('button', { name: /Share puzzle with work/ })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /Print puzzle pair/ })).toBeVisible();
     } }]
   });
 

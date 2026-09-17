@@ -3,6 +3,7 @@ import type { Digit, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/
 import {
   buildSolveWalkthrough,
   buildSolveWalkthroughAsync,
+  buildHumanSolveSequence,
   countSolveWalkthroughPlacements,
   findNextSolveHint,
   type WalkthroughBuildProgress
@@ -68,6 +69,24 @@ describe('instructional solve walkthroughs', () => {
       rule: 'full-house',
       ruleLabel: 'Full House'
     });
+  });
+
+  it('builds a complete human-ordered solve from the original givens', () => {
+    const puzzle = generateEasyPuzzle('print-walkthrough-seed').puzzle;
+    const game = replay([startEvent(puzzle)]).games[gameId];
+
+    const sequence = buildHumanSolveSequence(game);
+    const solved = [...puzzle.givens];
+    for (const step of sequence) {
+      expect(solved[step.targetCell]).toBe('.');
+      expect(step.value).toBe(Number(puzzle.solution[step.targetCell]));
+      solved[step.targetCell] = String(step.value);
+    }
+
+    expect(sequence).toHaveLength([...puzzle.givens].filter((value) => value === '.').length);
+    expect(solved.join('')).toBe(puzzle.solution);
+    expect(sequence[0]?.rule).toBe('full-house');
+    expect(sequence.every((step) => step.rule !== 'unknown-rule')).toBe(true);
   });
 
   it('jumps only between placements and uses a book rule or Unknown rule for every move', () => {

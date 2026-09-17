@@ -233,6 +233,28 @@ export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
   return { targetCell, value, ...placementExplanation(game, targetCell, value, [], false, []) };
 }
 
+export function buildHumanSolveSequence(game: GameProjection): NextSolveHint[] {
+  const solving: GameProjection = {
+    ...game,
+    values: Array<Digit | null>(81).fill(null),
+    valueSourceEventIds: Array<string | null>(81).fill(null),
+    notes: Array.from({ length: 81 }, () => []),
+    conflicts: [],
+    mistakeCells: [],
+    hintedCells: [],
+    status: 'active',
+    completedAt: null
+  };
+  const sequence: NextSolveHint[] = [];
+  for (let placement = 0; placement < 81; placement += 1) {
+    const next = findNextSolveHint(solving);
+    if (!next) return sequence;
+    sequence.push(next);
+    solving.values[next.targetCell] = next.value;
+  }
+  throw new Error('Human solve ordering did not finish within 81 placements.');
+}
+
 type PlacementReference =
   | { kind: 'event'; eventIndex: number }
   | { kind: 'shared-work'; eventIndex: number; actionIndex: number };
