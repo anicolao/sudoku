@@ -263,6 +263,13 @@ eliminations between placements, so patterns such as X-Wings highlight their
 pattern cells and explain the candidate removed from the placement cell. Share
 never generates this parameter.
 
+An authored puzzle link may carry a persistent pattern hint. Its cells use the
+same pale-green **Rule pattern** treatment as walkthrough context cells, without
+revealing a value or selecting a target. The checked-link summary discloses the
+number of marked cells before consent. Once opened, the cells remain marked as
+the player edits, reloads, or restarts the attempt, and re-sharing the puzzle
+preserves them.
+
 The Share dialog distinguishes:
 
 - **Share puzzle only** — clean givens for a fresh board;

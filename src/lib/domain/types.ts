@@ -11,7 +11,7 @@ export type PuzzleRating = PuzzleDifficulty | 'custom';
 
 export type PuzzleProvenance =
   | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
-  | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3; fingerprint: string }
+  | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3 | 4; fingerprint: string }
   | { kind: 'camera-photo'; recognizerVersion: 1; fingerprint: string }
   | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
 
@@ -99,6 +99,7 @@ export interface ImportedPuzzleMetadata {
   hintedCells?: number[];
   mistakes?: number;
   settings?: Partial<GameSettings>;
+  patternCells?: number[];
 }
 
 export interface GameImportedEvent extends EventEnvelope {
@@ -214,6 +215,7 @@ export interface GameProjection {
   hints: number;
   mistakes: number;
   hintedCells: number[];
+  patternCells: number[];
   completedAt: string | null;
 }
 

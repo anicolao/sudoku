@@ -123,7 +123,7 @@ Current vocabulary:
 | --- | --- | --- |
 | `settings/changed` | changed settings | Update device-local defaults or appearance preferences |
 | `game/started` | game ID, puzzle, settings snapshot | Start a locally generated attempt |
-| `game/imported` | import kind, puzzle, settings, optional work/metadata, and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked shared givens, transferred progress, or a reviewed camera grid |
+| `game/imported` | import kind, puzzle, settings, optional work/metadata (including persistent pattern cells), and an optional initial walkthrough view; legacy origins may contain an old checkpoint | Start from checked shared givens, transferred progress, or a reviewed camera grid |
 | `cell/value-entered` | cell, value | Place or replace a user value |
 | `cell/value-erased` | cell, value, target event ID | Replay without one exact placement and its derived effects |
 | `cell/cleared` | cell | Clear the selected editable cell when no local placement source can be targeted |
@@ -276,7 +276,8 @@ model), and revision manifest. The application contains no
 analytics, telemetry, remote fonts, hosted QR API, WebSocket, EventSource,
 beacon, or user-data endpoint.
 
-Puzzle givens, optional work, and included progress metadata in `?p=` are
+Puzzle givens, optional work, included progress metadata, and authored pattern
+cell coordinates in `?p=` are
 visible to the static host and may appear in browser history. Links contain no
 solution. The CSP and
 `Referrer-Policy: no-referrer` reinforce this boundary, and scenario 010

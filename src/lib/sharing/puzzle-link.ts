@@ -144,6 +144,17 @@ function parseMetadataToken(
     metadata.hintedCells = cells;
     return;
   }
+  if (name === 'pattern') {
+    if (!/^[1-9]{2}(,[1-9]{2})*$/.test(value)) {
+      throw new SharedPuzzleError('metadata-format', 'Shared pattern cells are invalid.');
+    }
+    const cells = value.split(',').map((coordinates) => cellFromCoordinates(coordinates[0], coordinates[1]));
+    if (new Set(cells).size !== cells.length) {
+      throw new SharedPuzzleError('metadata-format', 'Shared pattern cells cannot repeat.');
+    }
+    metadata.patternCells = cells;
+    return;
+  }
   if (name === 'settings') {
     if (!/^[01-]{8}$/.test(value) || !/[01]/.test(value)) {
       throw new SharedPuzzleError('metadata-format', 'Shared settings must contain eight 0, 1, or - values.');
@@ -266,8 +277,16 @@ function encodeSharedPuzzlePayload(
   if (metadata) {
     const metadataNames = Object.keys(metadata);
     if (metadataNames.length === 0 ||
-      metadataNames.some((name) => !['elapsedMs', 'hintedCells', 'mistakes', 'settings'].includes(name))) {
+      metadataNames.some((name) => !['elapsedMs', 'hintedCells', 'mistakes', 'settings', 'patternCells'].includes(name))) {
       throw new SharedPuzzleError('metadata-format', 'Shared metadata is invalid.');
+    }
+    if (metadata.patternCells !== undefined) {
+      if (!Array.isArray(metadata.patternCells) || metadata.patternCells.length === 0 ||
+        new Set(metadata.patternCells).size !== metadata.patternCells.length ||
+        metadata.patternCells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= 81)) {
+        throw new SharedPuzzleError('metadata-format', 'Shared pattern cells are invalid.');
+      }
+      tokens.push(`pattern=${metadata.patternCells.map(coordinatesFor).join(',')}`);
     }
     if (metadata.elapsedMs !== undefined) {
       if (!Number.isSafeInteger(metadata.elapsedMs) || metadata.elapsedMs < 0 || metadata.elapsedMs > MAX_ELAPSED_MS) {
@@ -341,7 +360,11 @@ export async function validateSharedPuzzle(payload: string): Promise<SharedPuzzl
       difficulty,
       validatorVersion: 3,
       hardestTechnique: difficulty === 'custom' ? null : logical.hardestTechnique,
-      provenance: { kind: 'puzzle-link', formatVersion: metadata ? 3 : work.length ? 2 : 1, fingerprint: digest }
+      provenance: {
+        kind: 'puzzle-link',
+        formatVersion: metadata?.patternCells ? 4 : metadata ? 3 : work.length ? 2 : 1,
+        fingerprint: digest
+      }
     },
     work,
     filledCount: values.filter((value) => value !== null).length,

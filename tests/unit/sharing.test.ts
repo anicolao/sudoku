@@ -97,13 +97,28 @@ describe('shared puzzle links', () => {
     });
   });
 
+  it('parses persistent pattern cells as format version 4 without requiring work', async () => {
+    const payload = `${GIVENS}_pattern=12,18,72,78`;
+    const parsed = parseSharedPuzzlePayload(payload);
+    const validated = await validateSharedPuzzle(payload);
+
+    expect(parsed.metadata).toEqual({ patternCells: [1, 7, 55, 61] });
+    expect(validated).toMatchObject({
+      work: [],
+      metadata: { patternCells: [1, 7, 55, 61] },
+      puzzle: { provenance: { kind: 'puzzle-link', formatVersion: 4 } }
+    });
+  });
+
   it.each([
     `${GIVENS}_time=1_time=2`,
     `${GIVENS}_future=1`,
     `${GIVENS}_settings=01x10111`,
     `${GIVENS}_settings=--------`,
     `${GIVENS}_134_hints=11`,
-    `${GIVENS}_hints=13,13`
+    `${GIVENS}_hints=13,13`,
+    `${GIVENS}_pattern=12,12`,
+    `${GIVENS}_pattern=10`
   ])('rejects invalid shared metadata: %s', async (payload) => {
     await expect(validateSharedPuzzle(payload)).rejects.toMatchObject({ code: 'metadata-format' });
   });
@@ -148,6 +163,17 @@ describe('shared puzzle links', () => {
     expect(url).toContain('time%3D75432_hints%3D13_mistakes%3D2_settings%3D1-0-----');
     expect(new URL(url).searchParams.get('p')).toBe(
       `${GIVENS}_134_time=75432_hints=13_mistakes=2_settings=1-0-----`
+    );
+  });
+
+  it('writes pattern cells before progress metadata in coordinate form', () => {
+    const url = puzzleUrl('https://example.test/sudoku/', GIVENS, [], {
+      elapsedMs: 5_000,
+      patternCells: [1, 7, 55, 61]
+    });
+
+    expect(new URL(url).searchParams.get('p')).toBe(
+      `${GIVENS}_pattern=12,18,72,78_time=5000`
     );
   });
 });

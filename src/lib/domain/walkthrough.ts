@@ -288,7 +288,12 @@ function importWithWorkPrefix(event: GameImportedEvent, actionCount: number): Ga
       puzzle: {
         ...event.payload.puzzle,
         provenance: event.payload.puzzle.provenance?.kind === 'puzzle-link'
-          ? { ...event.payload.puzzle.provenance, formatVersion: event.payload.sharedMetadata ? 3 : work.length ? 2 : 1 }
+          ? {
+              ...event.payload.puzzle.provenance,
+              formatVersion: event.payload.sharedMetadata?.patternCells
+                ? 4
+                : event.payload.sharedMetadata ? 3 : work.length ? 2 : 1
+            }
           : event.payload.puzzle.provenance
       },
       ...(work.length ? { work } : {})
