@@ -65,20 +65,23 @@ test('a candidate-ready book link prints and restarts from its supplied notes', 
 
   await page.reload();
   await expect(page.getByRole('grid')).toBeVisible();
+  await page.locator('.print-page').first().waitFor({ state: 'attached', timeout: 15_000 });
   expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
 
   const editable = STARTING_NOTES.flatMap((notes, cell) => notes.length ? [cell] : []);
   const firstCell = editable[0];
   const secondCell = editable[1];
-  await page.locator(`[data-cell="${firstCell}"]`).click();
+  const firstBoardCell = page.locator(`.sudoku-cell[data-cell="${firstCell}"]`);
+  const secondBoardCell = page.locator(`.sudoku-cell[data-cell="${secondCell}"]`);
+  await firstBoardCell.click();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  await page.getByRole('button', { name: new RegExp(`^${STARTING_NOTES[firstCell][0]},`) }).click();
+  await firstBoardCell.press(String(STARTING_NOTES[firstCell][0]));
   await page.getByRole('button', { name: 'Number', exact: true }).click();
   const solution = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '').events[0].payload.puzzle.solution as string
   );
-  await page.locator(`[data-cell="${secondCell}"]`).click();
-  await page.getByRole('button', { name: new RegExp(`^${solution[secondCell]},`) }).click();
+  await secondBoardCell.click();
+  await secondBoardCell.press(solution[secondCell]);
   expect(await renderedNotes(page)).not.toEqual(STARTING_NOTES);
 
   await page.getByRole('button', { name: 'Restart' }).click();
@@ -87,7 +90,7 @@ test('a candidate-ready book link prints and restarts from its supplied notes', 
     verifications: [
       { spec: 'The later placement and candidate elimination are removed', check: async () => {
         expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
-        await expect(page.locator(`[data-cell="${secondCell}"]`)).toHaveAccessibleName(/editable, empty/);
+        await expect(secondBoardCell).toHaveAccessibleName(/editable, empty/);
       } },
       { spec: 'Restart remains one reversible event in the same local attempt', check: async () => {
         const types = await page.evaluate(() =>
