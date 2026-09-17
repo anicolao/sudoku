@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from '$lib/actions/dialog-focus';
   import { onMount, tick } from 'svelte';
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
@@ -1252,7 +1253,7 @@
 
   {#if killerIntroOpen}
     <div class="dialog-backdrop" role="presentation">
-      <div class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-title">
+      <div use:dialogFocus class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-title">
         <h2 id="killer-title">Try Killer Sudoku</h2>
         <p>Fill every row, column and box with 1–9. Each dashed cage adds to its small printed total. Digits cannot repeat anywhere inside a cage.</p>
         <p>Start with an extreme sum or a nearly covered box. This starter collection has three checked layouts, rotated or reflected.</p>

@@ -8,7 +8,7 @@ As a solver, I can start a checked Killer puzzle, read its cage totals, make rev
 
 **Verifications:**
 
-- [x] The checked rules and cages are stored with the puzzle
+- [x] Keyboard focus enters the introduction, stays inside with Tab, and starts with Enter; checked cages are stored
 
 ## Reload restores the same cage sums and placement
 
@@ -24,7 +24,7 @@ As a solver, I can start a checked Killer puzzle, read its cage totals, make rev
 
 **Verifications:**
 
-- [x] The inspector explains remaining sum and feasible sets
+- [x] The inspector contains keyboard focus, Escape returns to Cage, and remaining sum and feasible sets are explained
 
 ## A logical hint explains a cage or positional deduction without placing it
 
