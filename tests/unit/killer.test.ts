@@ -15,14 +15,16 @@ describe('Killer rules visible in play', () => {
   test('constructed puzzles are unique with no given digits or single-cell cages', () => {
     for (const entry of examples) expect(solveKiller('.'.repeat(81), canonicalCages(entry.cages))).toEqual({ count: 1, solution: entry.solution });
   });
-  test('seeded construction is reproducible and has no singleton cages', () => {
-    for (const seed of ['a','b','c','d','e','f','g','h']) {
+  // Each seed performs two full constructions. Give each case its own budget,
+  // matching the other generator tests instead of sharing the default 5 seconds.
+  test.each(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])(
+    'seed %s is reproducible and has no singleton cages', (seed) => {
       const result = generateKillerPuzzle(seed);
       expect(validPuzzleRules(result.puzzle)).toBe(true);
       expect(result.puzzle.cages!.every((cage) => cage.cells.length >= 2 && cage.cells.length <= 5)).toBe(true);
       expect(generateKillerPuzzle(seed)).toEqual(result);
-    }
-  });
+    }, 30_000
+  );
   test('rejects overlaps, disconnected cages, and unknown rule versions', () => {
     const p = generateKillerPuzzle('a').puzzle;
     expect(() => canonicalCages([{ cells: [0,80], total: 3 }])).toThrow();

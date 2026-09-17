@@ -426,6 +426,13 @@ land a standalone rules, storage, or solver layer awaiting a later UI.
 | Choose a difficulty | As a solver, I can generate a fresh Easy, Medium, or Hard Killer without givens or singleton cages, cancel construction, and see its level in play and History. | Empty-grid construction, randomized connected partitions, exact band acceptance, independent uniqueness checks, bounded worker and retry UI, and responsive story 029. |
 | Take it with me | As a solver, I can share a clean Killer or my work, open it on another device, and print cage-preserving puzzle/solution sheets with working QR handoffs. | Versioned cage-aware links and validation, fingerprints, work and walkthrough replay, print geometry, responsive/accessibility and offline checks. |
 
+The “Choose a difficulty” story also promises reproducible construction: the
+same seed and difficulty produce the same puzzle, with no singleton cages.
+Its unit acceptance evidence covers eight seeds independently, generating each
+twice with a per-case 30-second test budget. This avoids imposing one default
+five-second timeout on sixteen constructions on slower CI runners. This test
+maintenance does not change the UI or the production worker timeout.
+
 These commits stay on one PR and each leaves its advertised story usable. The
 first commit may explicitly withhold share/print and advanced hint controls until
 their corresponding feature is delivered; it must never silently treat a Killer
