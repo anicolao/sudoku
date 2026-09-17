@@ -17,11 +17,11 @@
 {#snippet publisherBrand()}
   <g class="print-brand">
     <!-- Original publisher mark shared with the Anna's Dad Press site. -->
-    <g class="print-brand-mark" transform="translate(240 1004) scale(.32)">
+    <g class="print-brand-mark" transform="translate(397.76 992) scale(.32)">
       <path d="M8 12c8-2 16 0 24 5 8-5 16-7 24-5v35c-9-1-17 1-24 6-7-5-15-7-24-6V12Z" />
       <path d="M32 17v36M4 17v35c10-1 19 1 28 7 9-6 18-8 28-7V17M14 22c4 0 8 1 12 3m-12 5c4 0 8 1 12 3m-12 5 7 1M38 25c4-2 8-3 12-3m-12 11c4-2 8-3 12-3m-7 9 7-1" />
     </g>
-    <text class="print-brand-copy" x="272" y="1023">Anna's Dad Press · Sudoku Learner's Library</text>
+    <text class="print-brand-copy" x="408" y="1033">Anna's Dad Press · Sudoku Learner's Library</text>
   </g>
 {/snippet}
 
