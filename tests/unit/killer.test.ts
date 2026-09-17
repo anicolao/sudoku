@@ -1,3 +1,5 @@
+import { PEERS } from '../../src/lib/domain/sudoku';
+import type { Digit } from '../../src/lib/domain/types';
 import { nextKillerPlacement, solveKillerLogically, killerRelationships } from '../../src/lib/domain/killer-analysis';
 import { buildHumanSolveSequence } from '../../src/lib/domain/walkthrough';
 import { describe, expect, test } from 'vitest';
@@ -80,4 +82,30 @@ describe('Killer discovery story', () => {
     expect(steps).toHaveLength(81);
     expect(steps.every((s)=>s.rule !== 'unknown-rule')).toBe(true);
   });
+});
+
+test('cage peers outside ordinary houses have reversible automatic notes and completion', () => {
+  const store = new EventStore(new MemoryStorage());
+  const p=generateKillerPuzzle('a').puzzle;
+  let sequence=0;
+  const meta=()=>({id:`move-${++sequence}`,occurredAt:new Date('2026-01-01')});
+  let state=store.startGame(p,meta());
+  const id=state.activeGameId!;
+  const pair=p.cages!.flatMap((cage)=>cage.cells.flatMap(a=>cage.cells.map(b=>[a,b]))).find(([a,b])=>a!==b && !PEERS[a].includes(b))!;
+  expect(pair).toBeDefined();
+  const [a,b]=pair, value=Number(p.solution[a]) as Digit;
+  store.toggleNote(id,b,value,true,meta());
+  const placement=meta();
+  state=store.enterValue(id,a,value,placement);
+  expect(state.games[id].notes[b]).not.toContain(value);
+  state=store.undo(id,placement.id,meta());
+  expect(state.games[id].notes[b]).toContain(value);
+  state=store.redo(id,placement.id,meta());
+  expect(state.games[id].notes[b]).not.toContain(value);
+  state=store.eraseValue(id,a,value,placement.id,meta());
+  expect(state.games[id].notes[b]).toContain(value);
+  for(let cell=0;cell<81;cell++) state=store.enterValue(id,cell,Number(p.solution[cell]) as Digit,meta());
+  expect(state.games[id].status).toBe('complete');
+  expect(state.games[id].conflicts).toEqual([]);
+  expect(state.diagnostics).toEqual([]);
 });

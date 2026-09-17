@@ -118,6 +118,7 @@ function validImportOrigin(event: GameImportedEvent): boolean {
       event.payload.puzzle.provenance?.kind !== 'puzzle-link') return false;
     if (event.payload.startingNotesMode !== undefined && event.payload.startingNotesMode !== 'basic') return false;
     const version = event.payload.puzzle.provenance.formatVersion;
+    if (event.payload.puzzle.variant === 'killer' && version !== 5) return false;
     if (version === 1) return event.payload.work === undefined && event.payload.sharedMetadata === undefined &&
       event.payload.initialView === undefined;
     if (version === 2) return event.payload.sharedMetadata === undefined &&
@@ -125,7 +126,8 @@ function validImportOrigin(event: GameImportedEvent): boolean {
       Array.isArray(event.payload.work) && event.payload.work.length > 0 &&
       validImportedWork(event.payload.puzzle, event.payload.work) &&
       (event.payload.initialView !== 'walkthrough' || event.payload.work.some((action) => action.type === 'value'));
-    if (version !== 3 && version !== 4) return false;
+    if (version !== 3 && version !== 4 && version !== 5) return false;
+    if ((version === 5) !== (event.payload.puzzle.variant === 'killer')) return false;
     if (event.payload.initialView !== undefined && event.payload.initialView !== 'walkthrough') return false;
     if (event.payload.initialView === 'walkthrough' &&
       (!Array.isArray(event.payload.work) || !event.payload.work.some((action) => action.type === 'value'))) return false;
@@ -143,8 +145,9 @@ function validImportedMetadata(
   puzzle: PuzzleDefinition,
   settings: GameSettings,
   metadata: ImportedPuzzleMetadata | undefined,
-  formatVersion: 3 | 4
+  formatVersion: 3 | 4 | 5
 ): boolean {
+  if (formatVersion === 5 && metadata === undefined) return true;
   if (!metadata || typeof metadata !== 'object') return false;
   const record = metadata as unknown as Record<string, unknown>;
   if (Object.keys(record).length === 0 ||
