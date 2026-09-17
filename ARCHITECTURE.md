@@ -71,7 +71,7 @@ interface PuzzleDefinition {
   difficulty: PuzzleDifficulty | 'custom';
   seed?: string;
   generatorVersion?: 1 | 2;
-  validatorVersion: 1 | 2 | 3;
+  validatorVersion: 1 | 2 | 3 | 4;
   hardestTechnique: SolveTechnique | null;
   provenance?: PuzzleProvenance;
 }
