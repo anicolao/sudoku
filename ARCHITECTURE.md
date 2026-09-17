@@ -343,3 +343,10 @@ Replay validates cage structure and the committed solution, derives cage
 conflicts, and removes placed digits from cage-peer notes when enabled. It
 never regenerates cages or searches for solutions. Screen cage geometry is
 shared through `CageOverlay.svelte`.
+
+Killer generation additionally requires a complete no-guess trace. The initial
+logical engine supports exact cage assignments, naked and hidden singles after
+cage restrictions, and single-house innies/outies. Two-cell residual sums are
+exposed by the inspector without assuming they are all-different. Classic
+uniqueness techniques are not invoked for Killer. Human notes never constrain
+Killer hints. The collection is intentionally unrated until human calibration.

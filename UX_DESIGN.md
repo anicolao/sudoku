@@ -422,3 +422,14 @@ conflicts, undo/redo, erase, pause, restart, completion and local History apply.
 Killer has a distinct board and history name and retains all cage rules on reload.
 
 Acceptance story: [Play and resume Killer Sudoku](tests/e2e/027-killer-sudoku/README.md).
+
+### Killer: discover a deduction
+
+Selecting a cell enables Inspect cage. Its dialog shows remaining total, feasible
+digit sets (including placed digits), and a small 45-rule relationship when one
+is available. These are derived from placements, never from missing player notes.
+Explain next step discloses a logically justified digit and its reasoning without
+placing it. Cell only points to its location; Reveal one cell records a placement.
+Unsupported or contradictory positions show an explicit no-deduction message.
+The recorded placement walkthrough uses Killer reasoning and marks unexplained
+player placements honestly.
