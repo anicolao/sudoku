@@ -271,18 +271,23 @@ workload; clue count and cage count are not difficulty ratings.
 
 ## Generation and editorial evaluation
 
-Generator version 2 uses no stored Killer grids, cage layouts, or template
+Generator version 3 uses no stored Killer grids, cage layouts, or template
 transformations. Every attempt:
 
 1. Constructs a solved grid from an empty board with randomized backtracking.
-2. Builds a connected cage partition by randomized adjacent pairing, absorbing
-   unmatched cells and merging selected adjacent cages. Cages contain two to
-   five cells and never repeat a solution digit; totals come from that solution.
-3. Runs deterministic logical analysis and rejects candidates outside the
+2. Builds a connected cage partition by randomized adjacent pairing and
+   absorbing unmatched cells, then merges adjacent cages only while the requested
+   logical profile can still solve. Merges fit within a 3×3 bounding rectangle
+   with at most two unused rectangle cells, avoiding long or sprawling shapes.
+   Cages contain two to five cells and never repeat a solution digit.
+3. Rejects pair-dominated layouts: at most 45% of cages may have two cells;
+   at least three cages must have three cells and at least three must have four
+   or five. These are project editorial thresholds, not a universal standard.
+4. Runs deterministic logical analysis and rejects candidates outside the
    requested band, including puzzles solvable under a simpler profile.
-4. Independently proves uniqueness with the exhaustive Killer validator and
+5. Independently proves uniqueness with the exhaustive Killer validator and
    verifies that its solution matches the constructed grid.
-5. Saves the complete definition, seed, generator version, and rating version.
+6. Saves the complete definition, seed, generator version, and rating version.
 
 The three cumulative logical profiles are:
 
@@ -299,11 +304,11 @@ through a paginated reasoning viewer before the resulting placement.
 Generation is cancellable, limited to 500 attempts and a 30-second worker
 budget, and reports failure with a retry action. There is no preset fallback.
 Persisted puzzles replay their stored cages and solution without regeneration.
-Legacy generator-version-1 games remain readable without retaining old layouts.
+Legacy generator-version-1 and -2 games remain readable without retaining old layouts.
 
 The metrics below are future editorial evaluation, not implemented acceptance
-criteria. Current generation guarantees validity, uniqueness, no singletons,
-and completion within the requested logical profile; it does not claim
+criteria. Current generation guarantees validity, uniqueness, no singletons, a varied
+cage-size mix, and completion within the requested logical profile; it does not claim
 hand-crafted layout quality or publication readiness.
 
 ### Measure arithmetic grind explicitly
@@ -426,10 +431,18 @@ land a standalone rules, storage, or solver layer awaiting a later UI.
 | Choose a difficulty | As a solver, I can generate a fresh Easy, Medium, or Hard Killer without givens or singleton cages, cancel construction, and see its level in play and History. | Empty-grid construction, randomized connected partitions, exact band acceptance, independent uniqueness checks, bounded worker and retry UI, and responsive story 029. |
 | Take it with me | As a solver, I can share a clean Killer or my work, open it on another device, and print cage-preserving puzzle/solution sheets with working QR handoffs. | Versioned cage-aware links and validation, fingerprints, work and walkthrough replay, print geometry, responsive/accessibility and offline checks. |
 
+Layout and selection follow-up: as a solver, I see a varied mixture of cages
+rather than a board dominated by pairs, and selecting a cell emphasizes its
+whole cage with a pale blue fill and thicker blue dashed outline. Mouse and
+keyboard selection move that emphasis; the cell focus and conflict markers
+remain distinct. Print rendering has no selection emphasis. Stories 027 and
+029 demonstrate the UI; generated samples verify the size thresholds, logical
+rating, and independent uniqueness together.
+
 The “Choose a difficulty” story also promises reproducible construction: the
 same seed and difficulty produce the same puzzle, with no singleton cages.
 Its unit acceptance evidence covers eight seeds independently, generating each
-twice with a per-case 30-second test budget. This avoids imposing one default
+twice with a per-case 60-second test budget (two 30-second worker budgets). This avoids imposing one default
 five-second timeout on sixteen constructions on slower CI runners. This test
 maintenance does not change the UI or the production worker timeout.
 
@@ -467,6 +480,12 @@ introduction and cage inspector without focus escaping behind the dialog. This
 is covered in the same play-and-discovery acceptance scenario.
 
 ## References and boundaries of the evidence
+
+Andrew Stuart's [construction notes](https://www.sudokuwiki.org/Sudoku_Creation_and_Grading.pdf)
+explicitly reject cage grids with too many pairs and distinguish cage-based
+reasoning from ordinary Sudoku reasoning. This supports treating cage balance
+as a separate quality criterion; our numerical thresholds are our own choice.
+
 
 - [SudokuWiki Killer solver](https://www.sudokuwiki.org/killersudoku.aspx): an
   example of interleaved classic and Killer techniques, including cage splitting.

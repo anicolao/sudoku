@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('play a Killer puzzle and return to its cage rules', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
+  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read its cage totals, see the entire selected cage highlighted, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
   await expect(page.getByRole('button', { name: 'Easy', exact: true })).toBeFocused();
@@ -15,7 +16,7 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
   await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).focus();
   await page.keyboard.press('Enter');
   const board = page.getByRole('grid', { name: 'Killer Sudoku puzzle' });
-  await expect(board).toBeVisible();
+  await expect(board).toBeVisible({ timeout: 30_000 });
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1')!).events[0].payload.puzzle);
   await steps.step('killer-ready', {
     description: 'A newly constructed Easy Killer has no given digits or one-cell cages',
@@ -26,18 +27,36 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
         expect(puzzle.variant).toBe('killer');
         expect(puzzle.givens).toBe('.'.repeat(81));
         expect(puzzle.killerDifficulty).toBe('easy');
-        expect(puzzle.provenance.generatorVersion).toBe(2);
+        expect(puzzle.provenance.generatorVersion).toBe(3);
         expect(puzzle.cages.every((cage: { cells: number[] }) => cage.cells.length >= 2)).toBe(true);
         await expect(page.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);
         await expect(page.locator('[data-cell="0"]')).toHaveAttribute('aria-label', /cage total/);
       } }
     ]
   });
-  const cage = puzzle.cages.find((c: { cells: number[] }) => c.cells.length > 1);
+  const cage = puzzle.cages.find((c: { cells: number[] }) => c.cells.length >= 4);
   const [a,b] = cage.cells;
-  await page.locator(`[data-cell="${a}"]`).focus();
+  await page.locator(`[data-cell="${a}"]`).click();
+  await steps.step('selected-cage', {
+    description: 'Selecting a cell lights up its whole cage with a pale fill and stronger dashed boundary',
+    verifications: [{ spec: 'Mouse and keyboard selection move a single cage highlight without altering puzzle values', check: async () => {
+      await expect(page.locator('.cage-overlay .cage-selected')).toHaveCount(1);
+      await expect(page.locator('.sudoku-cell.cage-member')).toHaveCount(cage.cells.length);
+      const other = puzzle.cages.find((c: { cells: number[] }) => !c.cells.includes(a));
+      await page.locator(`[data-cell="${other.cells[0]}"]`).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.sudoku-cell.cage-member')).toHaveCount(other.cells.length);
+      await expect(page.locator('.cage-overlay .cage-selected')).toHaveAttribute('data-cage-total', String(other.total));
+      await page.locator(`[data-cell="${a}"]`).click();
+      await expect(page.locator('.sudoku-cell .cell-value')).toHaveCount(0);
+    } }]
+  });
+  await page.locator(`[data-cell="${a}"]`).click();
+  await expect(page.locator(`[data-cell="${a}"]`)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('1');
-  await page.locator(`[data-cell="${b}"]`).focus();
+  await expect(page.locator(`[data-cell="${a}"] .cell-value`)).toHaveText('1');
+  await page.locator(`[data-cell="${b}"]`).click();
+  await expect(page.locator(`[data-cell="${b}"]`)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('1');
   await expect(page.locator(`[data-cell="${b}"]`)).toHaveAttribute('aria-label', /conflict/);
   await page.getByRole('button', { name: /^Undo / }).click();
@@ -53,7 +72,7 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
     description: 'Reload restores the same cage sums and placement',
     verifications: [
       { spec: 'Killer identity, cage count and placed digit survive reload', check: async () => {
-        await expect(board).toBeVisible();
+        await expect(board).toBeVisible({ timeout: 30_000 });
         await expect(page.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);
         await expect(page.locator(`[data-cell="${a}"] .cell-value`)).toHaveText(puzzle.solution[a]);
       } }

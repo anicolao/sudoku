@@ -4,7 +4,7 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 test('construct fresh Killer puzzles at the chosen logical difficulty', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Construct a Killer at your chosen difficulty', 'As a solver, I can choose Easy, Medium or Hard, generate a new puzzle without givens or one-cell cages, and read the actual logical difficulty on the board and in History.');
+  steps.setMetadata('Construct a Killer at your chosen difficulty', 'As a solver, I can choose Easy, Medium or Hard, generate a new puzzle with a balanced mix of cage sizes and no givens or one-cell cages, and read the actual logical difficulty on the board and in History.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
   await steps.step('choose-killer-difficulty', {
@@ -25,12 +25,14 @@ test('construct fresh Killer puzzles at the chosen logical difficulty', async ({
     solutions.add(origin.payload.puzzle.solution);
     await steps.step(`generated-${difficulty.toLowerCase()}`, {
       description: `Construct and play a new ${difficulty} Killer`,
-      verifications: [{ spec: 'The generated board records its level, version 2 provenance, and an entirely multi-cell cage partition', check: async () => {
+      verifications: [{ spec: 'The generated board records its level, version 3 provenance, and an entirely multi-cell cage partition', check: async () => {
         const puzzle=origin.payload.puzzle;
         expect(puzzle.killerDifficulty).toBe(difficulty.toLowerCase());
         expect(puzzle.killerRatingVersion).toBe(1);
-        expect(puzzle.provenance.generatorVersion).toBe(2);
+        expect(puzzle.provenance.generatorVersion).toBe(3);
         expect(puzzle.givens).toBe('.'.repeat(81));
+        expect(puzzle.cages.filter((c:{cells:number[]})=>c.cells.length===2).length / puzzle.cages.length).toBeLessThanOrEqual(0.45);
+        expect(puzzle.cages.filter((c:{cells:number[]})=>c.cells.length>=4).length).toBeGreaterThanOrEqual(3);
         expect(puzzle.cages.every((c:{cells:number[]})=>c.cells.length>=2)).toBe(true);
         await expect(page.locator('.puzzle-heading')).toContainText(`${difficulty} Killer Sudoku`);
         await expect(page.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);

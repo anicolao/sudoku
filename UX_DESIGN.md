@@ -433,7 +433,7 @@ The start screen and Puzzles offer Start Killer Sudoku beside classic levels.
 A short introduction explains totals and no repeated cage digits and offers
 Easy, Medium, and Hard with technique descriptions. Start constructs a fresh
 puzzle locally, with a cancellable progress dialog and retry on failure. A
-Killer starts without givens or one-cell cages and shows dashed cages with sum labels; cell
+Killer starts with a varied mix of cage sizes, without givens or one-cell cages and shows dashed cages with sum labels; cell
 accessible names include the cage total and size. Normal number and note input,
 conflicts, undo/redo, erase, pause, restart, completion and local History apply.
 Killer has a distinct board and history name and retains all cage rules on reload.
@@ -478,3 +478,11 @@ closes the dialog. The Killer acceptance story verifies starting with Enter and
 returning from cage inspection to the Cage control.
 
 Acceptance story: [Construct a Killer at your chosen difficulty](tests/e2e/029-killer-generation/README.md).
+
+### Killer: recognize the selected cage
+
+Selecting a cell by mouse or keyboard gives its entire cage a pale blue fill
+and a thicker blue dashed border. The selected cell retains its own focus
+marker, and conflicts retain their warning styling. Moving selection updates
+exactly one cage; printed puzzles remain neutral. The play-and-resume story
+includes responsive screenshots and selection checks.

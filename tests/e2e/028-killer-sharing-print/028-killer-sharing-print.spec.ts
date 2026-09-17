@@ -4,12 +4,13 @@ import { PNG } from 'pngjs';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('share a Killer with work and print both cage-preserving handoffs', async ({ page, browser }, testInfo) => {
+  test.setTimeout(60_000);
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata('Take a Killer puzzle with you', 'As a solver, I can share my Killer and its work, validate it on another device, and print both the puzzle and a complete explained walkthrough with their cages.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
   await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).click();
-  await expect(page.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible();
+  await expect(page.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible({ timeout: 30_000 });
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1')!).events[0].payload.puzzle);
   await page.locator('[data-cell="0"]').focus();
   await page.keyboard.press(puzzle.solution[0]);
@@ -30,7 +31,7 @@ test('share a Killer with work and print both cage-preserving handoffs', async (
   await expect(recipient.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
   await expect(recipient.getByText('Killer · Easy')).toBeVisible();
   await recipient.getByRole('button', { name: 'Open shared work' }).click();
-  await expect(recipient.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible();
+  await expect(recipient.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible({ timeout: 30_000 });
   await expect(recipient.locator('[data-cell="0"] .cell-value')).toHaveText(puzzle.solution[0]);
   await expect(recipient.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);
   steps.usePage(recipient);
