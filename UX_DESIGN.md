@@ -411,3 +411,14 @@ They were generated with the built-in image tool using a high-fidelity
 interface. Their digits and small labels are illustrative. Committed scenario
 screenshots, exact copy, Sudoku validity, semantics, and current responsive
 behaviour take precedence.
+
+## Killer: play and return
+
+The start screen and Puzzles offer Start Killer Sudoku beside classic levels.
+A short introduction before starting explains totals and no repeated cage digits. A
+Killer starts without givens and shows dashed cages with sum labels; cell
+accessible names include the cage total and size. Normal number and note input,
+conflicts, undo/redo, erase, pause, restart, completion and local History apply.
+Killer has a distinct board and history name and retains all cage rules on reload.
+
+Acceptance story: [Play and resume Killer Sudoku](tests/e2e/027-killer-sudoku/README.md).

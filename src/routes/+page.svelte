@@ -56,6 +56,7 @@
   let persistenceStatus = $state<PersistenceStatus>('checking');
   let generationStatus = $state<GenerationStatus>('idle');
   let generationError = $state('');
+  let killerIntroOpen = $state(false);
   let store = $state<IndexedDbEventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
@@ -258,7 +259,7 @@
 
   $effect(() => {
     const game = currentGame;
-    if (game && typeof window !== 'undefined') {
+    if (game && game.puzzle.variant !== 'killer' && typeof window !== 'undefined') {
       void preparePrintablePuzzle(game).catch(() => {});
     }
   });
@@ -515,12 +516,12 @@
     };
   }
 
-  async function generatePuzzle(): Promise<void> {
+  async function generatePuzzle(variant: 'classic' | 'killer' = 'classic'): Promise<void> {
     generationStatus = 'generating';
     generationError = '';
     try {
       const seed = import.meta.env.VITE_E2E_MODE === '1' ? 'walkthrough-seed' : crypto.randomUUID();
-      const { puzzle } = await generateInWorker(selectedDifficulty, seed);
+      const { puzzle } = await generateInWorker(selectedDifficulty, seed, { variant });
       if (!store) throw new Error('Puzzle storage is not ready');
       const result = await store.startGame(puzzle, metadata(false));
       if (!applyCommit(result, 'New puzzle ready')) throw new Error('Puzzle generation overlapped another tab');
@@ -699,7 +700,8 @@
 
   function handleGlobalKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return;
-    if (hintDialogOpen) closeHintDialog();
+    if (killerIntroOpen) killerIntroOpen = false;
+    else if (hintDialogOpen) closeHintDialog();
     else if (clearDialogOpen) clearDialogOpen = false;
     else if (shareDialogOpen) shareDialogOpen = false;
   }
@@ -962,9 +964,9 @@
           <div class="history-list">
             {#each historyGames.slice(historyPage, historyPage + 1) as game}
               <article class="history-card" data-game-id={game.id}>
-                <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
+                <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openShareDialog(game.id)}>Share</button><button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
               </article>
             {/each}
           </div>
@@ -1051,9 +1053,9 @@
       <section class="library-view" aria-labelledby="puzzles-title">
         <div class="library-heading"><p class="eyebrow">Generated here</p><h1 id="puzzles-title">Puzzles</h1><p>Choose any chapter level. Every puzzle is generated and rated entirely on this device.</p></div>
         <div class="generation-panel" data-e2e-no-clip>
-            <fieldset class="difficulty-picker"><legend>Puzzle level</legend><div>{#each DIFFICULTY_LEVELS as level}<button type="button" aria-pressed={selectedDifficulty === level.id} onclick={() => selectDifficulty(level.id)}><strong>{level.label}</strong><small>Chapter {level.chapter}</small></button>{/each}</div></fieldset>
+            <fieldset class="difficulty-picker"><legend>Puzzle level</legend><div>{#each DIFFICULTY_LEVELS as level}<button type="button" aria-pressed={selectedDifficulty === level.id} onclick={() => selectDifficulty(level.id)}><strong>{level.label}</strong><small>Chapter {level.chapter}</small></button>{/each}<button type="button" aria-label="Start Killer Sudoku" onclick={() => killerIntroOpen = true}><strong>Killer</strong><small>Cage sums</small></button></div></fieldset>
             <p class="level-summary" aria-live="polite"><strong>{selectedLevel.label}</strong> · {selectedLevel.summary}</p>
-            <button class="primary-action compact" type="button" onclick={generatePuzzle} disabled={generationStatus === 'generating'}>{generationStatus === 'generating' ? 'Generating and rating…' : `Generate ${selectedLevel.label} puzzle`}</button>
+            <button class="primary-action compact" type="button" onclick={() => generatePuzzle()} disabled={generationStatus === 'generating'}>{generationStatus === 'generating' ? 'Generating and rating…' : `Generate ${selectedLevel.label} puzzle`}</button>
             {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
             {#if activeGame?.status === 'active'}<p class="local-note">Generating another puzzle keeps this one available in History.</p>{/if}
         </div>
@@ -1065,7 +1067,7 @@
     {:else if currentGame}
       <section class="play-view" aria-labelledby="puzzle-title">
         <div class="puzzle-heading">
-          <div><p class="eyebrow">{difficultyLabel(currentGame.puzzle.difficulty)} puzzle</p><h1 id="puzzle-title">{currentGame.status === 'complete' ? 'Puzzle complete' : currentGame.status === 'abandoned' ? 'Past attempt' : currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
+          <div><p class="eyebrow">{currentGame.puzzle.variant === 'killer' ? 'Killer Sudoku' : difficultyLabel(currentGame.puzzle.difficulty)} puzzle</p><h1 id="puzzle-title">{currentGame.status === 'complete' ? 'Puzzle complete' : currentGame.status === 'abandoned' ? 'Past attempt' : currentGame.paused ? 'Take your time.' : 'Ready when you are.'}</h1></div>
           <div class="session-status">
             {#if currentGame.settings.showTimer}<span class="timer" aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>{/if}
             {#if currentGame.status === 'active' && !reviewedGameId}<button type="button" class="pause-action" onclick={togglePause}>{currentGame.paused ? 'Resume' : 'Pause'}</button>{/if}
@@ -1113,9 +1115,9 @@
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
               <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
-              <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly}>Hint</button>
+              <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly || currentGame.puzzle.variant === 'killer'}>Hint</button>
             </div>
-            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
+            {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" disabled={currentGame.puzzle.variant === 'killer'} onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
               <section class="completion-panel" aria-labelledby="complete-title"><h2 id="complete-title">Puzzle complete</h2><p>{difficultyLabel(currentGame.puzzle.difficulty)} · {elapsedLabel} · {currentGame.mistakes} {currentGame.mistakes === 1 ? 'mistake' : 'mistakes'} · {currentGame.hints} {currentGame.hints === 1 ? 'hint' : 'hints'}</p><div><button type="button" onclick={() => showView('history')}>View history</button><button type="button" onclick={() => showView('puzzles')}>Choose another puzzle</button></div></section>
             {/if}
@@ -1129,12 +1131,12 @@
           <p class="eyebrow">Five chapter levels · generated here</p><h1 id="welcome-title">A quiet place to solve.</h1>
           <p class="introduction">Sudoku creates and validates each puzzle entirely on this device. No account, tracking, or connection required.</p>
           <ul class="proof-list" aria-label="Puzzle promises"><li><span aria-hidden="true">✓</span> Unique solution</li><li><span aria-hidden="true">✓</span> No guessing required</li><li><span aria-hidden="true">✓</span> Ready for offline play</li></ul>
-          <fieldset class="difficulty-picker"><legend>Puzzle level</legend><div>{#each DIFFICULTY_LEVELS as level}<button type="button" aria-pressed={selectedDifficulty === level.id} onclick={() => selectDifficulty(level.id)}><strong>{level.label}</strong><small>Chapter {level.chapter}</small></button>{/each}</div></fieldset>
+          <fieldset class="difficulty-picker"><legend>Puzzle level</legend><div>{#each DIFFICULTY_LEVELS as level}<button type="button" aria-pressed={selectedDifficulty === level.id} onclick={() => selectDifficulty(level.id)}><strong>{level.label}</strong><small>Chapter {level.chapter}</small></button>{/each}<button type="button" aria-label="Start Killer Sudoku" onclick={() => killerIntroOpen = true}><strong>Killer</strong><small>Cage sums</small></button></div></fieldset>
           <p class="level-summary" aria-live="polite"><strong>{selectedLevel.label}</strong> · {selectedLevel.summary}</p>
           {#if generationStatus === 'generating'}
             <button class="primary-action" type="button" disabled aria-busy="true">Generating and validating…</button>
           {:else}
-            <button class="primary-action" type="button" onclick={generatePuzzle}>{generationStatus === 'failed' ? `Retry ${selectedLevel.label}` : `Generate ${selectedLevel.label} puzzle`}</button>
+            <button class="primary-action" type="button" onclick={() => generatePuzzle()}>{generationStatus === 'failed' ? `Retry ${selectedLevel.label}` : `Generate ${selectedLevel.label} puzzle`}</button>
           {/if}
           {#if generationError}<p class="generation-error" role="alert">{generationError}</p>{/if}
           <p class="local-note">The puzzle and its solution never leave this browser.</p>
@@ -1163,6 +1165,18 @@
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
         {/if}
+      </div>
+    </div>
+  {/if}
+
+  {#if killerIntroOpen}
+    <div class="dialog-backdrop" role="presentation">
+      <div class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-title">
+        <h2 id="killer-title">Try Killer Sudoku</h2>
+        <p>Fill every row, column and box with 1–9. Each dashed cage adds to its small printed total. Digits cannot repeat anywhere inside a cage.</p>
+        <p>Start with an extreme sum or a nearly covered box. This starter collection has three checked layouts, rotated or reflected.</p>
+        <button class="killer-start" type="button" disabled={generationStatus === 'generating'} onclick={() => { killerIntroOpen = false; void generatePuzzle('killer'); }}>Start Killer puzzle</button>
+        <button class="text-action" type="button" onclick={() => killerIntroOpen = false}>Cancel</button>
       </div>
     </div>
   {/if}
