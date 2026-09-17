@@ -545,3 +545,10 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
 .killer-board[data-notes-large='true'] .cell-notes { font-size: min(23cqw, 23cqh); }
 .killer-start { min-height: 44px; padding: 8px 16px; border: 1px solid #4654a3; border-radius: 8px; background: white; color: #303a7d; font-weight: 700; cursor: pointer; }
 .killer-rules { color: #565a62; font-size: .85rem; line-height: 1.4; }
+.cage-combinations { font-variant-numeric: tabular-nums; }
+.cage-pages { display: flex; gap: 8px; }
+.cage-pages button { min-width: 44px; min-height: 44px; }
+.cage-inspect { font-size: .82rem; }
+@media (max-width: 599px) {
+  .app-shell.playing:has(.killer-board) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 420px), 540px); }
+}

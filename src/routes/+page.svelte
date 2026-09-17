@@ -3,6 +3,7 @@
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
   import { checkForShellUpdate } from '$lib/shell-update';
+  import KillerInspector from '$lib/components/KillerInspector.svelte';
   import SudokuBoard from '$lib/components/SudokuBoard.svelte';
   import PhotoPuzzleImport from '$lib/components/PhotoPuzzleImport.svelte';
   import PrintablePuzzle from '$lib/components/PrintablePuzzle.svelte';
@@ -59,6 +60,8 @@
   let generationStatus = $state<GenerationStatus>('idle');
   let generationError = $state('');
   let killerIntroOpen = $state(false);
+  let cageInspectorOpen = $state(false);
+  let hintMessage = $state('');
   let store = $state<IndexedDbEventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
@@ -756,7 +759,8 @@
 
   function handleGlobalKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return;
-    if (killerIntroOpen) killerIntroOpen = false;
+    if (cageInspectorOpen) cageInspectorOpen = false;
+    else if (killerIntroOpen) killerIntroOpen = false;
     else if (hintDialogOpen) closeHintDialog();
     else if (clearDialogOpen) clearDialogOpen = false;
     else if (shareDialogOpen) shareDialogOpen = false;
@@ -786,7 +790,7 @@
   async function confirmHint(): Promise<void> {
     if (!store || !currentGame || isReadOnly || currentGame.paused) return;
     const advice = findNextSolveHint(currentGame);
-    if (!advice) return;
+    if (!advice) { hintMessage = 'No supported deduction is available. Check conflicts or continue solving manually.'; return; }
     const result = await store.revealHint(currentGame.id, advice.targetCell, advice.value, metadata());
     if (!applyCommit(result, `Hint revealed ${advice.value} in row ${Math.floor(advice.targetCell / 9) + 1}, column ${(advice.targetCell % 9) + 1}`)) return;
     selectedCell = advice.targetCell;
@@ -796,6 +800,7 @@
   function openHintDialog(): void {
     hintAdviceKind = null;
     hintAdvice = null;
+    hintMessage = '';
     hintDialogOpen = true;
   }
 
@@ -808,7 +813,7 @@
   function showHintAdvice(kind: HintAdviceKind): void {
     if (!currentGame || isReadOnly || currentGame.paused) return;
     const advice = findNextSolveHint(currentGame);
-    if (!advice) return;
+    if (!advice) { hintMessage = 'No supported deduction is available. Check conflicts or continue solving manually.'; return; }
     hintAdviceKind = kind;
     hintAdvice = advice;
     if (kind === 'cell') {
@@ -1022,7 +1027,7 @@
               <article class="history-card" data-game-id={game.id}>
                 <div><span class={`history-state ${game.status}`}>{game.status === 'complete' ? 'Solved' : game.status === 'abandoned' ? 'Abandoned' : 'In progress'}</span><h2>{game.puzzle.variant === 'killer' ? 'Killer' : difficultyLabel(game.puzzle.difficulty)} #{game.puzzle.id.slice(-8)}</h2></div>
                 <dl><div><dt>Time</dt><dd>{formatElapsed(elapsedAt(game, timerNow))}</dd></div><div><dt>Mistakes</dt><dd>{game.mistakes}</dd></div><div><dt>Hints</dt><dd>{game.hints}</dd></div></dl>
-                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openShareDialog(game.id)}>Share</button><button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
+                <div class="card-actions"><button type="button" onclick={() => reviewGame(game.id)}>{game.status === 'active' ? 'Open puzzle' : 'Review board'}</button>{#if game.status !== 'active'}<button type="button" onclick={() => startOver(game.id)}>Start over</button>{/if}<button type="button" disabled={game.puzzle.variant === 'killer'} onclick={() => openShareDialog(game.id)}>Share</button><button type="button" onclick={() => openWalkthrough(game.id)}>Walkthrough</button></div>
               </article>
             {/each}
           </div>
@@ -1167,11 +1172,12 @@
               {#if inputMode === 'notes'}<button type="button" class="all-notes" onclick={fillAllNotes} disabled={!canFillAllNotes} aria-label="All notes"><strong>All</strong></button>{/if}
             </div>
             {/if}
+            {#if currentGame.puzzle.variant === 'killer'}<button class="killer-start cage-inspect" type="button" disabled={selectedCell === null || currentGame.paused} onclick={() => cageInspectorOpen = true}>{selectedCell === null ? 'Select a cell to inspect its cage' : 'Inspect cage'}</button>{/if}
             <div class="utility-actions">
               <button type="button" onclick={undo} disabled={!undoMove || currentGame.paused} aria-label={undoMove ? `Undo ${describeMove(undoMove)}` : 'Undo'}>Undo</button>
               <button type="button" onclick={redo} disabled={!redoMove || currentGame.paused} aria-label={redoMove ? `Redo ${describeMove(redoMove)}` : 'Redo'}>Redo</button>
               <button type="button" onclick={eraseCell} disabled={!canErase}>Erase</button>
-              <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly || currentGame.puzzle.variant === 'killer'}>Hint</button>
+              <button type="button" onclick={openHintDialog} disabled={currentGame.paused || isReadOnly}>Hint</button>
             </div>
             {#if currentGame.status === 'active' && !reviewedGameId}<div class="game-management"><button type="button" disabled={currentGame.puzzle.variant === 'killer'} onclick={() => openShareDialog(currentGame.id)}>Share</button><button type="button" onclick={restartGame}>Restart</button><button type="button" onclick={abandonGame}>Abandon</button></div>{/if}
             {#if currentGame.status === 'complete'}
@@ -1231,6 +1237,10 @@
     </div>
   {/if}
 
+  {#if cageInspectorOpen && currentGame && selectedCell !== null && !currentGame.paused}
+    <KillerInspector game={currentGame} cell={selectedCell} onclose={() => cageInspectorOpen = false} />
+  {/if}
+
   {#if killerIntroOpen}
     <div class="dialog-backdrop" role="presentation">
       <div class="hint-dialog" role="dialog" aria-modal="true" aria-labelledby="killer-title">
@@ -1251,7 +1261,7 @@
           <h2 id="hint-title">{hintAdviceKind === 'technique'
             ? hintAdvice.rule === 'unknown-rule' ? 'No listed technique found' : `Try ${hintAdvice.ruleLabel}`
             : `Try r${Math.floor(hintAdvice.targetCell / 9) + 1}c${(hintAdvice.targetCell % 9) + 1}`}</h2>
-          <p>{hintAdviceKind === 'technique'
+          <p>{currentGame?.puzzle.variant === 'killer' ? (hintAdviceKind === 'technique' ? hintAdvice.explanation : 'That cell is ready to solve. Its number is still yours to find.') : hintAdviceKind === 'technique'
             ? hintAdvice.rule === 'unknown-rule'
               ? 'The current position is not accounted for by the book rules yet.'
               : 'This is the simplest book rule that can produce a placement from the current board.'
@@ -1261,9 +1271,10 @@
           <p class="dialog-symbol" aria-hidden="true">◆</p>
           <h2 id="hint-title">Choose a hint</h2>
           <p>How much help would you like?</p>
+          {#if hintMessage}<p role="status">{hintMessage}</p>{/if}
           <div class="hint-choices">
             <button type="button" onclick={fillBasicCandidates}><strong>Fill basic candidates</strong><small>Add every candidate allowed by the current row, column, and box.</small></button>
-            <button type="button" onclick={() => showHintAdvice('technique')}><strong>Technique only</strong><small>Name the simplest book rule to try.</small></button>
+            <button type="button" onclick={() => showHintAdvice('technique')}><strong>{currentGame?.puzzle.variant === 'killer' ? 'Explain next step' : 'Technique only'}</strong><small>{currentGame?.puzzle.variant === 'killer' ? 'Show its reasoning and digit without placing it.' : 'Name the simplest book rule to try.'}</small></button>
             <button type="button" onclick={() => showHintAdvice('cell')}><strong>Cell only</strong><small>Point to the next cell without showing its number.</small></button>
             <button type="button" class="confirm" onclick={confirmHint}><strong>Reveal one cell</strong><small>Place its correct number and record the hint.</small></button>
           </div>
