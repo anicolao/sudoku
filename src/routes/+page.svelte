@@ -47,6 +47,7 @@
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
   type HintAdviceKind = 'technique' | 'cell';
   type PrintStatus = 'idle' | 'preparing';
+  type PreparedPrint = { puzzleQr: string; walkthroughQr: string };
 
   const digits: Digit[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -100,6 +101,9 @@
   let printGame = $state<GameProjection | null>(null);
   let printPuzzleQr = $state('');
   let printWalkthroughQr = $state('');
+  const preparedPrints = new Map<string, PreparedPrint>();
+  let printPreparationRequest = 0;
+  let explicitPrintInProgress = false;
   let timerNow = $state(
     import.meta.env.VITE_E2E_MODE === '1' ? new Date('2026-08-16T12:00:00.000Z') : new Date()
   );
@@ -197,6 +201,14 @@
     window.addEventListener('focus', refresh);
     cleanup.push(() => window.removeEventListener('focus', refresh));
 
+    const prepareDisplayedPuzzleForPrint = (): void => {
+      if (!explicitPrintInProgress && currentGame) {
+        void preparePrintablePuzzle(currentGame).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeprint', prepareDisplayedPuzzleForPrint);
+    cleanup.push(() => window.removeEventListener('beforeprint', prepareDisplayedPuzzleForPrint));
+
     void (async () => {
       const loaded = await loadIndexedDbEventStore(
         localStorage,
@@ -241,6 +253,13 @@
       eventChannel = null;
       cleanup.forEach((dispose) => dispose());
     };
+  });
+
+  $effect(() => {
+    const game = currentGame;
+    if (game && typeof window !== 'undefined') {
+      void preparePrintablePuzzle(game).catch(() => {});
+    }
   });
 
   function selectTabGame(gameId: string | null): void {
@@ -429,22 +448,46 @@
     announcement = 'Preparing puzzle and walkthrough for printing';
     await tick();
     try {
-      const links = printablePuzzleLinks(window.location.href, game);
-      const [puzzleQr, walkthroughQr] = await Promise.all([
-        QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
-        QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
-      ]);
-      printGame = game;
-      printPuzzleQr = puzzleQr;
-      printWalkthroughQr = walkthroughQr;
+      await preparePrintablePuzzle(game);
       await tick();
       announcement = 'Printable puzzle ready';
-      window.print();
+      explicitPrintInProgress = true;
+      try {
+        window.print();
+      } finally {
+        explicitPrintInProgress = false;
+      }
     } catch {
       announcement = 'The printable puzzle could not be prepared on this device';
     } finally {
       printStatus = 'idle';
     }
+  }
+
+  async function preparePrintablePuzzle(game: GameProjection): Promise<void> {
+    const request = ++printPreparationRequest;
+    const cached = preparedPrints.get(game.id);
+    if (cached) {
+      printGame = game;
+      printPuzzleQr = cached.puzzleQr;
+      printWalkthroughQr = cached.walkthroughQr;
+      return;
+    }
+
+    printGame = null;
+    printPuzzleQr = '';
+    printWalkthroughQr = '';
+    const links = printablePuzzleLinks(window.location.href, game);
+    const [puzzleQr, walkthroughQr] = await Promise.all([
+      QRCode.toDataURL(links.puzzle, { errorCorrectionLevel: 'Q', margin: 3, width: 360 }),
+      QRCode.toDataURL(links.walkthrough, { errorCorrectionLevel: 'Q', margin: 3, width: 360 })
+    ]);
+    const prepared = { puzzleQr, walkthroughQr };
+    preparedPrints.set(game.id, prepared);
+    if (request !== printPreparationRequest) return;
+    printGame = game;
+    printPuzzleQr = prepared.puzzleQr;
+    printWalkthroughQr = prepared.walkthroughQr;
   }
 
   function metadata(trackElapsed = true, game = currentGame): EventMetadata {

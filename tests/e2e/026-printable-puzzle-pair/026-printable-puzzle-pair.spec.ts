@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
 
-test('printing creates a puzzle sheet and a solved walkthrough sheet', async ({ page }, testInfo) => {
+test('native and in-app printing create a puzzle sheet and a solved walkthrough sheet', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'The printable Letter pages need only one desktop rendering.');
 
   await page.goto('/');
@@ -14,6 +14,13 @@ test('printing creates a puzzle sheet and a solved walkthrough sheet', async ({ 
       solution: string;
     }
   );
+
+  // The print surface is ready before the in-app print action, so Cmd/Ctrl-P and
+  // the browser menu produce the same pair of pages.
+  await expect(page.locator('.print-page')).toHaveCount(2);
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await expect(page.locator('.print-solution-page')).toContainText('Open the walkthrough');
+
   await page.evaluate(() => {
     Object.defineProperty(window, 'print', {
       configurable: true,

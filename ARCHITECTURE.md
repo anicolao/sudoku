@@ -233,12 +233,17 @@ values and notes. It does not export time, statistics, settings, that attempt's
 event log, or any other attempt. The precise readable contract is in
 [PUZZLE_SHARING.md](PUZZLE_SHARING.md).
 
-Printing is ephemeral and appends no event. The first print QR contains the
-original givens and optional persistent pattern cells, never current player
-work. The second starts from those givens and repeatedly applies the same
-book-ordered placement analysis as live hints: Full House first, then the
-simplest supported technique. Its readable work actions contain the resulting
-complete placement order and `view=walkthrough`, so scanning opens the checked
+Printing is ephemeral and appends no event. The app prepares and caches the
+two print QRs whenever the displayed game changes, so the browser's ordinary
+Print command produces the same pages as the in-app print action. A
+`beforeprint` listener synchronously selects an already prepared displayed game;
+an explicit History share remains pinned to the game selected in that dialog.
+The first print QR contains the original givens and optional persistent pattern
+cells, never current player work. The second starts from those givens and
+repeatedly applies the same book-ordered placement analysis as live hints: Full
+House first, then the simplest supported technique. Its readable work actions
+contain the resulting complete placement order and `view=walkthrough`, so
+scanning opens the checked
 import at walkthrough step 1. Both QRs are encoded locally. The print-only SVG
 surface keeps grids and type vector-sharp while enforcing exactly two Letter
 pages.

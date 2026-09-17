@@ -73,7 +73,7 @@
 
       <rect class="print-scan-card" x="98" y="826" width="620" height="158" rx="8" />
       <image class="print-qr" href={walkthroughQr} x="122" y="833" width="144" height="144" />
-      <text class="print-scan-title" x="280" y="894">See the human solve</text>
+      <text class="print-scan-title" x="280" y="894">Open the walkthrough</text>
       <text class="print-scan-copy" x="280" y="920">Scan to replay from step 1, with the simplest available rule</text>
       <text class="print-scan-copy" x="280" y="943">and its pattern highlighted at each placement.</text>
       <rect class="print-given-key" x="250" y="1010" width="13" height="13" />
