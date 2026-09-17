@@ -234,7 +234,17 @@ export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
 }
 
 export function buildHumanSolveSequence(game: GameProjection): NextSolveHint[] {
-  const solving: GameProjection = {
+  const solving = humanSolveStart(game);
+  const sequence: NextSolveHint[] = [];
+  for (let placement = 0; placement < 81; placement += 1) {
+    const next = appendNextHumanPlacement(solving, sequence);
+    if (!next) return sequence;
+  }
+  throw new Error('Human solve ordering did not finish within 81 placements.');
+}
+
+function humanSolveStart(game: GameProjection): GameProjection {
+  return {
     ...game,
     values: Array<Digit | null>(81).fill(null),
     valueSourceEventIds: Array<string | null>(81).fill(null),
@@ -245,12 +255,34 @@ export function buildHumanSolveSequence(game: GameProjection): NextSolveHint[] {
     status: 'active',
     completedAt: null
   };
+}
+
+function appendNextHumanPlacement(
+  solving: GameProjection,
+  sequence: NextSolveHint[]
+): NextSolveHint | null {
+  const next = findNextSolveHint(solving);
+  if (!next) return null;
+  sequence.push(next);
+  solving.values[next.targetCell] = next.value;
+  return next;
+}
+
+export async function buildHumanSolveSequenceAsync(
+  game: GameProjection,
+  options: AsyncWalkthroughOptions = {}
+): Promise<NextSolveHint[]> {
+  const solving = humanSolveStart(game);
   const sequence: NextSolveHint[] = [];
+  const yieldControl = options.yieldControl ?? defaultYield;
+  const total = game.puzzle.givens.split('').filter((given) => given === '.').length;
+  options.onProgress?.({ completed: 0, total });
+
   for (let placement = 0; placement < 81; placement += 1) {
-    const next = findNextSolveHint(solving);
+    await yieldControl();
+    const next = appendNextHumanPlacement(solving, sequence);
     if (!next) return sequence;
-    sequence.push(next);
-    solving.values[next.targetCell] = next.value;
+    options.onProgress?.({ completed: sequence.length, total });
   }
   throw new Error('Human solve ordering did not finish within 81 placements.');
 }

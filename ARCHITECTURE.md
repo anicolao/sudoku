@@ -238,6 +238,8 @@ two print QRs whenever the displayed game changes, so the browser's ordinary
 Print command produces the same pages as the in-app print action. A
 `beforeprint` listener synchronously selects an already prepared displayed game;
 an explicit History share remains pinned to the game selected in that dialog.
+Background walkthrough analysis yields between placements and coalesces
+duplicate requests, so preparing a difficult printout does not block play.
 The first print QR contains the original givens and optional persistent pattern
 cells, never current player work. The second starts from those givens and
 repeatedly applies the same book-ordered placement analysis as live hints: Full
