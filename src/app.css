@@ -525,9 +525,10 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .print-qr { image-rendering: pixelated; }
   .print-scan-title { fill: #20242b; font-size: 21px; font-weight: 700; }
   .print-scan-copy { fill: #454950; font-size: 14px; }
-  .print-footer-copy,
   .print-legend-copy { fill: #62656b; font-size: 12px; text-anchor: middle; }
   .print-legend-copy { text-anchor: start; }
   .print-given-key { fill: #fff; stroke: #20242b; stroke-width: 1; }
   .print-answer-key { fill: #eef0fa; stroke: #4654a3; stroke-width: 1; }
+  .print-brand-mark { fill: none; stroke: #47787a; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .print-brand-copy { fill: #626c70; font-size: 11px; letter-spacing: .35px; }
 }
