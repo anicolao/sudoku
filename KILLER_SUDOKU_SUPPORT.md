@@ -1,23 +1,24 @@
 # Killer Sudoku support
 
-Status: design and delivery plan. The three user stories below define the usable
-MVP; broader construction and editorial automation remain proposed work.
+Status: usable MVP implemented through the user stories below. Advanced
+techniques and editorial automation remain proposed work.
 
 ## MVP delivered through the UI
 
-- [Play, return, and discover](tests/e2e/027-killer-sudoku/README.md): start from
-  three checked layouts, retain cages through the normal game lifecycle, inspect
-  combinations, and request cage-aware logical guidance.
+- [Play, return, and discover](tests/e2e/027-killer-sudoku/README.md): construct
+  fresh blank-givens puzzles, retain cages through the normal game lifecycle,
+  inspect combinations, and request cage-aware logical guidance.
+- [Choose a difficulty](tests/e2e/029-killer-generation/README.md): generate
+  Easy, Medium, or Hard puzzles without one-cell cages or preset layouts.
 - [Share and print](tests/e2e/028-killer-sharing-print/README.md): transfer rules
   and optional work, or print vector cages with locally derived walkthroughs.
 - [Installed offline play](tests/e2e/012-installed-offline/README.md): generate
   and resume a Killer with working hints without a connection.
 
-The collection supports cage assignments, singles after cage restrictions, and
-single-house Rule of 45 deductions. It has no calibrated difficulty bands;
-imports are labelled Killer · unrated. General construction search, advanced
-Killer techniques, and book assembly are future stories. The following design
-includes those longer-term goals as well as the implemented MVP.
+The generator constructs both solved grids and cage partitions procedurally.
+Difficulty records the lowest supported logical profile that completes a puzzle;
+these technique-based bands have not been calibrated against human solve times.
+The following design also includes longer-term editorial and book goals.
 
 ## Purpose
 
@@ -49,9 +50,8 @@ The first supported ruleset would have these explicit requirements:
   share a row, column, or box.
 - A puzzle has exactly one solution under all of these constraints together.
 
-Generated puzzles should normally have no given digits. The data model may
-support givens for authored lessons and checked imports. One-cell cages are
-legal, but count as revealed digits for editorial evaluation.
+Generated puzzles have no given digits and no one-cell cages. Checked imports
+and existing saved games may contain either; they remain legal under the rules.
 
 Partial cage coverage, repeating-digit cages, diagonal constraints, overlapping
 cages, and other variants are outside this initial ruleset. Camera recognition
@@ -271,31 +271,40 @@ workload; clue count and cage count are not difficulty ratings.
 
 ## Generation and editorial evaluation
 
-The current generator transforms reviewed classic bases. Begin Killer support
-with a small authored, uniquely validated corpus and reviewed solve paths.
-Introduce construction search after that corpus provides concrete quality
-examples and regression fixtures.
+Generator version 2 uses no stored Killer grids, cage layouts, or template
+transformations. Every attempt:
 
-A future construction pipeline would:
+1. Constructs a solved grid from an empty board with randomized backtracking.
+2. Builds a connected cage partition by randomized adjacent pairing, absorbing
+   unmatched cells and merging selected adjacent cages. Cages contain two to
+   five cells and never repeat a solution digit; totals come from that solution.
+3. Runs deterministic logical analysis and rejects candidates outside the
+   requested band, including puzzles solvable under a simpler profile.
+4. Independently proves uniqueness with the exhaustive Killer validator and
+   verifies that its solution matches the constructed grid.
+5. Saves the complete definition, seed, generator version, and rating version.
 
-1. Choose a solved grid and a connected cage partition without repeated digits
-   within any cage; calculate the totals.
-2. Vary cage boundaries and optional teaching givens under layout constraints.
-3. Reject non-unique or unproven puzzles with the exhaustive validator.
-4. Run deterministic logical analysis under the requested technique profile.
-5. Evaluate the opening, dependencies, workload, and layout.
-6. Retain candidates for human review, saving seed and generator version.
+The three cumulative logical profiles are:
 
-Bound attempts and worker time. Report failure if no acceptable puzzle is
-found. Persist the final cages and solution so replay never regenerates them.
+| Band | Additional supported reasoning |
+| --- | --- |
+| Easy | Exact cage assignments, naked and hidden singles, single-cell Rule of 45 residuals |
+| Medium | Naked pairs, ordinary locked candidates, and mandatory cage-digit locks |
+| Hard | Two-cell Rule of 45 residuals feeding candidate eliminations |
 
-Classic transforms need review: arbitrary digit permutations preserve classic
-solutions but generally change the solution set of a sum puzzle, even after
-recalculating totals. Band and within-band row permutations can disconnect
-cages. Whole-grid rotations and reflections preserve both arithmetic and
-connectivity. Digit complementation `d -> 10-d` preserves cage equations when a
-size-`n` total `S` becomes `10n-S`. Re-rate even safe transforms because the
-visible opening and selected human trace can change.
+A derived two-cell sum is not assumed to contain distinct digits unless the
+cells share a house or original cage. Hints expose the elimination prerequisites
+through a paginated reasoning viewer before the resulting placement.
+
+Generation is cancellable, limited to 500 attempts and a 30-second worker
+budget, and reports failure with a retry action. There is no preset fallback.
+Persisted puzzles replay their stored cages and solution without regeneration.
+Legacy generator-version-1 games remain readable without retaining old layouts.
+
+The metrics below are future editorial evaluation, not implemented acceptance
+criteria. Current generation guarantees validity, uniqueness, no singletons,
+and completion within the requested logical profile; it does not claim
+hand-crafted layout quality or publication readiness.
 
 ### Measure arithmetic grind explicitly
 
@@ -412,8 +421,9 @@ land a standalone rules, storage, or solver layer awaiting a later UI.
 
 | Commit / user story | User-visible result | End-to-end evidence |
 | --- | --- | --- |
-| Play and return | As a solver, I can choose Killer, read its rules, start a checked blank-givens puzzle, see cage sums, place digits and notes, see cage conflicts, undo, and resume after reload. | A small checked collection and safe seed transforms, uniqueness validation, accessible cage rendering, persisted rules, history identity, completion and classic compatibility. |
-| Discover a deduction | As a solver, I can inspect a selected cage's remaining total and combinations, then request an explained next step without guessing or relying on my notes. | Cage assignments and positional reasoning exposed through inspection and hints, useful non-placement relationships, recorded placement explanations, deterministic complete logical solves of the collection. |
+| Play and return | As a solver, I can choose Killer, read its rules, start a checked blank-givens puzzle, see cage sums, place digits and notes, see cage conflicts, undo, and resume after reload. | Procedural construction, uniqueness validation, accessible cage rendering, persisted rules, history identity, completion and classic compatibility. |
+| Discover a deduction | As a solver, I can inspect a selected cage's remaining total and combinations, then request an explained next step without guessing or relying on my notes. | Cage assignments and positional reasoning exposed through inspection and hints, useful non-placement relationships, recorded placement explanations, deterministic complete logical solves of generated puzzles. |
+| Choose a difficulty | As a solver, I can generate a fresh Easy, Medium, or Hard Killer without givens or singleton cages, cancel construction, and see its level in play and History. | Empty-grid construction, randomized connected partitions, exact band acceptance, independent uniqueness checks, bounded worker and retry UI, and responsive story 029. |
 | Take it with me | As a solver, I can share a clean Killer or my work, open it on another device, and print cage-preserving puzzle/solution sheets with working QR handoffs. | Versioned cage-aware links and validation, fingerprints, work and walkthrough replay, print geometry, responsive/accessibility and offline checks. |
 
 These commits stay on one PR and each leaves its advertised story usable. The
@@ -421,11 +431,10 @@ first commit may explicitly withhold share/print and advanced hint controls unti
 their corresponding feature is delivered; it must never silently treat a Killer
 as classic. Update the story and evidence in the same commit as every UI change.
 
-The usable MVP is the complete set of these stories, built on a small checked
-collection. Broad cage-construction search, book assembly, advanced Killer
-techniques, calibrated five-band difficulty, and automated editorial selection
-remain subsequent user stories. The MVP exposes its collection and assistance
-limits honestly rather than claiming publication-quality generation.
+The usable MVP is the complete set of these stories, including procedural
+generation at three logical difficulties. Book assembly, advanced Killer
+techniques, human-calibrated difficulty, and automated editorial selection
+remain subsequent user stories.
 
 Critical solver regressions must cover cages crossing houses, impossible
 cell assignments despite plausible digit unions, repeated digits in derived
@@ -440,10 +449,11 @@ small screens, zoom, screen-reader names, keyboard operation, monochrome print,
 privacy instrumentation, and installed offline use.
 
 The MVP bounds exact validation at 50,000 search nodes and incoming worker
-validation at two seconds, retains the decoded 4,096-character share limit, and
+validation at ten seconds, retains the decoded 4,096-character share limit, and
 enumerates only single-house residual regions of at most two empty cells.
-Broader construction needs new measured budgets. Difficulty and editorial
-thresholds still require human calibration.
+Solved-grid construction has a 100,000-node cap per attempt. Generation has
+the attempt and worker budgets above. Difficulty and editorial thresholds
+still require human calibration.
 
 Keyboard follow-up story: as a keyboard solver, I can enter and leave the
 introduction and cage inspector without focus escaping behind the dialog. This

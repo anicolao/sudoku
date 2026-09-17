@@ -4,26 +4,30 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('play a Killer puzzle and return to its cage rules', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can start a checked Killer puzzle, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
+  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read its cage totals, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
-  await expect(page.getByRole('button', { name: 'Start Killer puzzle', exact: true })).toBeFocused();
-  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Easy', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Start Killer puzzle', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Easy', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).focus();
   await page.keyboard.press('Enter');
   const board = page.getByRole('grid', { name: 'Killer Sudoku puzzle' });
   await expect(board).toBeVisible();
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1')!).events[0].payload.puzzle);
   await steps.step('killer-ready', {
-    description: 'A blank-givens Killer has labelled cages and ordinary number controls',
+    description: 'A newly constructed Easy Killer has no given digits or one-cell cages',
     verifications: [
       { spec: 'Keyboard focus enters the introduction, stays inside with Tab, and starts with Enter; checked cages are stored', check: async () => {
         const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
         expect(accessibility.violations).toEqual([]);
         expect(puzzle.variant).toBe('killer');
         expect(puzzle.givens).toBe('.'.repeat(81));
+        expect(puzzle.killerDifficulty).toBe('easy');
+        expect(puzzle.provenance.generatorVersion).toBe(2);
+        expect(puzzle.cages.every((cage: { cells: number[] }) => cage.cells.length >= 2)).toBe(true);
         await expect(page.locator('.cage-overlay .cage')).toHaveCount(puzzle.cages.length);
         await expect(page.locator('[data-cell="0"]')).toHaveAttribute('aria-label', /cage total/);
       } }

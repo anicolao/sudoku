@@ -347,22 +347,30 @@ See [E2E_GUIDE.md](E2E_GUIDE.md) for the current project matrix and
 Killer definitions carry `variant: 'killer'`, `killerRulesVersion: 1`, and a
 connected cage partition. Absent variant means classic. Validator version 4
 checks the complete Killer rules; `killer-generated` provenance has its own
-generator version 1, independent of classic generator versions. Three local
-blank-givens layouts are transformed only by rotations, reflections, and digit
-complementation. Each generated puzzle is proved unique in the worker. Killer
-rating is custom pending human calibration.
+generator version 2, independent of classic generator versions. Each attempt
+constructs a solved grid from empty cells and a randomized connected partition
+of two-to-five-cell cages. There are no stored Killer layouts or preset fallbacks.
+The generator accepts only puzzles with a complete logical solve in exactly the
+requested Easy, Medium, or Hard band and an independent uniqueness proof.
+`killerDifficulty` and `killerRatingVersion: 1` record this separately from
+classic difficulty (`custom`). Legacy version-1 origins remain replayable.
 
 Replay validates cage structure and the committed solution, derives cage
 conflicts, and removes placed digits from cage-peer notes when enabled. It
 never regenerates cages or searches for solutions. Screen cage geometry is
 shared through `CageOverlay.svelte`.
 
-Killer generation additionally requires a complete no-guess trace. The initial
-logical engine supports exact cage assignments, naked and hidden singles after
-cage restrictions, and single-house innies/outies. Two-cell residual sums are
-exposed by the inspector without assuming they are all-different. Classic
-uniqueness techniques are not invoked for Killer. Human notes never constrain
-Killer hints. The collection is intentionally unrated until human calibration.
+The cumulative logical profiles are Easy (exact cage assignments, singles,
+single-cell 45 residuals), Medium (also naked pairs and house/cage digit locks),
+and Hard (also two-cell 45 residual pruning). A derived region only prohibits
+repetition where the underlying houses or cages do. Each placement retains its
+elimination prerequisites for paginated hints and recorded walkthroughs.
+Classic uniqueness techniques are not invoked; human notes never constrain
+Killer hints. These bands describe supported logic, not human-calibrated times.
+Generation is cancellable and bounded by 500 attempts and a 30-second worker
+timeout, with explicit failure and retry. Incoming Killer validation allows ten
+seconds; exact validation caps search at 50,000 nodes. Solved-grid construction
+caps each attempt at 100,000 nodes. Stored replay performs neither search.
 
 Killer sharing uses format 5 (`K1!` inside `p`); fingerprints include the canonical
 cage partition and totals. The worker derives solutions using all constraints.

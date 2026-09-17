@@ -551,3 +551,16 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
 @media (max-width: 599px), (max-height: 650px) {
   .killer-utilities { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
+.killer-levels { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border: 0; padding: 0; margin: 0; }
+.killer-levels legend { padding-bottom: 6px; }
+.killer-levels button { min-height: 44px; border: 1px solid #c8c7c2; border-radius: 8px; background: #fff; color: #303a7d; cursor: pointer; }
+.killer-levels button[aria-pressed='true'] { border-color: #4654a3; background: #eceefa; font-weight: bold; }
+.killer-reasoning { width: 100%; display: grid; gap: 8px; }
+.killer-reasoning p { margin: 0; }
+.killer-reasoning .cage-pages { justify-content: center; }
+.killer-reasoning button { padding: 6px 10px; border: 1px solid #c8c7c2; border-radius: 8px; background: #fff; color: #303a7d; }
+.killer-reasoning button:disabled { color: #777; }
+@media (max-height: 650px) {
+  .killer-intro p { font-size: .85rem; }
+  .killer-reasoning { font-size: .85rem; gap: 4px; }
+}
