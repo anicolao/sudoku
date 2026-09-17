@@ -40,7 +40,10 @@ async function decodeQrSource(image: import('@playwright/test').Locator): Promis
 }
 
 test('a compact candidate-ready book link prints, shares, and restarts from its basic notes', async ({ page }, testInfo) => {
-  test.setTimeout(60_000);
+  // This journey performs three worker validations, two QR builds/decodes, and
+  // two print preparations. Shared macOS runners can legitimately exceed the
+  // former one-minute budget while each individual operation remains responsive.
+  test.setTimeout(120_000);
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Print and restart a candidate-ready puzzle',

@@ -1,5 +1,7 @@
 # Sudoku
 
+[![Verify and deploy](https://github.com/anicolao/sudoku/actions/workflows/verify-and-deploy.yml/badge.svg?branch=main)](https://github.com/anicolao/sudoku/actions/workflows/verify-and-deploy.yml?query=branch%3Amain)
+
 Sudoku is a calm, installable puzzle application for classic 9×9 play. It runs
 entirely in the browser, generates and validates puzzles on the device, records
 play as an immutable event stream, and works offline after its first successful
