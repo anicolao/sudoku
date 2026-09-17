@@ -4,7 +4,7 @@ import type { PuzzleDifficulty } from '$lib/domain/types';
 export function generateInWorker(
   difficulty: PuzzleDifficulty,
   seed: string,
-  options: { maxAttempts?: number; signal?: AbortSignal } = {}
+  options: { maxAttempts?: number; variant?: 'classic' | 'killer'; signal?: AbortSignal } = {}
 ): Promise<GenerationResult> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./generator.worker.ts', import.meta.url), { type: 'module' });
@@ -26,6 +26,6 @@ export function generateInWorker(
       stop();
       reject(new Error('Could not generate a puzzle yet'));
     });
-    worker.postMessage({ difficulty, seed, maxAttempts: options.maxAttempts });
+    worker.postMessage({ difficulty, seed, maxAttempts: options.maxAttempts, variant: options.variant });
   });
 }

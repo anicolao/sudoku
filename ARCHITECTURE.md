@@ -341,3 +341,18 @@ accessibility, multiple tabs, sharing, and installed offline use.
 
 See [E2E_GUIDE.md](E2E_GUIDE.md) for the current project matrix and
 [CONTRIBUTING.md](CONTRIBUTING.md) for the maintenance change checklist.
+
+## Killer puzzle origins
+
+Killer definitions carry `variant: 'killer'`, `killerRulesVersion: 1`, and a
+connected cage partition. Absent variant means classic. Validator version 4
+checks the complete Killer rules; `killer-generated` provenance has its own
+generator version 1, independent of classic generator versions. Three local
+blank-givens layouts are transformed only by rotations, reflections, and digit
+complementation. Each generated puzzle is proved unique in the worker. Killer
+rating is custom pending human calibration.
+
+Replay validates cage structure and the committed solution, derives cage
+conflicts, and removes placed digits from cage-peer notes when enabled. It
+never regenerates cages or searches for solutions. Screen cage geometry is
+shared through `CageOverlay.svelte`.
