@@ -136,7 +136,7 @@ designed as optional layers and must not reinterpret existing local history.
 
 ## Killer Sudoku extension
 
-Killer is an optional puzzle family with a small checked local collection. Cage
-sums and no-repeat constraints preserve the paper-like experience, offline
+Killer is an optional puzzle family with procedural on-device generation at
+three logical difficulties, without givens or one-cell cages. Cage sums and no-repeat constraints preserve the paper-like experience, offline
 operation, and event replay. See [KILLER_SUDOKU_SUPPORT.md](KILLER_SUDOKU_SUPPORT.md)
 for the design and user-story delivery plan.

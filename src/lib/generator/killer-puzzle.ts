@@ -1,36 +1,35 @@
-import { solveKillerLogically } from '$lib/domain/killer-analysis';
-import corpus from './killer-corpus.json';
+import { rateKiller, type KillerDifficulty } from '$lib/domain/killer-analysis';
 import { canonicalCages, solveKiller } from '$lib/domain/killer';
 import { createPrng } from './prng';
+import { constructCages, constructSolution } from './killer-construction';
 import type { GenerationResult } from './generate-puzzle';
 
-export function generateKillerPuzzle(seed: string): GenerationResult {
-  const random = createPrng(seed);
-  const base = corpus[random.integer(corpus.length)];
-  const turns = random.integer(4), reflect = random.integer(2), complement = random.integer(2);
-  function transform(cell: number): number {
-    let r = Math.floor(cell / 9), c = cell % 9;
-    if (reflect) c = 8 - c;
-    for (let n = 0; n < turns; n++) [r, c] = [c, 8 - r];
-    return r * 9 + c;
-  }
-  const cages = canonicalCages(base.cages.map((cage) => ({
-    cells: cage.cells.map(transform), total: complement ? cage.cells.length * 10 - cage.total : cage.total
-  })));
-  const solution = Array<string>(81);
-  [...base.solution].forEach((digit, cell) => { solution[transform(cell)] = String(complement ? 10 - Number(digit) : digit); });
+/** Version 2 constructs every grid and partition from the seed, without bases. */
+export function generateKillerPuzzle(seed: string, difficulty: KillerDifficulty = 'easy', maxAttempts = 500): GenerationResult {
+  if (!['easy', 'medium', 'hard'].includes(difficulty)) throw new Error('Choose Easy, Medium or Hard Killer.');
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 500) throw new Error('Killer generation requires an attempt budget between 1 and 500.');
+  const random = createPrng(`killer-v2:${difficulty}:${seed}`);
   const givens = '.'.repeat(81);
-  const checked = solveKiller(givens, cages);
-  if (checked.count !== 1 || checked.solution !== solution.join('')) throw new Error('This Killer puzzle could not be validated.');
-  const logical = solveKillerLogically(givens, cages);
-  if (!logical.solved || logical.grid !== checked.solution) throw new Error('This Killer has no supported logical solve.');
-  return {
-    puzzle: {
-      id: `killer-v1-${seed}`, variant: 'killer', killerRulesVersion: 1, cages,
-      givens, solution: solution.join(''), difficulty: 'custom', seed,
-      validatorVersion: 4, hardestTechnique: null,
-      provenance: { kind: 'killer-generated', seed, generatorVersion: 1 }
-    },
-    attempts: 1, traceLength: logical.steps.length
-  };
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const solution = constructSolution(random);
+    const partition = constructCages(solution, random, random.integer(difficulty === 'easy' ? 3 : 7));
+    if (!partition) continue;
+    const cages = canonicalCages(partition);
+    if (cages.some((cage) => cage.cells.length < 2)) continue;
+    const rating = rateKiller(givens, cages);
+    if (!rating || rating.difficulty !== difficulty) continue;
+    // Independent exhaustive validation, never a guessed step in the rating.
+    const checked = solveKiller(givens, cages);
+    if (checked.count !== 1 || checked.solution !== solution.join('')) continue;
+    return {
+      puzzle: {
+        id: `killer-v2-${difficulty}-${seed}`, variant: 'killer', killerRulesVersion: 1, cages,
+        givens, solution: solution.join(''), difficulty: 'custom', killerDifficulty: difficulty,
+        killerRatingVersion: 1, seed, validatorVersion: 4, hardestTechnique: null,
+        provenance: { kind: 'killer-generated', seed, generatorVersion: 2 }
+      },
+      attempts: attempt, traceLength: rating.steps.length
+    };
+  }
+  throw new Error(`Could not construct a ${difficulty} Killer within ${maxAttempts} attempts. Try again with a new seed.`);
 }

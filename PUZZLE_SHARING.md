@@ -361,7 +361,10 @@ repeated digits. Existing underscore-separated work and metadata tokens follow
 unchanged. The decoded 4,096-character and 512-action limits still apply.
 
 The validator derives a unique solution using cage and classic constraints in
-a bounded worker. Canonical givens and cage rules determine the fingerprint;
+a worker bounded at ten seconds and 50,000 exact-search nodes. It derives the
+Killer logical difficulty locally rather than trusting a rating from the sender;
+unsupported profiles remain unrated. No rating metadata is added to the wire
+format. Canonical givens and cage rules determine the fingerprint;
 work does not. Missing variant on older saved games remains classic. Format 5
 imports retain cages through replay, work transfer and re-sharing. Unsupported
 headers and malformed partitions are rejected, never treated as classic grids.

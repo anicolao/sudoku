@@ -1,4 +1,4 @@
-import { solveKillerLogically } from '$lib/domain/killer-analysis';
+import { rateKiller, solveKillerLogically } from '$lib/domain/killer-analysis';
 import { canonicalCages, solveKiller } from '$lib/domain/killer';
 import { UNITS, basicCandidateNotes, givensAgree, isSolvedGrid, parseGrid } from '$lib/domain/sudoku';
 import type {
@@ -414,6 +414,7 @@ export async function validateSharedPuzzle(payload: string, options: { walkthrou
   const difficulty: PuzzleRating = logical?.solved && logical.grid === solution
     ? logical.difficulty
     : 'custom';
+  const killerRating = cages ? rateKiller(givens, cages) : null;
   const digest = await fingerprint(cages ? killerHeader(givens, cages) : givens);
   const clueCount = grid.filter(Boolean).length;
   if (cages && (typeof options === 'object' && options?.walkthrough) && work.length === 0) {
@@ -430,7 +431,7 @@ export async function validateSharedPuzzle(payload: string, options: { walkthrou
       givens,
       solution,
       difficulty,
-      ...(cages ? { variant: 'killer' as const, killerRulesVersion: 1 as const, cages } : {}),
+      ...(cages ? { variant: 'killer' as const, killerRulesVersion: 1 as const, cages, ...(killerRating ? { killerDifficulty: killerRating.difficulty, killerRatingVersion: 1 as const } : {}) } : {}),
       validatorVersion: cages ? 4 : 3,
       hardestTechnique: difficulty === 'custom' ? null : logical!.hardestTechnique,
       provenance: {

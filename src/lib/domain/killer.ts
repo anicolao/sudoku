@@ -30,8 +30,11 @@ export const adjacent = (a: number, b: number): boolean =>
 
 export function validPuzzleRules(puzzle: PuzzleDefinition): boolean {
   try {
-    if (puzzle.variant === undefined || puzzle.variant === 'classic') return puzzle.cages === undefined && puzzle.killerRulesVersion === undefined;
+    if (puzzle.variant === undefined || puzzle.variant === 'classic') return puzzle.cages === undefined && puzzle.killerRulesVersion === undefined && puzzle.killerDifficulty === undefined && puzzle.killerRatingVersion === undefined;
     if (puzzle.variant !== 'killer' || puzzle.killerRulesVersion !== 1) return false;
+    if (puzzle.killerDifficulty !== undefined && !['easy', 'medium', 'hard'].includes(puzzle.killerDifficulty)) return false;
+    if ((puzzle.killerDifficulty === undefined) !== (puzzle.killerRatingVersion === undefined) ||
+      (puzzle.killerRatingVersion !== undefined && puzzle.killerRatingVersion !== 1)) return false;
     const cages = canonicalCages(puzzle.cages);
     const grid = parseGrid(puzzle.solution);
     return isSolvedGrid(grid) && givensAgree(puzzle.givens, puzzle.solution) && cages.every((cage) =>

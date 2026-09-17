@@ -28,7 +28,7 @@ test('share a Killer with work and print both cage-preserving handoffs', async (
   const recipient = await browser.newPage({ viewport: page.viewportSize(), serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'America/Toronto', reducedMotion: 'reduce' });
   await recipient.goto(link);
   await expect(recipient.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
-  await expect(recipient.getByText('Killer · unrated')).toBeVisible();
+  await expect(recipient.getByText('Killer · Easy')).toBeVisible();
   await recipient.getByRole('button', { name: 'Open shared work' }).click();
   await expect(recipient.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible();
   await expect(recipient.locator('[data-cell="0"] .cell-value')).toHaveText(puzzle.solution[0]);
