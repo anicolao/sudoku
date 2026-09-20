@@ -460,12 +460,16 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .app-shell.playing .mode-switch button,
   .app-shell.playing .number-pad button,
   .app-shell.playing .utility-actions button { min-height: 44px; }
+  .app-shell.playing:has(.completion-panel) .mode-switch,
+  .app-shell.playing:has(.completion-panel) .number-pad,
+  .app-shell.playing:has(.completion-panel) .stripe-tools { display: none; }
 }
 
 @media (max-width: 599px) and (max-height: 650px) {
   .app-shell.playing .sudoku-cell { font-size: clamp(.7rem, 3svh, 1.35rem); line-height: 1; }
   .app-shell.playing .sudoku-board,
   .app-shell.playing .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 314px)); width: var(--board-size); height: var(--board-size); }
+  .app-shell.playing:has(.completion-panel) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 270px)); }
   .app-shell.playing:has(.app-warning) .puzzle-heading { display: none; }
   .app-shell.playing:has(.app-warning) .sudoku-board,
   .app-shell.playing:has(.app-warning) .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 330px)); }
