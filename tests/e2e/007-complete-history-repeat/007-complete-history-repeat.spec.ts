@@ -9,6 +9,11 @@ test('the final moves derive completion, history, review, and a repeated attempt
   );
   const cell = (index: number) => page.locator(`[data-cell="${index}"]`);
   const digit = (value: number) => page.getByRole('button', { name: new RegExp(`^${value},`) });
+  const expectNumberInputReadOnly = async () => {
+    const numberKey = digit(1);
+    if (await numberKey.isVisible()) await expect(numberKey).toBeDisabled();
+    else await expect(page.locator('.number-pad')).toBeHidden();
+  };
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}')
   );
@@ -90,7 +95,7 @@ test('the final moves derive completion, history, review, and a repeated attempt
         await expect(page.getByRole('gridcell', { name: /editable, empty/ })).toHaveCount(0);
       } },
       { spec: 'All play controls are read-only', check: async () => {
-        await expect(page.getByRole('button', { name: /^1,/ })).toBeDisabled();
+        await expectNumberInputReadOnly();
         await expect(page.getByRole('button', { name: 'Hint' })).toBeDisabled();
       } },
       { spec: 'The last canonical event remains cell/value-entered while replay derives completion', check: async () => {
@@ -135,7 +140,7 @@ test('the final moves derive completion, history, review, and a repeated attempt
     verifications: [
       { spec: 'The solved board is visible and number input remains disabled', check: async () => {
         await expect(page.getByRole('grid')).toBeVisible();
-        await expect(page.getByRole('button', { name: /^1,/ })).toBeDisabled();
+        await expectNumberInputReadOnly();
       } }
     ]
   });

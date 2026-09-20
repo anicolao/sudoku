@@ -13,6 +13,35 @@ interface DocStep {
   specs: string[];
 }
 
+export function assertNoClippedDescendants(): void {
+  const tolerance = 1;
+  for (const element of document.querySelectorAll<HTMLElement>('body *')) {
+    if (element.matches('.sr-live, .sr-live *, #svelte-announcer, #svelte-announcer *') || !element.checkVisibility()) continue;
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) continue;
+
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor);
+      const clipsX = style.overflowX !== 'visible';
+      const clipsY = style.overflowY !== 'visible';
+      if (!clipsX && !clipsY) continue;
+      const bounds = ancestor.getBoundingClientRect();
+      const left = bounds.left + ancestor.clientLeft;
+      const top = bounds.top + ancestor.clientTop;
+      const right = left + ancestor.clientWidth;
+      const bottom = top + ancestor.clientHeight;
+      if ((clipsX && (rect.left < left - tolerance || rect.right > right + tolerance)) ||
+          (clipsY && (rect.top < top - tolerance || rect.bottom > bottom + tolerance))) {
+        throw new Error(
+          `${element.tagName.toLowerCase()}${element.className && typeof element.className === 'string' ? `.${element.className.trim().replace(/\s+/g, '.')}` : ''} ` +
+          `is clipped by ${ancestor.tagName.toLowerCase()}${typeof ancestor.className === 'string' && ancestor.className ? `.${ancestor.className.trim().replace(/\s+/g, '.')}` : ''}: ` +
+          `${rect.left},${rect.top}–${rect.right},${rect.bottom} outside ${left},${top}–${right},${bottom}`
+        );
+      }
+    }
+  }
+}
+
 export class TestStepHelper {
   private count = 0;
   private steps: DocStep[] = [];
@@ -99,6 +128,7 @@ export class TestStepHelper {
         }
       }
     });
+    await this.page.evaluate(assertNoClippedDescendants);
 
     const index = String(this.count++).padStart(3, '0');
     const filename = `${index}-${id}-${this.testInfo.project.name}-macos.png`;
