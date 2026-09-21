@@ -29,7 +29,9 @@ The app supports three presentations of one readable format:
 Neither choice represents synchronization. The recipient creates an independent
 local attempt. A work link includes time, hinted cells, mistakes, and settings
 when the corresponding optional fields are present. Source event history, undo
-history, device identity, and other History entries are never shared.
+history, device identity, and other History entries are never included in these
+puzzle links. Entire-history analysis uses the separate local download described
+below.
 
 ## 2. Puzzle links
 
@@ -341,9 +343,13 @@ Future sharing work must:
 6. document any additional data and its query-visibility implications;
 7. add parsing, replay, QR evidence, and updated failure documentation.
 
-A future full-replay export should be a separate versioned transport. It must
-not serialize raw stored origins because those contain the local solution and
-internal event IDs.
+Full history uses a separate, explicitly requested local file transport:
+`format: "sudoku-history"`, `formatVersion: 1`. Unlike puzzle links, it intentionally
+includes complete stored origins, solutions and original event IDs for analysis.
+The download dialog discloses those contents; the user sends the file manually.
+No export data enters a query string or an automatic network request. See
+[ARCHITECTURE.md](ARCHITECTURE.md#entire-history-analysis-export) for its snapshot,
+versioning and coverage contract. The file is not accepted by puzzle-link import.
 
 ## Killer links (format 5)
 

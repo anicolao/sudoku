@@ -486,3 +486,18 @@ and a thicker blue dashed border. The selected cell retains its own focus
 marker, and conflicts retain their warning styling. Moving selection updates
 exactly one cage; printed puzzles remain neutral. The play-and-resume story
 includes responsive screenshots and selection checks.
+
+## Export entire history for analysis
+
+History has an Export entire history button, including when history is empty.
+Its dialog explains that the download covers every retained Classic and Killer
+attempt, including unfinished games, and contains solutions, moves, notes,
+hints, settings and timestamps. Download JSON creates a local file for the
+player to send manually; nothing is transmitted automatically. The file covers
+all History pages. Back to History and Escape dismiss the dialog and return
+focus to its opener. Memory-only sessions explain their limited scope.
+
+The dialog announces preparation, a requested download, or a retryable error.
+Errors do not change the event store. Export is available offline and does not
+require a recipient, account, or puzzle completion. There is no restore flow.
+Acceptance evidence: [Export all history for analysis](tests/e2e/030-history-export/README.md).

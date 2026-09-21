@@ -381,3 +381,36 @@ Stored imports copy nested cages into plain data so UI proxies never reach
 IndexedDB. Print uses the same cage geometry on both pages and sizes Killer QRs
 at an integer number of pixels per module; its walkthrough QR carries the clean
 rules and a view request. All installed assets support offline Killer starts.
+
+## Entire-history analysis export
+
+History offers an explicit local JSON download using `format: "sudoku-history"`
+and `formatVersion: 1`, separate from puzzle-link formats and the embedded
+`eventDocument.storageVersion`. The envelope records export time, application
+version/revision, persistent versus memory-only storage, and coverage limits.
+`eventDocument` contains all retained event streams in sequence order, their
+original IDs, schema/reducer versions, `nextSequence`, complete puzzle origins
+(including solutions, cages, seeds and rating versions), moves and settings.
+Replaying its events uses the existing reducer; exporting never appends an event
+or rewrites history. There is no application import/restore feature for this file.
+
+`snapshotForExport` waits for pending writes in this tab, then reads the streams
+and metadata together in a read-only IndexedDB transaction. This includes other
+tabs' committed writes at that snapshot, even if their notifications were missed.
+Later writes belong to a later export. A database-read failure is reported rather
+than silently substituting stale cached data. Memory-only sessions export their
+current in-memory document and identify that scope in the envelope.
+
+The user reviews a disclosure that includes solutions and timestamps before
+choosing Download JSON. Serialization and the Blob download happen locally;
+there is no upload, service-worker cache entry, or inclusion in a puzzle URL.
+Only this Sudoku event store is exported, not unrelated browser storage or
+quarantined recovery copies. The file can contain personal solving history and
+should be sent deliberately to the intended reviewer. Existing puzzle links
+continue to omit solutions and full event history.
+
+Coverage notes explain that cleared history and other devices are absent,
+imported work may omit its original history, cage inspections and non-revealing
+hint views are not recorded, and elapsed time is captured only in saved events.
+The exported application revision identifies the exporting app; puzzle origins
+retain their own generator and rating versions independently.

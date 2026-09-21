@@ -4,6 +4,7 @@
   import QRCode from 'qrcode';
   import { buildLabel } from '$lib/app-meta';
   import { checkForShellUpdate } from '$lib/shell-update';
+  import HistoryExport from '$lib/components/HistoryExport.svelte';
   import KillerReasoning from '$lib/components/KillerReasoning.svelte';
   import { KILLER_DIFFICULTIES, killerDifficultyLabel, type KillerDifficulty } from '$lib/domain/killer-analysis';
   import KillerInspector from '$lib/components/KillerInspector.svelte';
@@ -71,6 +72,7 @@
   let generationVariant = $state<'classic' | 'killer'>('classic');
   let cageInspectorOpen = $state(false);
   let hintMessage = $state('');
+  let historyExportOpen = $state(false);
   let store = $state<IndexedDbEventStore>();
   let projection = $state<AppProjection>(emptyProjection());
   let selectedCell = $state<number | null>(null);
@@ -1095,6 +1097,7 @@
             </nav>
           {/if}
         {/if}
+        <button class="history-export-button" type="button" disabled={!store} onclick={() => historyExportOpen = true}>Export entire history</button>
       </section>
     {:else if view === 'walkthrough'}
       <section class="walkthrough-view" aria-labelledby="walkthrough-title">
@@ -1275,6 +1278,7 @@
       </section>
     {/if}
   </main>
+  {#if historyExportOpen}<HistoryExport bind:open={historyExportOpen} {store} {version} {revision} />{/if}
 
   {#if shareDialogOpen}
     <div class="dialog-backdrop" role="presentation">
