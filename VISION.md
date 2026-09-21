@@ -130,7 +130,7 @@ targeted bug fixes. A small feature is appropriate when it:
 - adds evidence proportional to its risk;
 - updates the current documentation rather than adding another planning layer.
 
-Larger ideas such as encrypted backup, full replay export, animated teaching,
+Larger ideas such as encrypted backup, full replay restore, animated teaching,
 or richer technique explanations remain possible extensions. They should be
 designed as optional layers and must not reinterpret existing local history.
 
@@ -140,3 +140,7 @@ Killer is an optional puzzle family with procedural on-device generation at
 three logical difficulties, without givens or one-cell cages. Cage sums and no-repeat constraints preserve the paper-like experience, offline
 operation, and event replay. See [KILLER_SUDOKU_SUPPORT.md](KILLER_SUDOKU_SUPPORT.md)
 for the design and user-story delivery plan.
+
+An optional entire-history JSON export supports deliberate, offline sharing
+with a reviewer for analysis. It includes solutions and recorded events only
+after an explicit download disclosure; the app never sends the file itself.

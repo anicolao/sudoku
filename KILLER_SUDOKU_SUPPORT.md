@@ -499,3 +499,13 @@ as a separate quality criterion; our numerical thresholds are our own choice.
 These references inform terminology and technique scope. The editorial metrics,
 architecture, delivery order, and book applications are proposals for this
 project. They are not external standards or validated predictors of enjoyment.
+
+## Export feedback for analysis
+
+[Export all history for analysis](tests/e2e/030-history-export/README.md) adds
+History → Export entire history → Download JSON. The file includes all retained
+attempts, full cage rules and solutions, and the recorded event stream, including
+undo/redo, timing and settings. It is a deliberate local download that the tester
+sends manually. The story checks disclosure, keyboard focus, responsive layouts,
+offline download, memory-only/empty history, retry, and preservation of events.
+The format is documented in [ARCHITECTURE.md](ARCHITECTURE.md#entire-history-analysis-export).

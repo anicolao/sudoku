@@ -58,7 +58,8 @@ export default defineConfig({
       testMatch: [
         '**/007-complete-history-repeat/*.spec.ts',
         '**/011-responsive-keyboard-accessibility/*.spec.ts',
-        '**/027-killer-sudoku/*.spec.ts'
+        '**/027-killer-sudoku/*.spec.ts',
+        '**/030-history-export/*.spec.ts'
       ],
       use: { viewport: { width: 320, height: 640 } }
     },
@@ -67,7 +68,8 @@ export default defineConfig({
       testMatch: [
         '**/007-complete-history-repeat/*.spec.ts',
         '**/011-responsive-keyboard-accessibility/*.spec.ts',
-        '**/027-killer-sudoku/*.spec.ts'
+        '**/027-killer-sudoku/*.spec.ts',
+        '**/030-history-export/*.spec.ts'
       ],
       use: { viewport: { width: 852, height: 393 } }
     },
@@ -77,7 +79,8 @@ export default defineConfig({
         '**/007-complete-history-repeat/*.spec.ts',
         '**/011-responsive-keyboard-accessibility/*.spec.ts',
         '**/018-all-notes-default/*.spec.ts',
-        '**/027-killer-sudoku/*.spec.ts'
+        '**/027-killer-sudoku/*.spec.ts',
+        '**/030-history-export/*.spec.ts'
       ],
       use: { viewport: { width: 320, height: 450 } }
     }

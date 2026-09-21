@@ -1,8 +1,24 @@
 # Killer Sudoku improvements
 
-Status: proposal for review, 2026-09-21. No recommendations in this document
-have been implemented. The branch has been rebased onto `main`; integration
+Status: proposal for review, 2026-09-21. The explicitly requested entire-history
+export is now implemented as an initial feedback tool; the opening-analysis,
+generator and rating recommendations below remain proposals. The branch has been rebased onto `main`; integration
 resolutions preserve existing classic and Killer features.
+
+## Delivered: entire-history export
+
+History → Export entire history → Download JSON lets a tester send all retained
+Classic and Killer puzzle definitions and recorded events to a reviewer manually.
+The explicit download disclosure includes solutions and timestamps. The versioned
+file preserves puzzle/generator identities and supports replay for analysis;
+no generator or difficulty behavior changes. It includes coverage limits so an
+analyst does not mistake unrecorded inspector use for absence of assistance.
+See the [user story](tests/e2e/030-history-export/README.md) and
+[format contract](ARCHITECTURE.md#entire-history-analysis-export).
+
+This is a full analysis file, not the solution-free per-puzzle feedback report
+proposed in story 1. Structured subjective feedback and an opening profile are
+still proposed work.
 
 ## Recommendation
 

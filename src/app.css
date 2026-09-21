@@ -565,3 +565,13 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .killer-intro p { font-size: .85rem; }
   .killer-reasoning { font-size: .85rem; gap: 4px; }
 }
+
+.history-export-button { justify-self: start; min-height: 44px; padding: 6px 12px; border: 1px solid #c8c7c2; border-radius: 8px; background: #fff; color: #4654a3; font: inherit; font-weight: 700; cursor: pointer; }
+.history-export-dialog { width: min(100%, 460px); display: grid; gap: 14px; padding: 22px; border-radius: 16px; background: #fffdf8; }
+.history-export-dialog h2 { margin: 0; font-size: 1.4rem; }
+.history-export-dialog p { margin: 0; color: #565a62; font-size: .95rem; line-height: 1.4; }
+@media (max-height: 500px) {
+  .history-export-dialog { gap: 8px; padding: 12px; }
+  .history-export-dialog h2 { font-size: 1.2rem; }
+  .history-export-dialog p { font-size: .82rem; }
+}
