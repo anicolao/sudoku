@@ -1,4 +1,7 @@
 // Board-cell coordinates, shared by the interactive board and vector printouts.
+// Leave room above the top edge for the upper half of a cage sum.
+export const CAGE_TOP_INSET = .12;
+
 type Point = [number, number];
 type Edge = { start: Point; end: Point; direction: number };
 const key = ([x, y]: Point) => `${x},${y}`;
@@ -6,7 +9,7 @@ const equal = (a: Point, b: Point) => a[0] === b[0] && a[1] === b[1];
 const direction = (a: Point, b: Point): Point => [Math.sign(b[0] - a[0]), Math.sign(b[1] - a[1])];
 const rounded = (n: number) => Math.round(n * 1000) / 1000;
 
-export function cageContours(cells: number[], inset = .08): Point[][] {
+export function cageContours(cells: number[], inset = .08, topInset = inset): Point[][] {
   const occupied = new Set(cells);
   const edges: Edge[] = [];
   for (const cell of cells) {
@@ -41,7 +44,11 @@ export function cageContours(cells: number[], inset = .08): Point[][] {
     contours.push(corners.map((point, i) => {
       const before = direction(corners[(i + corners.length - 1) % corners.length], point);
       const after = direction(point, corners[(i + 1) % corners.length]);
-      return [rounded(point[0] - inset * (before[1] + after[1])), rounded(point[1] + inset * (before[0] + after[0]))];
+      const offsetY = (dx: number) => dx * (dx > 0 ? topInset : inset);
+      return [
+        rounded(point[0] - inset * (before[1] + after[1])),
+        rounded(point[1] + offsetY(before[0]) + offsetY(after[0]))
+      ];
     }));
   }
   return contours;
@@ -49,7 +56,7 @@ export function cageContours(cells: number[], inset = .08): Point[][] {
 
 export function cagePaths(cells: number[]): { outline: string; corners: string } {
   const outlines: string[] = [], turns: string[] = [];
-  for (const contour of cageContours(cells)) {
+  for (const contour of cageContours(cells, .08, CAGE_TOP_INSET)) {
     const arcs = contour.map((point, i) => {
       const before = direction(contour[(i + contour.length - 1) % contour.length], point);
       const after = direction(point, contour[(i + 1) % contour.length]);

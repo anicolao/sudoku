@@ -5,7 +5,7 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 test('play a Killer puzzle and return to its cage rules', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read centered cage totals in transparent border gaps, follow rounded boundaries through inside corners, see the entire selected cage highlighted, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
+  steps.setMetadata('Play and resume Killer Sudoku', 'As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read smaller regular-weight cage totals centered on their top borders in transparent gaps, follow rounded boundaries through inside corners, see the entire selected cage highlighted, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.');
   await page.goto('/');
   await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
   await expect(page.getByRole('button', { name: 'Easy', exact: true })).toBeFocused();
@@ -19,7 +19,7 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
   await expect(board).toBeVisible({ timeout: 30_000 });
   const puzzle = await page.evaluate(() => JSON.parse(localStorage.getItem('sudoku.event-store.v1')!).events[0].payload.puzzle);
   await steps.step('killer-ready', {
-    description: 'A fresh Killer has continuous rounded cage outlines and centered sums in transparent border gaps',
+    description: 'A fresh Killer has continuous rounded cage outlines and smaller regular-weight sums aligned with their top borders',
     verifications: [
       { spec: 'Keyboard focus enters the introduction, stays inside with Tab, and starts with Enter; checked cages are stored', check: async () => {
         const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
@@ -36,6 +36,7 @@ test('play a Killer puzzle and return to its cage rules', async ({ page }, testI
         await expect(page.locator('.cage-overlay .cage > rect')).toHaveCount(0);
         for (const sum of await page.locator('.cage-overlay .cage-sum').all()) {
           await expect(sum).toHaveAttribute('text-anchor', 'middle');
+          await expect(sum).toHaveAttribute('font-weight', '400');
         }
         await expect(page.locator('[data-cell="0"]')).toHaveAttribute('aria-label', /cage total/);
       } }
