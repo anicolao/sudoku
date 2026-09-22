@@ -439,6 +439,14 @@ remain distinct. Print rendering has no selection emphasis. Stories 027 and
 029 demonstrate the UI; generated samples verify the size thresholds, logical
 rating, and independent uniqueness together.
 
+Rendering follow-up: as a solver, I can follow a cage through rounded inside
+corners and read each sum centered in a transparent break in its border. The
+selected cell and cage backgrounds remain visible behind sums. Screen and print
+share continuous inset outlines; short solid corner arcs keep the dashed stroke
+from omitting a turn. Geometry checks cover concave shapes, holes, diagonal
+contacts, and board edges. Story 027 demonstrates the rendering across six
+viewports; story 028 verifies the same geometry on puzzle and solution sheets.
+
 The “Choose a difficulty” story also promises reproducible construction: the
 same seed and difficulty produce the same puzzle, with no singleton cages.
 Its unit acceptance evidence covers eight seeds independently, generating each

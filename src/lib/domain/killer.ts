@@ -124,19 +124,3 @@ export function solveKiller(givens: string, cages: readonly KillerCage[], maxNod
   search();
   return { count, solution };
 }
-
-// Shared geometry in board-cell coordinates for screen and vector printing.
-export function cageSegments(cage: KillerCage): number[][] {
-  const result: number[][] = [];
-  const inset = .08;
-  for (const cell of cage.cells) {
-    const x = cell % 9, y = Math.floor(cell / 9);
-    const top = !cage.cells.includes(cell - 9), bottom = !cage.cells.includes(cell + 9);
-    const left = x === 0 || !cage.cells.includes(cell - 1), right = x === 8 || !cage.cells.includes(cell + 1);
-    if (top) result.push([x + (left ? inset : 0), y + inset, x + 1 - (right ? inset : 0), y + inset]);
-    if (bottom) result.push([x + (left ? inset : 0), y + 1 - inset, x + 1 - (right ? inset : 0), y + 1 - inset]);
-    if (left) result.push([x + inset, y + (top ? inset : 0), x + inset, y + 1 - (bottom ? inset : 0)]);
-    if (right) result.push([x + 1 - inset, y + (top ? inset : 0), x + 1 - inset, y + 1 - (bottom ? inset : 0)]);
-  }
-  return result;
-}
