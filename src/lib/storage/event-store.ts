@@ -16,6 +16,14 @@ export const CORRUPT_STORE_PREFIX = 'sudoku.event-store.corrupt.';
 
 export const emptyDocument = (): StoredEventDocumentV1 => ({ storageVersion: 1, nextSequence: 1, events: [] });
 
+export function copyPuzzleDefinition(puzzle: PuzzleDefinition): PuzzleDefinition {
+  return {
+    ...puzzle,
+    provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined,
+    ...(puzzle.cages ? { cages: puzzle.cages.map((cage) => ({ total: cage.total, cells: [...cage.cells] })) } : {})
+  };
+}
+
 export function copyImportedPuzzleMetadata(metadata: ImportedPuzzleMetadata): ImportedPuzzleMetadata {
   return {
     ...(metadata.elapsedMs !== undefined ? { elapsedMs: metadata.elapsedMs } : {}),
@@ -135,10 +143,7 @@ export class EventStore {
   }
 
   startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): AppProjection {
-    const storedPuzzle: PuzzleDefinition = {
-      ...puzzle,
-      provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined
-    };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings: GameSettings = { ...this.projection.settings };
     return this.append(metadata, (sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;
@@ -166,10 +171,7 @@ export class EventStore {
     importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link',
     startingNotesMode?: StartingNotesMode
   ): AppProjection {
-    const storedPuzzle: PuzzleDefinition = {
-      ...puzzle,
-      provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined
-    };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings: GameSettings = { ...importedSettings };
     return this.append(metadata, (sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;

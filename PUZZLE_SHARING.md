@@ -29,7 +29,9 @@ The app supports three presentations of one readable format:
 Neither choice represents synchronization. The recipient creates an independent
 local attempt. A work link includes time, hinted cells, mistakes, and settings
 when the corresponding optional fields are present. Source event history, undo
-history, device identity, and other History entries are never shared.
+history, device identity, and other History entries are never included in these
+puzzle links. Entire-history analysis uses the separate local download described
+below.
 
 ## 2. Puzzle links
 
@@ -341,6 +343,42 @@ Future sharing work must:
 6. document any additional data and its query-visibility implications;
 7. add parsing, replay, QR evidence, and updated failure documentation.
 
-A future full-replay export should be a separate versioned transport. It must
-not serialize raw stored origins because those contain the local solution and
-internal event IDs.
+Full history uses a separate, explicitly requested local file transport:
+`format: "sudoku-history"`, `formatVersion: 1`. Unlike puzzle links, it intentionally
+includes complete stored origins, solutions and original event IDs for analysis.
+The download dialog discloses those contents; the user sends the file manually.
+No export data enters a query string or an automatic network request. See
+[ARCHITECTURE.md](ARCHITECTURE.md#entire-history-analysis-export) for its snapshot,
+versioning and coverage contract. The file is not accepted by puzzle-link import.
+
+## Killer links (format 5)
+
+Killer has a versioned header inside the existing `p` parameter:
+
+```text
+K1!<81 givens>!<total>.<cell coordinates>-<total>.<cell coordinates>...
+```
+
+Coordinates are consecutive two-digit row/column pairs (11 through 99). For
+example, `13.111213` describes a total-13 cage at r1c1, r1c2, r1c3. Cages are
+sorted by their first cell and cells within each cage are sorted. The header
+carries Killer rules version 1, including complete connected coverage and no
+repeated digits. Existing underscore-separated work and metadata tokens follow
+unchanged. The decoded 4,096-character and 512-action limits still apply.
+
+The validator derives a unique solution using cage and classic constraints in
+a worker bounded at ten seconds and 50,000 exact-search nodes. It derives the
+Killer logical difficulty locally rather than trusting a rating from the sender;
+unsupported profiles remain unrated. No rating metadata is added to the wire
+format. Canonical givens and cage rules determine the fingerprint;
+work does not. Missing variant on older saved games remains classic. Format 5
+imports retain cages through replay, work transfer and re-sharing. Unsupported
+headers and malformed partitions are rejected, never treated as classic grids.
+Solutions are never serialized in Killer links.
+
+For a clean Killer link with `view=walkthrough`, validation also derives a full
+supported logical placement sequence locally. An unsupported solve is rejected
+with an explanation; the clean puzzle can still be opened without that view.
+The resulting placements are stored as imported work with format 5 provenance.
+This keeps printed Killer QR payloads small without embedding solution digits.
+The classic walkthrough-link contract is unchanged.

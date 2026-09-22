@@ -71,7 +71,7 @@ interface PuzzleDefinition {
   difficulty: PuzzleDifficulty | 'custom';
   seed?: string;
   generatorVersion?: 1 | 2;
-  validatorVersion: 1 | 2 | 3;
+  validatorVersion: 1 | 2 | 3 | 4;
   hardestTechnique: SolveTechnique | null;
   provenance?: PuzzleProvenance;
 }
@@ -341,3 +341,76 @@ accessibility, multiple tabs, sharing, and installed offline use.
 
 See [E2E_GUIDE.md](E2E_GUIDE.md) for the current project matrix and
 [CONTRIBUTING.md](CONTRIBUTING.md) for the maintenance change checklist.
+
+## Killer puzzle origins
+
+Killer definitions carry `variant: 'killer'`, `killerRulesVersion: 1`, and a
+connected cage partition. Absent variant means classic. Validator version 4
+checks the complete Killer rules; `killer-generated` provenance has its own
+generator version 3, independent of classic generator versions. Each attempt
+constructs a solved grid from empty cells and a randomized connected partition
+of two-to-five-cell cages. It merges compact adjacent cages while retaining
+a logical solve, then rejects layouts with more than 45% pairs, fewer than
+three triples, or fewer than three four/five-cell cages. There are no stored Killer layouts or preset fallbacks.
+The generator accepts only puzzles with a complete logical solve in exactly the
+requested Easy, Medium, or Hard band and an independent uniqueness proof.
+`killerDifficulty` and `killerRatingVersion: 1` record this separately from
+classic difficulty (`custom`). Legacy version-1 and version-2 origins remain replayable.
+
+Replay validates cage structure and the committed solution, derives cage
+conflicts, and removes placed digits from cage-peer notes when enabled. It
+never regenerates cages or searches for solutions. Screen cage geometry is
+shared through `CageOverlay.svelte`.
+
+The cumulative logical profiles are Easy (exact cage assignments, singles,
+single-cell 45 residuals), Medium (also naked pairs and house/cage digit locks),
+and Hard (also two-cell 45 residual pruning). A derived region only prohibits
+repetition where the underlying houses or cages do. Each placement retains its
+elimination prerequisites for paginated hints and recorded walkthroughs.
+Classic uniqueness techniques are not invoked; human notes never constrain
+Killer hints. These bands describe supported logic, not human-calibrated times.
+Generation is cancellable and bounded by 500 attempts and a 30-second worker
+timeout, with explicit failure and retry. Incoming Killer validation allows ten
+seconds; exact validation caps search at 50,000 nodes. Solved-grid construction
+caps each attempt at 100,000 nodes. Stored replay performs neither search.
+
+Killer sharing uses format 5 (`K1!` inside `p`); fingerprints include the canonical
+cage partition and totals. The worker derives solutions using all constraints.
+Clean Killer walkthrough links request local logical derivation before import.
+Stored imports copy nested cages into plain data so UI proxies never reach
+IndexedDB. Print uses the same cage geometry on both pages and sizes Killer QRs
+at an integer number of pixels per module; its walkthrough QR carries the clean
+rules and a view request. All installed assets support offline Killer starts.
+
+## Entire-history analysis export
+
+History offers an explicit local JSON download using `format: "sudoku-history"`
+and `formatVersion: 1`, separate from puzzle-link formats and the embedded
+`eventDocument.storageVersion`. The envelope records export time, application
+version/revision, persistent versus memory-only storage, and coverage limits.
+`eventDocument` contains all retained event streams in sequence order, their
+original IDs, schema/reducer versions, `nextSequence`, complete puzzle origins
+(including solutions, cages, seeds and rating versions), moves and settings.
+Replaying its events uses the existing reducer; exporting never appends an event
+or rewrites history. There is no application import/restore feature for this file.
+
+`snapshotForExport` waits for pending writes in this tab, then reads the streams
+and metadata together in a read-only IndexedDB transaction. This includes other
+tabs' committed writes at that snapshot, even if their notifications were missed.
+Later writes belong to a later export. A database-read failure is reported rather
+than silently substituting stale cached data. Memory-only sessions export their
+current in-memory document and identify that scope in the envelope.
+
+The user reviews a disclosure that includes solutions and timestamps before
+choosing Download JSON. Serialization and the Blob download happen locally;
+there is no upload, service-worker cache entry, or inclusion in a puzzle URL.
+Only this Sudoku event store is exported, not unrelated browser storage or
+quarantined recovery copies. The file can contain personal solving history and
+should be sent deliberately to the intended reviewer. Existing puzzle links
+continue to omit solutions and full event history.
+
+Coverage notes explain that cleared history and other devices are absent,
+imported work may omit its original history, cage inspections and non-revealing
+hint views are not recorded, and elapsed time is captured only in saved events.
+The exported application revision identifies the exporting app; puzzle origins
+retain their own generator and rating versions independently.
