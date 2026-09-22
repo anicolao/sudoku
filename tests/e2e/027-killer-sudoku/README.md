@@ -1,10 +1,10 @@
 # Play and resume Killer Sudoku
 
-As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read centered cage totals in transparent border gaps, follow rounded boundaries through inside corners, see the entire selected cage highlighted, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.
+As a solver, I can construct a fresh rated Killer without givens or one-cell cages, read smaller regular-weight cage totals centered on their top borders in transparent gaps, follow rounded boundaries through inside corners, see the entire selected cage highlighted, make reversible moves, return to the same rules and progress, inspect combinations, and request an explained deduction.
 
-## A fresh Killer has continuous rounded cage outlines and centered sums in transparent border gaps
+## A fresh Killer has continuous rounded cage outlines and smaller regular-weight sums aligned with their top borders
 
-![A fresh Killer has continuous rounded cage outlines and centered sums in transparent border gaps](./screenshots/000-killer-ready-phone-macos.png)
+![A fresh Killer has continuous rounded cage outlines and smaller regular-weight sums aligned with their top borders](./screenshots/000-killer-ready-phone-macos.png)
 
 **Verifications:**
 

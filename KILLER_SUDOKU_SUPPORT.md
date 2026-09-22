@@ -440,7 +440,8 @@ remain distinct. Print rendering has no selection emphasis. Stories 027 and
 rating, and independent uniqueness together.
 
 Rendering follow-up: as a solver, I can follow a cage through rounded inside
-corners and read each sum centered in a transparent break in its border. The
+corners and read each smaller, regular-weight sum centered horizontally and
+vertically in a transparent break in its top border. The
 selected cell and cage backgrounds remain visible behind sums. Screen and print
 share continuous inset outlines; short solid corner arcs keep the dashed stroke
 from omitting a turn. Geometry checks cover concave shapes, holes, diagonal
