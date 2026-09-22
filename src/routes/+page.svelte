@@ -220,7 +220,7 @@
     cleanup.push(() => window.removeEventListener('focus', refresh));
 
     const prepareDisplayedPuzzleForPrint = (): void => {
-      if (!explicitPrintInProgress && currentGame) {
+      if (!explicitPrintInProgress && incomingStatus === 'none' && currentGame) {
         void preparePrintablePuzzle(currentGame, preferredPrintKind(currentGame)).catch(() => {});
       }
     };
@@ -275,7 +275,9 @@
 
   $effect(() => {
     const game = currentGame;
-    if (game && typeof window !== 'undefined') {
+    // An incoming link takes priority over solving the old game for print.
+    // Otherwise that background solve competes with validation and import.
+    if (game && incomingStatus === 'none' && typeof window !== 'undefined') {
       void preparePrintablePuzzle(game, preferredPrintKind(game)).catch(() => {});
     }
   });
