@@ -23,6 +23,9 @@ interface CellImage {
   cell: number;
   canvas: HTMLCanvasElement;
   componentHeight: number;
+  inkRed: number;
+  inkGreen: number;
+  inkBlue: number;
 }
 
 interface CellReading {
@@ -121,8 +124,19 @@ function adaptiveDark(gray: Uint8Array, width: number, height: number): Uint8Arr
   return output;
 }
 
-function warpGrid(gray: Uint8Array, width: number, height: number, coefficients: readonly number[]): Uint8Array {
+interface WarpedGrid {
+  gray: Uint8Array;
+  color: Uint8ClampedArray;
+}
+
+function warpGrid(
+  gray: Uint8Array,
+  image: ImageData,
+  coefficients: readonly number[]
+): WarpedGrid {
   const output = new Uint8Array(WARP_SIZE * WARP_SIZE);
+  const color = new Uint8ClampedArray(WARP_SIZE * WARP_SIZE * 3);
+  const { width, height } = image;
   for (let y = 0; y < WARP_SIZE; y += 1) {
     const v = y / (WARP_SIZE - 1);
     for (let x = 0; x < WARP_SIZE; x += 1) {
@@ -138,9 +152,16 @@ function warpGrid(gray: Uint8Array, width: number, height: number, coefficients:
       const top = gray[y0 * width + x0] * (1 - horizontal) + gray[y0 * width + x1] * horizontal;
       const bottom = gray[y1 * width + x0] * (1 - horizontal) + gray[y1 * width + x1] * horizontal;
       output[y * WARP_SIZE + x] = Math.round(top * (1 - vertical) + bottom * vertical);
+      for (let channel = 0; channel < 3; channel += 1) {
+        const topColor = image.data[(y0 * width + x0) * 4 + channel] * (1 - horizontal) +
+          image.data[(y0 * width + x1) * 4 + channel] * horizontal;
+        const bottomColor = image.data[(y1 * width + x0) * 4 + channel] * (1 - horizontal) +
+          image.data[(y1 * width + x1) * 4 + channel] * horizontal;
+        color[(y * WARP_SIZE + x) * 3 + channel] = Math.round(topColor * (1 - vertical) + bottomColor * vertical);
+      }
     }
   }
-  return output;
+  return { gray: output, color };
 }
 
 function otsuThreshold(values: readonly number[]): number {
@@ -166,7 +187,7 @@ function otsuThreshold(values: readonly number[]): number {
   return Math.max(75, Math.min(205, threshold));
 }
 
-function cellImages(warped: Uint8Array): CellImage[] {
+function cellImages(warped: WarpedGrid): CellImage[] {
   const images: CellImage[] = [];
   for (let cell = 0; cell < 81; cell += 1) {
     const row = Math.floor(cell / 9);
@@ -177,7 +198,7 @@ function cellImages(warped: Uint8Array): CellImage[] {
     const bottom = Math.round((row + 1) * CELL_SIZE - CELL_SIZE * 0.13);
     const sample: number[] = [];
     for (let y = top; y < bottom; y += 1) {
-      for (let x = left; x < right; x += 1) sample.push(warped[y * WARP_SIZE + x]);
+      for (let x = left; x < right; x += 1) sample.push(warped.gray[y * WARP_SIZE + x]);
     }
     const threshold = otsuThreshold(sample);
     const sampleWidth = right - left;
@@ -211,7 +232,14 @@ function cellImages(warped: Uint8Array): CellImage[] {
 
     const visited = new Uint8Array(ink.length);
     const queue = new Int32Array(ink.length);
-    let largest: { count: number; minX: number; minY: number; maxX: number; maxY: number } | null = null;
+    let largest: {
+      count: number;
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+      pixels: number[];
+    } | null = null;
     for (let start = 0; start < ink.length; start += 1) {
       if (!ink[start] || visited[start]) continue;
       let head = 0;
@@ -220,12 +248,13 @@ function cellImages(warped: Uint8Array): CellImage[] {
       visited[start] = 1;
       const startX = start % sampleWidth;
       const startY = Math.floor(start / sampleWidth);
-      const component = { count: 0, minX: startX, minY: startY, maxX: startX, maxY: startY };
+      const component = { count: 0, minX: startX, minY: startY, maxX: startX, maxY: startY, pixels: [] as number[] };
       while (head < tail) {
         const index = queue[head++];
         const x = index % sampleWidth;
         const y = Math.floor(index / sampleWidth);
         component.count += 1;
+        component.pixels.push(index);
         component.minX = Math.min(component.minX, x);
         component.minY = Math.min(component.minY, y);
         component.maxX = Math.max(component.maxX, x);
@@ -246,6 +275,17 @@ function cellImages(warped: Uint8Array): CellImage[] {
     const componentWidth = largest.maxX - largest.minX + 1;
     const componentHeight = largest.maxY - largest.minY + 1;
     if (largest.count < 28 || componentHeight < sampleHeight * 0.22 || componentWidth < 3) continue;
+    let inkRed = 0;
+    let inkGreen = 0;
+    let inkBlue = 0;
+    for (const pixel of largest.pixels) {
+      const x = left + pixel % sampleWidth;
+      const y = top + Math.floor(pixel / sampleWidth);
+      const colorOffset = (y * WARP_SIZE + x) * 3;
+      inkRed += warped.color[colorOffset];
+      inkGreen += warped.color[colorOffset + 1];
+      inkBlue += warped.color[colorOffset + 2];
+    }
 
     const crop = document.createElement('canvas');
     crop.width = 128;
@@ -281,7 +321,10 @@ function cellImages(warped: Uint8Array): CellImage[] {
     images.push({
       cell,
       canvas: crop,
-      componentHeight
+      componentHeight,
+      inkRed: inkRed / largest.count,
+      inkGreen: inkGreen / largest.count,
+      inkBlue: inkBlue / largest.count
     });
   }
   return images;
@@ -328,7 +371,39 @@ async function createDigitReader(): Promise<Worker> {
   return worker;
 }
 
-function dominantGlyphHeight(readings: readonly CellReading[]): { height: number; tolerance: number } | null {
+interface GlyphStyle {
+  height: number;
+  heightTolerance: number;
+  maximumColorBias: number | null;
+  maximumInkLightness: number | null;
+}
+
+function colorBias(reading: CellReading): number {
+  return Math.abs(reading.image.inkGreen - reading.image.inkRed);
+}
+
+function inkLightness(reading: CellReading): number {
+  return (reading.image.inkRed + reading.image.inkGreen + reading.image.inkBlue) / 3;
+}
+
+function separatedThreshold(
+  values: readonly number[],
+  minimumGap: number,
+  minimumUpperValue = Number.NEGATIVE_INFINITY
+): number | null {
+  const sorted = [...values].sort((left, right) => left - right);
+  let best: { gap: number; threshold: number } | null = null;
+  for (let index = 7; index <= sorted.length - 3; index += 1) {
+    const lower = sorted[index - 1];
+    const upper = sorted[index];
+    const gap = upper - lower;
+    if (upper < minimumUpperValue || gap < minimumGap || (best && gap <= best.gap)) continue;
+    best = { gap, threshold: (lower + upper) / 2 };
+  }
+  return best?.threshold ?? null;
+}
+
+function dominantGlyphStyle(readings: readonly CellReading[]): GlyphStyle | null {
   const reliable = readings.filter((reading) => reading.value !== null && reading.confidence >= 85);
   if (reliable.length < 8) return null;
   let bestHeight = 0;
@@ -343,13 +418,35 @@ function dominantGlyphHeight(readings: readonly CellReading[]): { height: number
       bestSupport = support;
     }
   }
-  const tolerance = Math.max(5, Math.round(bestHeight * 0.11));
+  const heightTolerance = Math.max(4, Math.round(bestHeight * 0.09));
   const matching = reliable.filter((reading) =>
-    Math.abs(reading.image.componentHeight - bestHeight) <= tolerance
+    Math.abs(reading.image.componentHeight - bestHeight) <= heightTolerance
   ).length;
-  return matching >= 8 && matching >= reliable.length * 0.45
-    ? { height: bestHeight, tolerance }
-    : null;
+  if (matching < 8 || matching < reliable.length * 0.45) return null;
+
+  // Solve work often differs from printed clues in hue (coloured ink) or darkness
+  // (pencil). Only split a style when both groups have enough examples and a clear gap.
+  const heightMatches = readings.filter((reading) =>
+    reading.value !== null &&
+    Math.abs(reading.image.componentHeight - bestHeight) <= heightTolerance
+  );
+  const maximumColorBias = separatedThreshold(
+    heightMatches.map(colorBias),
+    8,
+    30
+  );
+  const monochromeMatches = maximumColorBias === null
+    ? heightMatches
+    : heightMatches.filter((reading) => colorBias(reading) <= maximumColorBias);
+  const maximumInkLightness = separatedThreshold(monochromeMatches.map(inkLightness), 16);
+  return { height: bestHeight, heightTolerance, maximumColorBias, maximumInkLightness };
+}
+
+function matchesGlyphStyle(reading: CellReading, style: GlyphStyle): boolean {
+  if (Math.abs(reading.image.componentHeight - style.height) > style.heightTolerance) return false;
+  if (style.maximumColorBias !== null && colorBias(reading) > style.maximumColorBias) return false;
+  if (style.maximumInkLightness !== null && inkLightness(reading) > style.maximumInkLightness) return false;
+  return true;
 }
 
 export async function recognizeSudokuPhoto(
@@ -362,14 +459,15 @@ export async function recognizeSudokuPhoto(
   const source = await decodePhoto(file);
   const context = source.getContext('2d', { willReadFrequently: true });
   if (!context) throw new Error('This browser cannot inspect the selected photo.');
-  const sourceGray = grayscale(context.getImageData(0, 0, source.width, source.height));
+  const sourceImage = context.getImageData(0, 0, source.width, source.height);
+  const sourceGray = grayscale(sourceImage);
   onProgress({ phase: 'finding-grid', completed: 0, total: 1 });
   const dark = adaptiveDark(sourceGray, source.width, source.height);
   const quadrilateral = findGridQuadrilateral(dark, source.width, source.height);
   if (!quadrilateral) {
     throw new Error('No complete Sudoku grid was found. Fill the frame with one straight, well-lit puzzle and try again.');
   }
-  const warped = warpGrid(sourceGray, source.width, source.height, perspectiveCoefficients(quadrilateral));
+  const warped = warpGrid(sourceGray, sourceImage, perspectiveCoefficients(quadrilateral));
   const cells = cellImages(warped);
   if (cells.length < 10) {
     throw new Error('Too few printed digits were found. Move closer, avoid shadows, and try again.');
@@ -394,25 +492,24 @@ export async function recognizeSudokuPhoto(
   } finally {
     await reader.terminate();
   }
-  const glyphHeight = dominantGlyphHeight(readings);
+  const glyphStyle = dominantGlyphStyle(readings);
   for (const reading of readings) {
     const cell = reading.image.cell;
     values[cell] = reading.value;
     confidence[cell] = reading.confidence;
-    const mismatchedGlyph = glyphHeight !== null &&
-      Math.abs(reading.image.componentHeight - glyphHeight.height) > glyphHeight.tolerance;
-    if (reading.value === null || reading.confidence < 72 || mismatchedGlyph) uncertain.add(cell);
+    const mismatchedGlyph = glyphStyle !== null && !matchesGlyphStyle(reading, glyphStyle);
+    // Tesseract is consistently cautious about a narrow printed 1 even when its style matches.
+    const lowConfidence = reading.confidence < 72 && !(reading.value === 1 && reading.confidence >= 25);
+    if (reading.value === null || lowConfidence || mismatchedGlyph) uncertain.add(cell);
   }
   onProgress({ phase: 'reading-digits', completed: cells.length, total: cells.length });
   return {
     values,
     confidence,
     uncertainCells: [...uncertain],
-    detectedCellCount: glyphHeight
-      ? readings.filter((reading) =>
-        Math.abs(reading.image.componentHeight - glyphHeight.height) <= glyphHeight.tolerance
-      ).length
+    detectedCellCount: glyphStyle
+      ? readings.filter((reading) => matchesGlyphStyle(reading, glyphStyle)).length
       : cells.length,
-    previewDataUrl: previewDataUrl(warped)
+    previewDataUrl: previewDataUrl(warped.gray)
   };
 }
