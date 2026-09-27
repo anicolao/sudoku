@@ -22,6 +22,13 @@ export interface PhotoRecognitionResult {
 interface CellImage {
   cell: number;
   canvas: HTMLCanvasElement;
+  componentHeight: number;
+}
+
+interface CellReading {
+  image: CellImage;
+  value: Digit | null;
+  confidence: number;
 }
 
 const MAX_PHOTO_EDGE = 1400;
@@ -176,7 +183,31 @@ function cellImages(warped: Uint8Array): CellImage[] {
     const sampleWidth = right - left;
     const sampleHeight = bottom - top;
     const ink = new Uint8Array(sample.length);
-    sample.forEach((value, index) => ink[index] = value <= threshold && value < 215 ? 1 : 0);
+    const stride = sampleWidth + 1;
+    const integral = new Uint32Array((sampleWidth + 1) * (sampleHeight + 1));
+    for (let y = 1; y <= sampleHeight; y += 1) {
+      let rowTotal = 0;
+      for (let x = 1; x <= sampleWidth; x += 1) {
+        rowTotal += sample[(y - 1) * sampleWidth + x - 1];
+        integral[y * stride + x] = integral[(y - 1) * stride + x] + rowTotal;
+      }
+    }
+    const contrastRadius = 7;
+    sample.forEach((value, index) => {
+      const x = index % sampleWidth;
+      const y = Math.floor(index / sampleWidth);
+      const localLeft = Math.max(0, x - contrastRadius);
+      const localRight = Math.min(sampleWidth - 1, x + contrastRadius);
+      const localTop = Math.max(0, y - contrastRadius);
+      const localBottom = Math.min(sampleHeight - 1, y + contrastRadius);
+      const localTotal = integral[(localBottom + 1) * stride + localRight + 1] -
+        integral[localTop * stride + localRight + 1] -
+        integral[(localBottom + 1) * stride + localLeft] +
+        integral[localTop * stride + localLeft];
+      const localMean = localTotal /
+        ((localRight - localLeft + 1) * (localBottom - localTop + 1));
+      ink[index] = value <= threshold && value < 210 && value < localMean - 11 ? 1 : 0;
+    });
 
     const visited = new Uint8Array(ink.length);
     const queue = new Int32Array(ink.length);
@@ -216,9 +247,6 @@ function cellImages(warped: Uint8Array): CellImage[] {
     const componentHeight = largest.maxY - largest.minY + 1;
     if (largest.count < 28 || componentHeight < sampleHeight * 0.22 || componentWidth < 3) continue;
 
-    const padding = 4;
-    const cropWidth = componentWidth + padding * 2;
-    const cropHeight = componentHeight + padding * 2;
     const crop = document.createElement('canvas');
     crop.width = 128;
     crop.height = 160;
@@ -226,6 +254,9 @@ function cellImages(warped: Uint8Array): CellImage[] {
     if (!context) continue;
     context.fillStyle = '#fff';
     context.fillRect(0, 0, crop.width, crop.height);
+    const padding = 4;
+    const cropWidth = componentWidth + padding * 2;
+    const cropHeight = componentHeight + padding * 2;
     const scale = Math.min(92 / cropWidth, 124 / cropHeight);
     const drawnWidth = Math.max(1, Math.round(cropWidth * scale));
     const drawnHeight = Math.max(1, Math.round(cropHeight * scale));
@@ -247,7 +278,11 @@ function cellImages(warped: Uint8Array): CellImage[] {
       }
     }
     context.putImageData(normalized, offsetX, offsetY);
-    images.push({ cell, canvas: crop });
+    images.push({
+      cell,
+      canvas: crop,
+      componentHeight
+    });
   }
   return images;
 }
@@ -293,6 +328,30 @@ async function createDigitReader(): Promise<Worker> {
   return worker;
 }
 
+function dominantGlyphHeight(readings: readonly CellReading[]): { height: number; tolerance: number } | null {
+  const reliable = readings.filter((reading) => reading.value !== null && reading.confidence >= 85);
+  if (reliable.length < 8) return null;
+  let bestHeight = 0;
+  let bestSupport = 0;
+  for (const reading of reliable) {
+    const height = reading.image.componentHeight;
+    const support = reliable
+      .filter((candidate) => Math.abs(candidate.image.componentHeight - height) <= 3)
+      .reduce((total, candidate) => total + candidate.confidence, 0);
+    if (support > bestSupport) {
+      bestHeight = height;
+      bestSupport = support;
+    }
+  }
+  const tolerance = Math.max(5, Math.round(bestHeight * 0.11));
+  const matching = reliable.filter((reading) =>
+    Math.abs(reading.image.componentHeight - bestHeight) <= tolerance
+  ).length;
+  return matching >= 8 && matching >= reliable.length * 0.45
+    ? { height: bestHeight, tolerance }
+    : null;
+}
+
 export async function recognizeSudokuPhoto(
   file: File,
   onProgress: (progress: PhotoRecognitionProgress) => void = () => {}
@@ -320,30 +379,40 @@ export async function recognizeSudokuPhoto(
   const values = Array<Digit | null>(81).fill(null);
   const confidence = Array<number>(81).fill(100);
   const uncertain = new Set<number>();
+  const readings: CellReading[] = [];
   try {
     for (let index = 0; index < cells.length; index += 1) {
       onProgress({ phase: 'reading-digits', completed: index, total: cells.length });
       const result = await reader.recognize(cells[index].canvas);
       const match = result.data.text.match(/[1-9]/);
-      const cell = cells[index].cell;
-      if (match) {
-        values[cell] = Number(match[0]) as Digit;
-        confidence[cell] = Math.max(0, Math.min(100, result.data.confidence));
-        if (confidence[cell] < 72) uncertain.add(cell);
-      } else {
-        confidence[cell] = 0;
-        uncertain.add(cell);
-      }
+      readings.push({
+        image: cells[index],
+        value: match ? Number(match[0]) as Digit : null,
+        confidence: match ? Math.max(0, Math.min(100, result.data.confidence)) : 0
+      });
     }
   } finally {
     await reader.terminate();
+  }
+  const glyphHeight = dominantGlyphHeight(readings);
+  for (const reading of readings) {
+    const cell = reading.image.cell;
+    values[cell] = reading.value;
+    confidence[cell] = reading.confidence;
+    const mismatchedGlyph = glyphHeight !== null &&
+      Math.abs(reading.image.componentHeight - glyphHeight.height) > glyphHeight.tolerance;
+    if (reading.value === null || reading.confidence < 72 || mismatchedGlyph) uncertain.add(cell);
   }
   onProgress({ phase: 'reading-digits', completed: cells.length, total: cells.length });
   return {
     values,
     confidence,
     uncertainCells: [...uncertain],
-    detectedCellCount: cells.length,
+    detectedCellCount: glyphHeight
+      ? readings.filter((reading) =>
+        Math.abs(reading.image.componentHeight - glyphHeight.height) <= glyphHeight.tolerance
+      ).length
+      : cells.length,
     previewDataUrl: previewDataUrl(warped)
   };
 }

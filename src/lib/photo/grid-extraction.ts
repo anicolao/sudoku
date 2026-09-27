@@ -37,6 +37,187 @@ function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+interface LineFamily {
+  normalX: number;
+  normalY: number;
+  first: number;
+  last: number;
+  score: number;
+}
+
+interface GridLine {
+  normalX: number;
+  normalY: number;
+  rho: number;
+}
+
+function strongestNineCellSpan(
+  dark: Uint8Array,
+  width: number,
+  height: number,
+  quad: GridQuadrilateral,
+  direction: Point,
+  approximateSpan: number
+): LineFamily | null {
+  const length = Math.hypot(direction.x, direction.y);
+  if (length < 1) return null;
+  const baseAngle = Math.atan2(direction.y / length, direction.x / length) + Math.PI / 2;
+  const minX = Math.max(0, Math.floor(Math.min(quad.topLeft.x, quad.topRight.x, quad.bottomRight.x, quad.bottomLeft.x)));
+  const maxX = Math.min(width - 1, Math.ceil(Math.max(quad.topLeft.x, quad.topRight.x, quad.bottomRight.x, quad.bottomLeft.x)));
+  const minY = Math.max(0, Math.floor(Math.min(quad.topLeft.y, quad.topRight.y, quad.bottomRight.y, quad.bottomLeft.y)));
+  const maxY = Math.min(height - 1, Math.ceil(Math.max(quad.topLeft.y, quad.topRight.y, quad.bottomRight.y, quad.bottomLeft.y)));
+  const minSpacing = Math.max(8, Math.floor(approximateSpan / 13));
+  const maxSpacing = Math.ceil(approximateSpan / 7);
+  let best: LineFamily | null = null;
+
+  for (let offset = -4; offset <= 4; offset += 1) {
+    const angle = baseAngle + offset * Math.PI / 360;
+    const normalX = Math.cos(angle);
+    const normalY = Math.sin(angle);
+    const cornerRhos = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft]
+      .map((point) => point.x * normalX + point.y * normalY);
+    const rhoMin = Math.floor(Math.min(...cornerRhos)) - 4;
+    const rhoMax = Math.ceil(Math.max(...cornerRhos)) + 4;
+    const histogram = new Uint32Array(rhoMax - rhoMin + 1);
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (!dark[y * width + x]) continue;
+        const index = Math.round(x * normalX + y * normalY) - rhoMin;
+        if (index >= 0 && index < histogram.length) histogram[index] += 1;
+      }
+    }
+    const strength = new Uint32Array(histogram.length);
+    for (let index = 0; index < histogram.length; index += 1) {
+      for (let delta = -2; delta <= 2; delta += 1) {
+        const neighbor = index + delta;
+        if (neighbor >= 0 && neighbor < histogram.length) strength[index] += histogram[neighbor];
+      }
+    }
+    for (let spacing = minSpacing; spacing <= maxSpacing; spacing += 1) {
+      for (let start = 0; start + spacing * 9 < strength.length; start += 1) {
+        let total = 0;
+        let weakest = Number.POSITIVE_INFINITY;
+        for (let line = 0; line <= 9; line += 1) {
+          const value = strength[start + line * spacing];
+          total += value;
+          weakest = Math.min(weakest, value);
+        }
+        const score = total + weakest * 4;
+        if (!best || score > best.score) {
+          best = {
+            normalX,
+            normalY,
+            first: start + rhoMin,
+            last: start + spacing * 9 + rhoMin,
+            score
+          };
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function refineGridLine(
+  dark: Uint8Array,
+  width: number,
+  height: number,
+  coarse: GridQuadrilateral,
+  family: LineFamily,
+  rho: number
+): GridLine {
+  const minX = Math.max(0, Math.floor(Math.min(coarse.topLeft.x, coarse.topRight.x, coarse.bottomRight.x, coarse.bottomLeft.x)));
+  const maxX = Math.min(width - 1, Math.ceil(Math.max(coarse.topLeft.x, coarse.topRight.x, coarse.bottomRight.x, coarse.bottomLeft.x)));
+  const minY = Math.max(0, Math.floor(Math.min(coarse.topLeft.y, coarse.topRight.y, coarse.bottomRight.y, coarse.bottomLeft.y)));
+  const maxY = Math.min(height - 1, Math.ceil(Math.max(coarse.topLeft.y, coarse.topRight.y, coarse.bottomRight.y, coarse.bottomLeft.y)));
+  const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  const anchorOffset = rho - center.x * family.normalX - center.y * family.normalY;
+  const anchor = {
+    x: center.x + family.normalX * anchorOffset,
+    y: center.y + family.normalY * anchorOffset
+  };
+  const baseAngle = Math.atan2(family.normalY, family.normalX);
+  const searchRadius = Math.max(3, Math.floor(Math.abs(family.last - family.first) / 24));
+  let best: (GridLine & { score: number }) | null = null;
+  for (let offset = -12; offset <= 12; offset += 1) {
+    const angle = baseAngle + offset * Math.PI / 360;
+    const normalX = Math.cos(angle);
+    const normalY = Math.sin(angle);
+    const expectedRho = anchor.x * normalX + anchor.y * normalY;
+    const histogram = new Map<number, number>();
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (!dark[y * width + x]) continue;
+        const projected = Math.round(x * normalX + y * normalY);
+        histogram.set(projected, (histogram.get(projected) ?? 0) + 1);
+      }
+    }
+    for (let delta = -searchRadius; delta <= searchRadius; delta += 1) {
+      const candidateRho = expectedRho + delta;
+      let score = 0;
+      for (let band = -2; band <= 2; band += 1) score += histogram.get(Math.round(candidateRho) + band) ?? 0;
+      if (!best || score > best.score) best = { normalX, normalY, rho: candidateRho, score };
+    }
+  }
+  return best ?? { normalX: family.normalX, normalY: family.normalY, rho };
+}
+
+function lineIntersection(a: GridLine, b: GridLine): Point | null {
+  const determinant = a.normalX * b.normalY - b.normalX * a.normalY;
+  if (Math.abs(determinant) < 1e-6) return null;
+  return {
+    x: (a.rho * b.normalY - b.rho * a.normalY) / determinant,
+    y: (a.normalX * b.rho - b.normalX * a.rho) / determinant
+  };
+}
+
+/** Refines a coarse connected-component outline to the outer lines of its 9×9 lattice. */
+export function refineGridQuadrilateral(
+  dark: Uint8Array,
+  width: number,
+  height: number,
+  coarse: GridQuadrilateral
+): GridQuadrilateral {
+  const horizontalDirection = {
+    x: (coarse.topRight.x - coarse.topLeft.x) + (coarse.bottomRight.x - coarse.bottomLeft.x),
+    y: (coarse.topRight.y - coarse.topLeft.y) + (coarse.bottomRight.y - coarse.bottomLeft.y)
+  };
+  const verticalDirection = {
+    x: (coarse.bottomLeft.x - coarse.topLeft.x) + (coarse.bottomRight.x - coarse.topRight.x),
+    y: (coarse.bottomLeft.y - coarse.topLeft.y) + (coarse.bottomRight.y - coarse.topRight.y)
+  };
+  const horizontalSpan = (distance(coarse.topLeft, coarse.bottomLeft) + distance(coarse.topRight, coarse.bottomRight)) / 2;
+  const verticalSpan = (distance(coarse.topLeft, coarse.topRight) + distance(coarse.bottomLeft, coarse.bottomRight)) / 2;
+  const horizontal = strongestNineCellSpan(dark, width, height, coarse, horizontalDirection, horizontalSpan);
+  const vertical = strongestNineCellSpan(dark, width, height, coarse, verticalDirection, verticalSpan);
+  if (!horizontal || !vertical) return coarse;
+
+  const horizontalFirst = refineGridLine(dark, width, height, coarse, horizontal, horizontal.first);
+  const horizontalLast = refineGridLine(dark, width, height, coarse, horizontal, horizontal.last);
+  const verticalFirst = refineGridLine(dark, width, height, coarse, vertical, vertical.first);
+  const verticalLast = refineGridLine(dark, width, height, coarse, vertical, vertical.last);
+
+  const intersections = [
+    lineIntersection(horizontalFirst, verticalFirst),
+    lineIntersection(horizontalFirst, verticalLast),
+    lineIntersection(horizontalLast, verticalFirst),
+    lineIntersection(horizontalLast, verticalLast)
+  ];
+  if (intersections.some((point) => !point)) return coarse;
+  const points = intersections as Point[];
+  const bySum = [...points].sort((a, b) => a.x + a.y - b.x - b.y);
+  const byDifference = [...points].sort((a, b) => b.x - b.y - (a.x - a.y));
+  const refined = {
+    topLeft: bySum[0],
+    topRight: byDifference[0],
+    bottomRight: bySum[3],
+    bottomLeft: byDifference[3]
+  };
+  if ([refined.topLeft, refined.topRight, refined.bottomRight, refined.bottomLeft]
+    .some((point) => point.x < 0 || point.x >= width || point.y < 0 || point.y >= height)) return coarse;
+  return refined;
+}
+
 function validGridShape(candidate: ComponentCandidate, width: number, height: number): boolean {
   const boxWidth = candidate.maxX - candidate.minX + 1;
   const boxHeight = candidate.maxY - candidate.minY + 1;
@@ -151,7 +332,7 @@ export function findGridQuadrilateral(dark: Uint8Array, width: number, height: n
 
   if (!best) return null;
   const { topLeft, topRight, bottomRight, bottomLeft } = best.candidate;
-  return { topLeft, topRight, bottomRight, bottomLeft };
+  return refineGridQuadrilateral(dark, width, height, { topLeft, topRight, bottomRight, bottomLeft });
 }
 
 function solveLinearSystem(matrix: number[][]): number[] {

@@ -2,6 +2,24 @@ import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 const GIVENS = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
+const TEXTURED_PHOTO_GIVENS = '.83.1.4.......42.52...7..9.7....8.5...........5.7....6.3..6...45.28.......4.5.18.';
+
+test('a skewed textured book photo keeps printed givens and ignores handwritten work', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Puzzles' }).click();
+  await page.getByRole('button', { name: 'Import from photo' }).click();
+  await page.getByLabel('Choose Sudoku photo').setInputFiles(
+    'tests/e2e/024-camera-puzzle-import/fixtures/skewed-textured-worked-puzzle.jpg'
+  );
+
+  await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 120_000 });
+  const recognized = await page.locator('[data-photo-cell]').allTextContents();
+  expect(recognized.map((value) => value || '.').join('')).toBe(TEXTURED_PHOTO_GIVENS);
+  await expect(page.getByText('26 givens', { exact: true })).toBeVisible();
+  await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
+  await expect(page.getByText(/One unique solution/)).toBeVisible();
+});
 
 test('a photographed printed grid is recognized, reviewed, validated, and imported', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
