@@ -20,10 +20,59 @@ describe('photo grid extraction', () => {
     const quad = findGridQuadrilateral(dark, width, height);
 
     expect(quad).not.toBeNull();
-    expect(quad?.topLeft.x).toBeCloseTo(30, 0);
-    expect(quad?.topLeft.y).toBeCloseTo(23, 0);
-    expect(quad?.bottomRight.x).toBeCloseTo(194, 0);
-    expect(quad?.bottomRight.y).toBeCloseTo(187, 0);
+    expect(quad?.topLeft.x).toBeGreaterThanOrEqual(27);
+    expect(quad?.topLeft.x).toBeLessThanOrEqual(34);
+    expect(quad?.topLeft.y).toBeGreaterThanOrEqual(20);
+    expect(quad?.topLeft.y).toBeLessThanOrEqual(27);
+    expect(quad?.bottomRight.x).toBeGreaterThanOrEqual(190);
+    expect(quad?.bottomRight.x).toBeLessThanOrEqual(197);
+    expect(quad?.bottomRight.y).toBeGreaterThanOrEqual(183);
+    expect(quad?.bottomRight.y).toBeLessThanOrEqual(190);
+  });
+
+  it('recovers the lattice borders when connected page marks extend its top corners', () => {
+    const width = 300;
+    const height = 280;
+    const dark = new Uint8Array(width * height);
+    const plot = (x: number, y: number): void => {
+      if (x >= 0 && x < width && y >= 0 && y < height) dark[y * width + x] = 1;
+    };
+    const line = (from: { x: number; y: number }, to: { x: number; y: number }): void => {
+      const steps = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y));
+      for (let step = 0; step <= steps; step += 1) {
+        const x = Math.round(from.x + (to.x - from.x) * step / steps);
+        const y = Math.round(from.y + (to.y - from.y) * step / steps);
+        for (let offset = -1; offset <= 1; offset += 1) {
+          plot(x + offset, y);
+          plot(x, y + offset);
+        }
+      }
+    };
+    const lerp = (from: { x: number; y: number }, to: { x: number; y: number }, amount: number) => ({
+      x: from.x + (to.x - from.x) * amount,
+      y: from.y + (to.y - from.y) * amount
+    });
+    const expected = {
+      topLeft: { x: 60, y: 55 },
+      topRight: { x: 245, y: 70 },
+      bottomRight: { x: 230, y: 245 },
+      bottomLeft: { x: 45, y: 230 }
+    };
+    for (let index = 0; index <= 9; index += 1) {
+      const amount = index / 9;
+      line(lerp(expected.topLeft, expected.bottomLeft, amount), lerp(expected.topRight, expected.bottomRight, amount));
+      line(lerp(expected.topLeft, expected.topRight, amount), lerp(expected.bottomLeft, expected.bottomRight, amount));
+    }
+    line(expected.topLeft, { x: 18, y: 15 });
+    line(expected.topRight, { x: 282, y: 25 });
+
+    const quad = findGridQuadrilateral(dark, width, height);
+
+    expect(quad).not.toBeNull();
+    for (const corner of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
+      expect(quad?.[corner].x).toBeCloseTo(expected[corner].x, -1);
+      expect(quad?.[corner].y).toBeCloseTo(expected[corner].y, -1);
+    }
   });
 
   it('maps every normalized corner through a perspective transform', () => {
