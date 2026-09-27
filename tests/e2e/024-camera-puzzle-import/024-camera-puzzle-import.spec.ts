@@ -2,23 +2,46 @@ import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 const GIVENS = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
-const TEXTURED_PHOTO_GIVENS = '.83.1.4.......42.52...7..9.7....8.5...........5.7....6.3..6...45.28.......4.5.18.';
+const REAL_PHOTOS = [
+  {
+    name: 'textured book page with dark handwriting',
+    path: 'tests/e2e/024-camera-puzzle-import/fixtures/skewed-textured-worked-puzzle.jpg',
+    givens: '.83.1.4.......42.52...7..9.7....8.5...........5.7....6.3..6...45.28.......4.5.18.'
+  },
+  {
+    name: 'skewed book page with pencil work and notes',
+    path: 'tests/e2e/024-camera-puzzle-import/fixtures/skewed-pencil-worked-puzzle.jpg',
+    givens: '.2....1....5.9.2..6....1.3.....52...5..3..........9.48..8.7.....7...435....6....4'
+  },
+  {
+    name: 'completed digital puzzle with coloured placements',
+    path: 'tests/e2e/024-camera-puzzle-import/fixtures/completed-digital-puzzle.jpg',
+    givens: '.7..82...6......1.............1.5..6.8....3.....4.........7.2..1..6.....4.5......'
+  },
+  {
+    name: 'paper puzzle with red placements and candidates',
+    path: 'tests/e2e/024-camera-puzzle-import/fixtures/red-ink-worked-puzzle.webp',
+    givens: '93...45..7.....3....6..9.1.1...87......6.3......92...8.9.3..8....1.....3..35...46'
+  }
+] as const;
 
-test('a skewed textured book photo keeps printed givens and ignores handwritten work', async ({ page }) => {
-  test.setTimeout(180_000);
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Puzzles' }).click();
-  await page.getByRole('button', { name: 'Import from photo' }).click();
-  await page.getByLabel('Choose Sudoku photo').setInputFiles(
-    'tests/e2e/024-camera-puzzle-import/fixtures/skewed-textured-worked-puzzle.jpg'
-  );
+test('real-world photos keep their printed givens and ignore solve work', async ({ page }) => {
+  test.setTimeout(240_000);
+  for (const photo of REAL_PHOTOS) {
+    await test.step(photo.name, async () => {
+      await page.goto('/');
+      await page.getByRole('button', { name: 'Puzzles' }).click();
+      await page.getByRole('button', { name: 'Import from photo' }).click();
+      await page.getByLabel('Choose Sudoku photo').setInputFiles(photo.path);
 
-  await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 120_000 });
-  const recognized = await page.locator('[data-photo-cell]').allTextContents();
-  expect(recognized.map((value) => value || '.').join('')).toBe(TEXTURED_PHOTO_GIVENS);
-  await expect(page.getByText('26 givens', { exact: true })).toBeVisible();
-  await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
-  await expect(page.getByText(/One unique solution/)).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 120_000 });
+      const recognized = await page.locator('[data-photo-cell]').allTextContents();
+      expect(recognized.map((value) => value || '.').join('')).toBe(photo.givens);
+      await expect(page.getByText(`${[...photo.givens].filter((value) => value !== '.').length} givens`, { exact: true })).toBeVisible();
+      await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
+      await expect(page.getByText(/One unique solution/)).toBeVisible();
+    });
+  }
 });
 
 test('a photographed printed grid is recognized, reviewed, validated, and imported', async ({ page }, testInfo) => {
