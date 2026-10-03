@@ -11,6 +11,7 @@
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
 
   type Stage = 'choose' | 'recognizing' | 'review' | 'validating';
+  const PHOTO_VALIDATION_TIMEOUT_MS = 30_000;
 
   let {
     hasActiveGame,
@@ -51,6 +52,10 @@
     return `Reading printed digits ${progress.completed} of ${progress.total}…`;
   }
 
+  function validatePhotoPuzzle(givens: string): Promise<SharedPuzzleValidation> {
+    return validateSharedPuzzleInWorker(givens, { timeoutMs: PHOTO_VALIDATION_TIMEOUT_MS });
+  }
+
   async function choosePhoto(event: Event): Promise<void> {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -61,7 +66,7 @@
     try {
       const result = await recognizeSudokuPhoto(file, (next) => progress = next);
       progress = { phase: 'checking-puzzle', completed: 0, total: 1 };
-      const review = await preparePhotoReview(result, validateSharedPuzzleInWorker);
+      const review = await preparePhotoReview(result, validatePhotoPuzzle);
       values = review.values;
       uncertainCells = review.uncertainCells;
       validation = review.validation;
@@ -120,7 +125,7 @@
     error = '';
     try {
       const givens = values.map((value) => value ?? '.').join('');
-      validation = await validateSharedPuzzleInWorker(givens);
+      validation = await validatePhotoPuzzle(givens);
       stage = 'review';
     } catch (validationError) {
       error = validationError instanceof Error ? validationError.message : 'This puzzle could not be validated.';
