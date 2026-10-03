@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Digit, GameProjection } from '$lib/domain/types';
+  import type { SolveHintVisualization } from '$lib/domain/walkthrough';
   import { PEERS } from '$lib/domain/sudoku';
   import { difficultyLabel } from '$lib/domain/difficulty';
 
@@ -15,6 +16,7 @@
     oddStripeOrigin,
     walkthroughTarget = null,
     patternCells = [],
+    visualHint = null,
     interactive = true,
     onselect,
     onfocuscell,
@@ -35,6 +37,7 @@
     oddStripeOrigin: number | null;
     walkthroughTarget?: number | null;
     patternCells?: number[];
+    visualHint?: SolveHintVisualization | null;
     interactive?: boolean;
     onselect: (cell: number) => void;
     onfocuscell: (cell: number) => void;
@@ -48,6 +51,11 @@
   const rovingCell = $derived(selected ?? 0);
   const evenStripeCells = $derived(new Set(evenStripeOrigin === null ? [] : PEERS[evenStripeOrigin]));
   const oddStripeCells = $derived(new Set(oddStripeOrigin === null ? [] : PEERS[oddStripeOrigin]));
+  const visualPatternCells = $derived(new Set(visualHint?.patternCells ?? []));
+  const visualExclusionCells = $derived(new Set(visualHint?.exclusionCells ?? []));
+  const visualCandidateCells = $derived(new Map(
+    (visualHint?.candidateCells ?? []).map((candidate) => [candidate.cell, candidate])
+  ));
 
   const selectedValue = $derived(
     selected === null || stripeMode
@@ -69,6 +77,7 @@
     const given = game.puzzle.givens[cell];
     const value = given === '.' ? game.values[cell] : Number(given);
     const notes = game.notes[cell];
+    const visualCandidates = visualCandidateCells.get(cell);
     return [
       `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`,
       given === '.' ? 'editable' : 'fixed',
@@ -83,6 +92,12 @@
       oddStripeOrigin === cell ? 'odd stripe source' : '',
       walkthroughTarget === cell ? 'walkthrough target' : '',
       patternCells.includes(cell) ? 'rule pattern' : '',
+      visualHint?.targetCell === cell ? 'visual hint destination' : '',
+      visualPatternCells.has(cell) ? 'visual hint pattern' : '',
+      visualExclusionCells.has(cell) ? 'visual hint exclusion' : '',
+      visualCandidates?.emphasized.length ? `emphasized candidates ${visualCandidates.emphasized.join(' ')}` : '',
+      visualCandidates?.endpoints.length ? `chain endpoint candidates ${visualCandidates.endpoints.join(' ')}` : '',
+      visualCandidates?.excluded.length ? `excluded candidates ${visualCandidates.excluded.join(' ')}` : '',
       !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
   }
@@ -92,6 +107,14 @@
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[data-cell="${cell}"]`)?.focus();
     });
+  }
+
+  function hintArrowX(cell: number, value?: Digit): number {
+    return (cell % 9) + (value === undefined ? .5 : ((value - 1) % 3 + .5) / 3);
+  }
+
+  function hintArrowY(cell: number, value?: Digit): number {
+    return Math.floor(cell / 9) + (value === undefined ? .5 : (Math.floor((value - 1) / 3) + .5) / 3);
   }
 
   function handleKeydown(event: KeyboardEvent, cell: number): void {
@@ -134,6 +157,7 @@
       {@const matches = !stripeMode && !highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
       {@const isNumberPeer = highlightAllNumberPeers && matchingPeers.has(cell)}
       {@const isNumberMatch = highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
+      {@const visualCandidates = visualCandidateCells.get(cell)}
       <button
         type="button"
         class="sudoku-cell"
@@ -150,6 +174,8 @@
         class:stripe-odd={oddStripeCells.has(cell)}
         class:walkthrough-target={walkthroughTarget === cell}
         class:walkthrough-context={patternCells.includes(cell)}
+        class:visual-hint-target={visualHint?.targetCell === cell}
+        class:visual-hint-pattern={visualPatternCells.has(cell)}
         class:box-right={column === 2 || column === 5}
         class:box-bottom={row === 2 || row === 5}
         class:last-column={column === 8}
@@ -164,6 +190,9 @@
         data-stripes={`${evenStripeCells.has(cell) ? 'even' : ''}${evenStripeCells.has(cell) && oddStripeCells.has(cell) ? ' ' : ''}${oddStripeCells.has(cell) ? 'odd' : ''}` || undefined}
         data-stripe-source={evenStripeOrigin === cell && oddStripeOrigin === cell ? 'even odd' : evenStripeOrigin === cell ? 'even' : oddStripeOrigin === cell ? 'odd' : undefined}
         data-highlight={isNumberMatch ? 'number-match' : isNumberPeer ? 'number-peer' : matches ? 'matching' : isPeer ? 'peer' : undefined}
+        data-visual-hint-target={visualHint?.targetCell === cell ? 'true' : undefined}
+        data-visual-hint-pattern={visualPatternCells.has(cell) ? 'true' : undefined}
+        data-visual-hint-exclusion={visualExclusionCells.has(cell) ? 'true' : undefined}
         data-e2e-board-cell
         onclick={() => { if (interactive) onselect(cell); }}
         onkeydown={(event) => { if (interactive) handleKeydown(event, cell); }}
@@ -172,13 +201,25 @@
         {#if oddStripeOrigin === cell}<span class="stripe-source-mark odd" aria-hidden="true">O</span>{/if}
         {#if value}
           <span class="cell-value">{value}</span>
-        {:else if game.notes[cell].length}
-          <span class="cell-notes" aria-hidden="true">
+        {:else if visualCandidates || game.notes[cell].length}
+          <span class="cell-notes" class:visual-candidates={visualCandidates !== undefined} aria-hidden="true">
             {#each Array(9) as _, note}
               {@const noteValue = (note + 1) as Digit}
-              {@const noteIsPresent = game.notes[cell].includes(noteValue)}
+              {@const noteIsPresent = visualCandidates
+                ? visualCandidates.values.includes(noteValue)
+                : game.notes[cell].includes(noteValue)}
               {@const noteMatches = highlightMatchingNotes && selectedValue === noteValue && noteIsPresent}
-              <i class:matching-note={noteMatches} data-highlight={noteMatches ? 'matching-note' : undefined}>{noteIsPresent ? noteValue : ''}</i>
+              {@const visuallyEmphasized = visualCandidates?.emphasized.includes(noteValue) ?? false}
+              {@const visuallyEndpoint = visualCandidates?.endpoints.includes(noteValue) ?? false}
+              {@const visuallyExcluded = visualCandidates?.excluded.includes(noteValue) ?? false}
+              <i
+                class:matching-note={noteMatches}
+                class:visual-emphasis={visuallyEmphasized}
+                class:visual-endpoint={visuallyEndpoint}
+                class:visual-excluded={visuallyExcluded}
+                data-highlight={noteMatches ? 'matching-note' : undefined}
+                data-visual-candidate={visuallyExcluded ? 'excluded' : visuallyEndpoint ? 'endpoint' : visuallyEmphasized ? 'emphasized' : undefined}
+              >{noteIsPresent ? noteValue : ''}</i>
             {/each}
           </span>
         {/if}
@@ -209,4 +250,35 @@
       {/if}
     {/each}
   </svg>
+  {#if visualHint}
+    <svg class="hint-visual-overlay" data-testid="visual-hint-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <marker id="visual-hint-arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L5,2.5 L0,5 z" />
+        </marker>
+      </defs>
+      {#each visualHint.exclusionCells as cell}
+        <rect
+          class="hint-exclusion-area"
+          x={cell % 9}
+          y={Math.floor(cell / 9)}
+          width="1"
+          height="1"
+          data-hint-exclusion={cell}
+        />
+      {/each}
+      {#each visualHint.arrows as arrow}
+        <line
+          class="hint-arrow"
+          class:candidate-arrow={arrow.fromValue !== undefined && arrow.toValue !== undefined}
+          x1={hintArrowX(arrow.fromCell, arrow.fromValue)}
+          y1={hintArrowY(arrow.fromCell, arrow.fromValue)}
+          x2={hintArrowX(arrow.toCell, arrow.toValue)}
+          y2={hintArrowY(arrow.toCell, arrow.toValue)}
+          marker-end="url(#visual-hint-arrowhead)"
+          data-hint-arrow={`${arrow.fromCell}:${arrow.fromValue ?? ''}-${arrow.toCell}:${arrow.toValue ?? ''}`}
+        />
+      {/each}
+    </svg>
+  {/if}
 </div>

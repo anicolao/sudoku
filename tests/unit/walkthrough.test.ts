@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { Digit, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
+import type { Digit, GameImportedEvent, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
 import {
   buildSolveWalkthrough,
   buildSolveWalkthroughAsync,
   buildHumanSolveSequence,
+  buildSolveHintVisualization,
   countSolveWalkthroughPlacements,
   findNextSolveHint,
   type WalkthroughBuildProgress
@@ -63,12 +64,24 @@ describe('instructional solve walkthroughs', () => {
       hardestTechnique: null
     };
 
-    expect(findNextSolveHint(replay([startEvent(puzzle)]).games[gameId])).toMatchObject({
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const hint = findNextSolveHint(game);
+
+    expect(hint).toMatchObject({
       targetCell: 0,
       value: 5,
       rule: 'full-house',
       ruleLabel: 'Full House'
     });
+    if (!hint) throw new Error('Expected a full-house hint.');
+    const visualization = buildSolveHintVisualization(game, hint);
+    expect(visualization).toMatchObject({
+      rule: 'full-house',
+      targetCell: 0,
+      patternCells: [1, 2, 3, 4, 5, 6, 7, 8],
+      exclusionCells: [1, 2, 3, 4, 5, 6, 7, 8]
+    });
+    expect(visualization.candidateCells.flatMap(({ values }) => values)).not.toContain(5);
   });
 
   it('builds a complete human-ordered solve from the original givens', () => {
@@ -219,6 +232,139 @@ describe('instructional solve walkthroughs', () => {
       explanation: 'The 5 X-Wing at r1c8, r1c9, r8c8, r8c9 eliminates 5 from r3c9, leaving 8.'
     });
     expect(step.contextCells).toEqual([7, 8, 70, 71]);
+
+    const origin = events[0] as GameImportedEvent;
+    const fourthPlacementIndex = work.flatMap((action, index) =>
+      action.type === 'value' ? [index] : []
+    )[3];
+    const before = replay([{
+      ...origin,
+      payload: { ...origin.payload, work: work.slice(0, fourthPlacementIndex) }
+    }]).games[gameId];
+    const visualization = buildSolveHintVisualization(before, {
+      targetCell: 26,
+      value: 8,
+      rule: 'x-wing',
+      ruleLabel: 'X-Wing',
+      explanation: step.explanation,
+      contextCells: step.contextCells
+    });
+
+    expect(visualization.arrows).toHaveLength(4);
+    expect(visualization.exclusionCells).toContain(26);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 26)).toMatchObject({
+      values: [5],
+      excluded: [5]
+    });
+    expect(visualization.candidateCells.find(({ cell }) => cell === 26)?.values).not.toContain(8);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => step.contextCells.includes(cell))
+      .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
+  });
+
+  it('draws every candidate link for an XY-Chain', () => {
+    const puzzle: PuzzleDefinition = {
+      id: 'xy-chain-visual-fixture',
+      givens: '7..218.46.24.698......45...5...316...16.27593..3596..4...973.....168473....1524.9',
+      solution: '735218946124369857689745321592431678416827593873596214248973165951684732367152489',
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const notesByCell: Record<number, Digit[]> = {
+      1: [3, 5, 9], 2: [5, 9], 6: [3, 9], 9: [1, 3], 12: [3, 7],
+      16: [1, 5, 7], 17: [1, 5, 7], 18: [1, 3, 6, 8, 9], 19: [3, 6, 8, 9],
+      20: [8, 9], 21: [3, 7], 24: [3, 9], 25: [1, 2, 7], 26: [1, 2, 7],
+      28: [4, 7, 8, 9], 29: [2, 7, 8, 9], 30: [4, 8], 34: [2, 7, 8],
+      35: [2, 7, 8], 36: [4, 8], 39: [4, 8], 45: [2, 8], 46: [7, 8],
+      51: [1, 2], 52: [1, 2, 7, 8], 54: [2, 4, 6, 8], 55: [4, 5, 6, 8],
+      56: [2, 5, 8], 60: [1, 2], 61: [1, 2, 5, 6, 8], 62: [1, 2, 5, 8],
+      63: [2, 9], 64: [5, 9], 71: [2, 5], 72: [3, 6, 8], 73: [3, 6, 7, 8],
+      74: [7, 8], 79: [6, 8]
+    };
+    for (const [cell, values] of Object.entries(notesByCell)) game.notes[Number(cell)] = values;
+
+    const visualization = buildSolveHintVisualization(game, {
+      targetCell: 45,
+      value: 8,
+      rule: 'xy-chain',
+      ruleLabel: 'XY-Chains',
+      explanation: 'An XY-Chain eliminates 2 from r6c1, leaving 8.',
+      contextCells: [51, 60, 71, 64, 63]
+    });
+
+    expect(visualization.patternCells).toEqual([51, 60, 71, 64, 63]);
+    expect(visualization.arrows).toEqual([
+      { fromCell: 51, toCell: 51, fromValue: 2, toValue: 1 },
+      { fromCell: 51, toCell: 60, fromValue: 1, toValue: 1 },
+      { fromCell: 60, toCell: 60, fromValue: 1, toValue: 2 },
+      { fromCell: 60, toCell: 71, fromValue: 2, toValue: 2 },
+      { fromCell: 71, toCell: 71, fromValue: 2, toValue: 5 },
+      { fromCell: 71, toCell: 64, fromValue: 5, toValue: 5 },
+      { fromCell: 64, toCell: 64, fromValue: 5, toValue: 9 },
+      { fromCell: 64, toCell: 63, fromValue: 9, toValue: 9 },
+      { fromCell: 63, toCell: 63, fromValue: 9, toValue: 2 }
+    ]);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => visualization.patternCells.includes(cell))
+      .every(({ values, emphasized }) => values.length === 2 && emphasized.length === 2)).toBe(true);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 45)).toMatchObject({
+      values: [2],
+      excluded: [2]
+    });
+  });
+
+  it('keeps a destination that is an XY-Chain endpoint in the complete chain', () => {
+    const puzzle: PuzzleDefinition = {
+      id: 'xy-chain-destination-fixture',
+      givens: '823....69...29.834..46381.258712649334....2.6..2..3...136..294727...4...4.8....2.',
+      solution: '823541769615297834794638152587126493341985276962473518136852947279314685458769321',
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const notesByCell: Record<number, Digit[]> = {
+      3: [4, 5, 7], 4: [1, 4, 5, 7], 5: [1, 5, 7], 6: [5, 7],
+      9: [1, 6, 7], 10: [1, 5, 6], 11: [1, 5], 14: [1, 5, 7],
+      18: [5, 7, 9], 19: [5, 9], 25: [5, 7], 38: [1, 9],
+      39: [5, 7, 8, 9], 40: [5, 7, 8], 41: [5, 7, 9], 43: [1, 5, 7, 8],
+      45: [1, 6, 9], 46: [1, 6, 9], 48: [4, 5, 7, 8, 9], 49: [4, 5, 7, 8],
+      51: [5, 7], 52: [1, 5, 7, 8], 53: [1, 5, 8], 57: [5, 8], 58: [5, 8],
+      65: [5, 9], 66: [3, 5, 9], 67: [1, 6], 69: [3, 6], 70: [1, 5, 8],
+      71: [1, 5, 8], 73: [5, 9], 75: [3, 7, 9], 76: [1, 6, 7],
+      77: [1, 6, 7, 9], 78: [3, 6], 80: [1, 5]
+    };
+    for (const [cell, values] of Object.entries(notesByCell)) game.notes[Number(cell)] = values;
+
+    const hint = findNextSolveHint(game);
+    expect(hint).toMatchObject({ targetCell: 53, value: 8, rule: 'xy-chain' });
+    if (!hint) throw new Error('Expected the XY-Chain from xychain.png.');
+    const visualization = buildSolveHintVisualization(game, hint);
+
+    expect(visualization.patternCells).toEqual([53, 80, 70]);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => visualization.patternCells.includes(cell))
+      .map(({ cell, values }) => ({ cell, values }))).toEqual([
+        { cell: 53, values: [5, 8] },
+        { cell: 80, values: [1, 5] },
+        { cell: 70, values: [1, 8] }
+      ]);
+    expect(visualization.arrows).toEqual([
+      { fromCell: 53, toCell: 53, fromValue: 8, toValue: 5 },
+      { fromCell: 53, toCell: 80, fromValue: 5, toValue: 5 },
+      { fromCell: 80, toCell: 80, fromValue: 5, toValue: 1 },
+      { fromCell: 80, toCell: 70, fromValue: 1, toValue: 1 },
+      { fromCell: 70, toCell: 70, fromValue: 1, toValue: 8 }
+    ]);
+    expect(visualization.exclusionCells).toEqual([43, 52, 71]);
+    expect(visualization.candidateCells
+      .filter(({ endpoints }) => endpoints.length)
+      .map(({ cell, endpoints }) => ({ cell, endpoints }))).toEqual([
+        { cell: 53, endpoints: [8] },
+        { cell: 70, endpoints: [8] }
+      ]);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {
