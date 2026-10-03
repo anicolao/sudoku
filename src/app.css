@@ -154,6 +154,7 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .hint-visual-overlay { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .hint-exclusion-area { fill: #d6453d; fill-opacity: .14; stroke: #b42318; stroke-opacity: .34; stroke-width: .035; }
 .hint-arrow { fill: none; stroke: #277a72; stroke-width: .065; stroke-linecap: round; stroke-opacity: .82; }
+.hint-arrow.candidate-arrow { stroke-width: .038; stroke-opacity: .74; }
 .hint-visual-overlay marker path { fill: #277a72; fill-opacity: .88; }
 .play-controls { min-width: 0; display: grid; gap: 12px; }
 .visual-hint-status { min-height: 50px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 6px 5px 10px; border: 1px solid #9dbcb6; border-radius: 10px; background: #f0f8f5; }

@@ -108,6 +108,14 @@
     });
   }
 
+  function hintArrowX(cell: number, value?: Digit): number {
+    return (cell % 9) + (value === undefined ? .5 : ((value - 1) % 3 + .5) / 3);
+  }
+
+  function hintArrowY(cell: number, value?: Digit): number {
+    return Math.floor(cell / 9) + (value === undefined ? .5 : (Math.floor((value - 1) / 3) + .5) / 3);
+  }
+
   function handleKeydown(event: KeyboardEvent, cell: number): void {
     let target: number | null = null;
     if (event.key === 'ArrowLeft') target = cell % 9 === 0 ? cell : cell - 1;
@@ -259,12 +267,13 @@
       {#each visualHint.arrows as arrow}
         <line
           class="hint-arrow"
-          x1={(arrow.fromCell % 9) + .5}
-          y1={Math.floor(arrow.fromCell / 9) + .5}
-          x2={(arrow.toCell % 9) + .5}
-          y2={Math.floor(arrow.toCell / 9) + .5}
+          class:candidate-arrow={arrow.fromValue !== undefined && arrow.toValue !== undefined}
+          x1={hintArrowX(arrow.fromCell, arrow.fromValue)}
+          y1={hintArrowY(arrow.fromCell, arrow.fromValue)}
+          x2={hintArrowX(arrow.toCell, arrow.toValue)}
+          y2={hintArrowY(arrow.toCell, arrow.toValue)}
           marker-end="url(#visual-hint-arrowhead)"
-          data-hint-arrow={`${arrow.fromCell}-${arrow.toCell}`}
+          data-hint-arrow={`${arrow.fromCell}:${arrow.fromValue ?? ''}-${arrow.toCell}:${arrow.toValue ?? ''}`}
         />
       {/each}
     </svg>
