@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
+test.describe.configure({ mode: 'serial', timeout: 180_000 });
+test.beforeEach(({}, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'Photo recognition is viewport-independent and expensive to run concurrently.');
+});
+
 const GIVENS = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
 const REAL_PHOTOS = [
   {
@@ -25,24 +30,21 @@ const REAL_PHOTOS = [
   }
 ] as const;
 
-test('real-world photos keep their printed givens and ignore solve work', async ({ page }) => {
-  test.setTimeout(240_000);
-  for (const photo of REAL_PHOTOS) {
-    await test.step(photo.name, async () => {
-      await page.goto('/');
-      await page.getByRole('button', { name: 'Puzzles' }).click();
-      await page.getByRole('button', { name: 'Import from photo' }).click();
-      await page.getByLabel('Choose Sudoku photo').setInputFiles(photo.path);
+for (const photo of REAL_PHOTOS) {
+  test(`keeps printed givens in ${photo.name}`, async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Puzzles' }).click();
+    await page.getByRole('button', { name: 'Import from photo' }).click();
+    await page.getByLabel('Choose Sudoku photo').setInputFiles(photo.path);
 
-      await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 120_000 });
-      const recognized = await page.locator('[data-photo-cell]').allTextContents();
-      expect(recognized.map((value) => value || '.').join('')).toBe(photo.givens);
-      await expect(page.getByText(`${[...photo.givens].filter((value) => value !== '.').length} givens`, { exact: true })).toBeVisible();
-      await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
-      await expect(page.getByText(/One unique solution/)).toBeVisible();
-    });
-  }
-});
+    await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 150_000 });
+    const recognized = await page.locator('[data-photo-cell]').allTextContents();
+    expect(recognized.map((value) => value || '.').join('')).toBe(photo.givens);
+    await expect(page.getByText(`${[...photo.givens].filter((value) => value !== '.').length} givens`, { exact: true })).toBeVisible();
+    await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
+    await expect(page.getByText(/One unique solution/)).toBeVisible();
+  });
+}
 
 test('a photographed printed grid is recognized, reviewed, validated, and imported', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
