@@ -1,6 +1,6 @@
 # Choose how much help a hint provides
 
-The hint menu can fill every basic candidate in one undoable action. Technique and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.
+The hint menu can fill every basic candidate in one undoable action. Technique, visual, and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.
 
 ## The generated puzzle offers an enabled Hint action
 
@@ -10,13 +10,13 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 - [x] Hint is available and the summary has no hint event
 
-## The player opens four distinct kinds of help
+## The player opens five distinct kinds of help
 
-![The player opens four distinct kinds of help](./screenshots/001-hint-choices-opened-phone-macos.png)
+![The player opens five distinct kinds of help](./screenshots/001-hint-choices-opened-phone-macos.png)
 
 **Verifications:**
 
-- [x] The modal offers candidate, technique, cell, and reveal choices
+- [x] The modal offers candidate, technique, visual, cell, and reveal choices
 - [x] Opening the choices appends no event
 
 ## The player asks the app to fill candidates allowed by each current unit
@@ -37,9 +37,18 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 - [x] The result names one supported book rule without naming a cell or value
 - [x] Technique advice changes no cell and appends no event
 
+## The player sees the rule on the board without receiving its answer
+
+![The player sees the rule on the board without receiving its answer](./screenshots/004-visual-hint-shown-phone-macos.png)
+
+**Verifications:**
+
+- [x] The board marks one destination and its transparent red exclusions
+- [x] The destination omits its solved digit and visual guidance appends no event
+
 ## The player asks which cell to solve without seeing its contents
 
-![The player asks which cell to solve without seeing its contents](./screenshots/004-cell-hint-shown-phone-macos.png)
+![The player asks which cell to solve without seeing its contents](./screenshots/005-cell-hint-shown-phone-macos.png)
 
 **Verifications:**
 
@@ -48,7 +57,7 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 ## The player can still cancel from the choice menu
 
-![The player can still cancel from the choice menu](./screenshots/005-hint-cancelled-phone-macos.png)
+![The player can still cancel from the choice menu](./screenshots/006-hint-cancelled-phone-macos.png)
 
 **Verifications:**
 
@@ -57,7 +66,7 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 ## The player returns and chooses the full reveal
 
-![The player returns and chooses the full reveal](./screenshots/006-hint-choices-reopened-phone-macos.png)
+![The player returns and chooses the full reveal](./screenshots/007-hint-choices-reopened-phone-macos.png)
 
 **Verifications:**
 
@@ -65,7 +74,7 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 ## Reveal places the same simplest target identified by Cell only
 
-![Reveal places the same simplest target identified by Cell only](./screenshots/007-one-cell-revealed-phone-macos.png)
+![Reveal places the same simplest target identified by Cell only](./screenshots/008-one-cell-revealed-phone-macos.png)
 
 **Verifications:**
 
