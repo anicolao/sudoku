@@ -262,7 +262,7 @@ describe('instructional solve walkthroughs', () => {
       .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
   });
 
-  it('draws every candidate link and both target eliminations for an XY-Chain', () => {
+  it('draws every candidate link for an XY-Chain', () => {
     const puzzle: PuzzleDefinition = {
       id: 'xy-chain-visual-fixture',
       givens: '7..218.46.24.698......45...5...316...16.27593..3596..4...973.....168473....1524.9',
@@ -304,9 +304,7 @@ describe('instructional solve walkthroughs', () => {
       { fromCell: 71, toCell: 64, fromValue: 5, toValue: 5 },
       { fromCell: 64, toCell: 64, fromValue: 5, toValue: 9 },
       { fromCell: 64, toCell: 63, fromValue: 9, toValue: 9 },
-      { fromCell: 63, toCell: 63, fromValue: 9, toValue: 2 },
-      { fromCell: 51, toCell: 45, fromValue: 2, toValue: 2 },
-      { fromCell: 63, toCell: 45, fromValue: 2, toValue: 2 }
+      { fromCell: 63, toCell: 63, fromValue: 9, toValue: 2 }
     ]);
     expect(visualization.candidateCells
       .filter(({ cell }) => visualization.patternCells.includes(cell))
@@ -315,6 +313,58 @@ describe('instructional solve walkthroughs', () => {
       values: [2],
       excluded: [2]
     });
+  });
+
+  it('keeps a destination that is an XY-Chain endpoint in the complete chain', () => {
+    const puzzle: PuzzleDefinition = {
+      id: 'xy-chain-destination-fixture',
+      givens: '823....69...29.834..46381.258712649334....2.6..2..3...136..294727...4...4.8....2.',
+      solution: '823541769615297834794638152587126493341985276962473518136852947279314685458769321',
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const notesByCell: Record<number, Digit[]> = {
+      3: [4, 5, 7], 4: [1, 4, 5, 7], 5: [1, 5, 7], 6: [5, 7],
+      9: [1, 6, 7], 10: [1, 5, 6], 11: [1, 5], 14: [1, 5, 7],
+      18: [5, 7, 9], 19: [5, 9], 25: [5, 7], 38: [1, 9],
+      39: [5, 7, 8, 9], 40: [5, 7, 8], 41: [5, 7, 9], 43: [1, 5, 7, 8],
+      45: [1, 6, 9], 46: [1, 6, 9], 48: [4, 5, 7, 8, 9], 49: [4, 5, 7, 8],
+      51: [5, 7], 52: [1, 5, 7, 8], 53: [1, 5, 8], 57: [5, 8], 58: [5, 8],
+      65: [5, 9], 66: [3, 5, 9], 67: [1, 6], 69: [3, 6], 70: [1, 5, 8],
+      71: [1, 5, 8], 73: [5, 9], 75: [3, 7, 9], 76: [1, 6, 7],
+      77: [1, 6, 7, 9], 78: [3, 6], 80: [1, 5]
+    };
+    for (const [cell, values] of Object.entries(notesByCell)) game.notes[Number(cell)] = values;
+
+    const hint = findNextSolveHint(game);
+    expect(hint).toMatchObject({ targetCell: 53, value: 8, rule: 'xy-chain' });
+    if (!hint) throw new Error('Expected the XY-Chain from xychain.png.');
+    const visualization = buildSolveHintVisualization(game, hint);
+
+    expect(visualization.patternCells).toEqual([53, 80, 70]);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => visualization.patternCells.includes(cell))
+      .map(({ cell, values }) => ({ cell, values }))).toEqual([
+        { cell: 53, values: [5, 8] },
+        { cell: 80, values: [1, 5] },
+        { cell: 70, values: [1, 8] }
+      ]);
+    expect(visualization.arrows).toEqual([
+      { fromCell: 53, toCell: 53, fromValue: 8, toValue: 5 },
+      { fromCell: 53, toCell: 80, fromValue: 5, toValue: 5 },
+      { fromCell: 80, toCell: 80, fromValue: 5, toValue: 1 },
+      { fromCell: 80, toCell: 70, fromValue: 1, toValue: 1 },
+      { fromCell: 70, toCell: 70, fromValue: 1, toValue: 8 }
+    ]);
+    expect(visualization.exclusionCells).toEqual([43, 52, 71]);
+    expect(visualization.candidateCells
+      .filter(({ endpoints }) => endpoints.length)
+      .map(({ cell, endpoints }) => ({ cell, endpoints }))).toEqual([
+        { cell: 53, endpoints: [8] },
+        { cell: 70, endpoints: [8] }
+      ]);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {

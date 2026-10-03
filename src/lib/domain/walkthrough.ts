@@ -74,6 +74,7 @@ export interface VisualHintCandidateCell {
   cell: number;
   values: Digit[];
   emphasized: Digit[];
+  endpoints: Digit[];
   excluded: Digit[];
 }
 
@@ -290,7 +291,7 @@ function visualHintArrows(
       if (rowOf(cell) === rowOf(other) || columnOf(cell) === columnOf(other)) add(cell, other);
     }));
   } else if (rule === 'xy-chain') {
-    const endpointValue = logical?.eliminated?.find(({ cell }) => cell === targetCell)?.value;
+    const endpointValue = logical?.eliminated?.[0]?.value;
     const chainCandidates = patternCells.map(candidatesAt);
     if (endpointValue && chainCandidates.length >= 3 && chainCandidates.every((values) => values.length === 2)) {
       let currentValue = chainCandidates[0].find((value) => value !== endpointValue);
@@ -314,8 +315,6 @@ function visualHintArrows(
           currentValue = outgoing;
         }
         if (currentValue === endpointValue) {
-          add(patternCells[0], targetCell, endpointValue, endpointValue);
-          add(patternCells.at(-1) ?? patternCells[0], targetCell, endpointValue, endpointValue);
           return arrows;
         }
       }
@@ -364,8 +363,16 @@ export function buildSolveHintVisualization(
   const contextCells = hint.rule === 'xy-chain' && logical?.relatedCells?.length
     ? logical.relatedCells
     : hint.contextCells;
-  const patternCells = [...new Set(contextCells)].filter((cell) => cell !== hint.targetCell);
+  const patternCells = [...new Set(contextCells)].filter((cell) =>
+    hint.rule === 'xy-chain' || cell !== hint.targetCell
+  );
+  const relatedCandidates = new Map(
+    (hint.rule === 'xy-chain' ? logical?.relatedCandidates ?? [] : [])
+      .map(({ cell, values }) => [cell, values] as const)
+  );
   const candidatesAt = (cell: number): Digit[] => {
+    const related = relatedCandidates.get(cell);
+    if (related) return related;
     const legal = candidatesFor(grid, cell);
     const notes = game.notes[cell] ?? [];
     return notes.length && cell !== hint.targetCell
@@ -388,20 +395,24 @@ export function buildSolveHintVisualization(
   ]);
   const candidateCells = [...cellsToAnnotate].flatMap((cell): VisualHintCandidateCell[] => {
     if (grid[cell] !== 0) return [];
+    const targetIsChainCell = hint.rule === 'xy-chain' && patternCells.includes(cell);
     const values = candidatesAt(cell).filter((value) =>
-      cell !== hint.targetCell || value !== hint.value
+      cell !== hint.targetCell || targetIsChainCell || value !== hint.value
     );
     const excluded = [...(excludedByCell.get(cell) ?? [])].filter((value) =>
       cell !== hint.targetCell || value !== hint.value
     );
     const shown = [...new Set([...values, ...excluded])].sort((left, right) => left - right);
     if (!shown.length) return [];
+    const xyEndpointValue = hint.rule === 'xy-chain' ? logical?.eliminated?.[0]?.value : undefined;
+    const isXYEndpoint = cell === patternCells[0] || cell === patternCells.at(-1);
     return [{
       cell,
       values: shown,
       emphasized: shown.filter((value) => patternCells.includes(cell) && (
         hint.rule === 'xy-chain' || patternValues.has(value)
       )),
+      endpoints: shown.filter((value) => isXYEndpoint && value === xyEndpointValue),
       excluded
     }];
   });

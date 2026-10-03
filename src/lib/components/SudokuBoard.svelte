@@ -96,6 +96,7 @@
       visualPatternCells.has(cell) ? 'visual hint pattern' : '',
       visualExclusionCells.has(cell) ? 'visual hint exclusion' : '',
       visualCandidates?.emphasized.length ? `emphasized candidates ${visualCandidates.emphasized.join(' ')}` : '',
+      visualCandidates?.endpoints.length ? `chain endpoint candidates ${visualCandidates.endpoints.join(' ')}` : '',
       visualCandidates?.excluded.length ? `excluded candidates ${visualCandidates.excluded.join(' ')}` : '',
       !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
@@ -209,13 +210,15 @@
                 : game.notes[cell].includes(noteValue)}
               {@const noteMatches = highlightMatchingNotes && selectedValue === noteValue && noteIsPresent}
               {@const visuallyEmphasized = visualCandidates?.emphasized.includes(noteValue) ?? false}
+              {@const visuallyEndpoint = visualCandidates?.endpoints.includes(noteValue) ?? false}
               {@const visuallyExcluded = visualCandidates?.excluded.includes(noteValue) ?? false}
               <i
                 class:matching-note={noteMatches}
                 class:visual-emphasis={visuallyEmphasized}
+                class:visual-endpoint={visuallyEndpoint}
                 class:visual-excluded={visuallyExcluded}
                 data-highlight={noteMatches ? 'matching-note' : undefined}
-                data-visual-candidate={visuallyExcluded ? 'excluded' : visuallyEmphasized ? 'emphasized' : undefined}
+                data-visual-candidate={visuallyExcluded ? 'excluded' : visuallyEndpoint ? 'endpoint' : visuallyEmphasized ? 'emphasized' : undefined}
               >{noteIsPresent ? noteValue : ''}</i>
             {/each}
           </span>
