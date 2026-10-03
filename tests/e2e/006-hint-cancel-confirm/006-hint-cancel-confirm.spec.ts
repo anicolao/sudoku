@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test('a hint can fill candidates, name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
+test('a hint can fill candidates, visualize or name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Choose how much help a hint provides',
-    'The hint menu can fill every basic candidate in one undoable action. Technique and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.'
+    'The hint menu can fill every basic candidate in one undoable action. Technique, visual, and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.'
   );
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
@@ -25,13 +25,14 @@ test('a hint can fill candidates, name a technique, identify a cell, or reveal i
 
   await page.getByRole('button', { name: 'Hint' }).click();
   await steps.step('hint-choices-opened', {
-    description: 'The player opens four distinct kinds of help',
+    description: 'The player opens five distinct kinds of help',
     verifications: [
-      { spec: 'The modal offers candidate, technique, cell, and reveal choices', check: async () => {
+      { spec: 'The modal offers candidate, technique, visual, cell, and reveal choices', check: async () => {
         const dialog = page.getByRole('dialog', { name: 'Choose a hint' });
         await expect(dialog).toBeVisible();
         await expect(dialog.getByRole('button', { name: /Fill basic candidates/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Technique only/ })).toBeEnabled();
+        await expect(dialog.getByRole('button', { name: /Visual hint/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Cell only/ })).toBeEnabled();
         await expect(dialog.getByRole('button', { name: /Reveal one cell/ })).toBeEnabled();
       } },
@@ -77,6 +78,30 @@ test('a hint can fill candidates, name a technique, identify a cell, or reveal i
   });
 
   await page.getByRole('button', { name: 'Back to puzzle' }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await page.getByRole('button', { name: /Visual hint/ }).click();
+  await steps.step('visual-hint-shown', {
+    description: 'The player sees the rule on the board without receiving its answer',
+    verifications: [
+      { spec: 'The board marks one destination and its transparent red exclusions', check: async () => {
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(page.getByRole('status', { name: /Visual hint for/ })).toBeVisible();
+        await expect(page.locator('[data-visual-hint-target="true"]')).toHaveCount(1);
+        expect(await page.locator('[data-hint-exclusion]').count()).toBeGreaterThan(0);
+      } },
+      { spec: 'The destination omits its solved digit and visual guidance appends no event', check: async () => {
+        const target = page.locator('[data-visual-hint-target="true"]');
+        const targetCell = Number(await target.getAttribute('data-cell'));
+        const events = await stream();
+        const solvedValue = events[0].payload.puzzle.solution[targetCell];
+        await expect(target).not.toContainText(solvedValue);
+        expect(events).toHaveLength(3);
+      } }
+    ]
+  });
+
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('.mode-switch')).toBeVisible();
   await page.getByRole('button', { name: 'Hint' }).click();
   await page.getByRole('button', { name: /Cell only/ }).click();
   let advisedCell = -1;

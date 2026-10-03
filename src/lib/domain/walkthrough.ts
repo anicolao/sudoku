@@ -1,4 +1,4 @@
-import { analyzeLogicalPlacement } from '$lib/generator/logical-solver';
+import { analyzeLogicalPlacement, type LogicalStep } from '$lib/generator/logical-solver';
 import { describeMove } from './game-log';
 import { replay } from './reducer';
 import { DIGITS, UNITS, candidatesFor, columnOf, rowOf, serializeGrid } from './sudoku';
@@ -68,6 +68,28 @@ interface PlacementExplanation {
 export interface NextSolveHint extends PlacementExplanation {
   targetCell: number;
   value: Digit;
+}
+
+export interface VisualHintCandidateCell {
+  cell: number;
+  values: Digit[];
+  emphasized: Digit[];
+  excluded: Digit[];
+}
+
+export interface VisualHintArrow {
+  fromCell: number;
+  toCell: number;
+}
+
+export interface SolveHintVisualization {
+  rule: WalkthroughRule;
+  ruleLabel: string;
+  targetCell: number;
+  patternCells: number[];
+  exclusionCells: number[];
+  candidateCells: VisualHintCandidateCell[];
+  arrows: VisualHintArrow[];
 }
 
 const BOOK_TECHNIQUE_ORDER: readonly BookTechnique[] = [
@@ -231,6 +253,113 @@ export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
   const targetCell = targets[0];
   const value = Number(game.puzzle.solution[targetCell]) as Digit;
   return { targetCell, value, ...placementExplanation(game, targetCell, value, [], false, []) };
+}
+
+function visualHintArrows(
+  rule: WalkthroughRule,
+  patternCells: readonly number[],
+  targetCell: number
+): VisualHintArrow[] {
+  const arrows: VisualHintArrow[] = [];
+  const add = (fromCell: number, toCell: number): void => {
+    if (fromCell === toCell || arrows.some((arrow) =>
+      arrow.fromCell === fromCell && arrow.toCell === toCell
+    )) return;
+    arrows.push({ fromCell, toCell });
+  };
+
+  if (rule === 'y-wing' && patternCells.length >= 3) {
+    add(patternCells[0], patternCells[1]);
+    add(patternCells[0], patternCells[2]);
+    add(patternCells[1], targetCell);
+    add(patternCells[2], targetCell);
+  } else if (rule === 'pointing-pair') {
+    patternCells.forEach((cell) => add(cell, targetCell));
+  } else if (rule === 'x-wing' || rule === 'swordfish') {
+    patternCells.forEach((cell, index) => patternCells.slice(index + 1).forEach((other) => {
+      if (rowOf(cell) === rowOf(other) || columnOf(cell) === columnOf(other)) add(cell, other);
+    }));
+  } else if (rule === 'xy-chain' || rule === 'simple-colors' || rule === 'medusa') {
+    patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
+  }
+
+  return arrows;
+}
+
+function visualPatternValues(
+  rule: WalkthroughRule,
+  logical: LogicalStep | null,
+  grid: readonly number[],
+  patternCells: readonly number[]
+): Set<Digit> {
+  const eliminated = new Set(logical?.eliminated?.map(({ value }) => value) ?? []);
+  if ([
+    'pointing-pair', 'x-wing', 'swordfish', 'simple-colors', 'medusa'
+  ].includes(rule)) return eliminated;
+  if ([
+    'naked-pair', 'hidden-pair', 'y-wing', 'naked-triple', 'xy-chain', 'unique-rectangle'
+  ].includes(rule)) {
+    return new Set(patternCells.flatMap((cell) => candidatesFor(grid, cell)));
+  }
+  return new Set();
+}
+
+export function buildSolveHintVisualization(
+  game: GameProjection,
+  hint: NextSolveHint
+): SolveHintVisualization {
+  const grid = boardFor(game);
+  const patternCells = [...new Set(hint.contextCells)].filter((cell) => cell !== hint.targetCell);
+  const logical = hint.rule === 'full-house' || hint.rule === 'unknown-rule'
+    ? null
+    : analyzeLogicalPlacement(
+        serializeGrid(grid),
+        hint.targetCell,
+        hint.value,
+        [hint.rule as BookTechnique],
+        game.notes
+      );
+  const excludedByCell = new Map<number, Set<Digit>>();
+  for (const eliminated of logical?.eliminated ?? []) {
+    if (!excludedByCell.has(eliminated.cell)) excludedByCell.set(eliminated.cell, new Set());
+    excludedByCell.get(eliminated.cell)?.add(eliminated.value);
+  }
+  const exclusionCells = hint.rule === 'full-house' || hint.rule === 'naked-single' || hint.rule === 'hidden-single'
+    ? patternCells
+    : [...excludedByCell.keys()];
+  const patternValues = visualPatternValues(hint.rule, logical, grid, patternCells);
+  const cellsToAnnotate = new Set([
+    ...patternCells,
+    ...excludedByCell.keys(),
+    hint.targetCell
+  ]);
+  const candidateCells = [...cellsToAnnotate].flatMap((cell): VisualHintCandidateCell[] => {
+    if (grid[cell] !== 0) return [];
+    const values = candidatesFor(grid, cell).filter((value) =>
+      cell !== hint.targetCell || value !== hint.value
+    );
+    const excluded = [...(excludedByCell.get(cell) ?? [])].filter((value) =>
+      cell !== hint.targetCell || value !== hint.value
+    );
+    const shown = [...new Set([...values, ...excluded])].sort((left, right) => left - right);
+    if (!shown.length) return [];
+    return [{
+      cell,
+      values: shown,
+      emphasized: shown.filter((value) => patternCells.includes(cell) && patternValues.has(value)),
+      excluded
+    }];
+  });
+
+  return {
+    rule: hint.rule,
+    ruleLabel: hint.ruleLabel,
+    targetCell: hint.targetCell,
+    patternCells,
+    exclusionCells,
+    candidateCells,
+    arrows: visualHintArrows(hint.rule, patternCells, hint.targetCell)
+  };
 }
 
 export function buildHumanSolveSequence(game: GameProjection): NextSolveHint[] {

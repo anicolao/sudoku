@@ -12,10 +12,12 @@
   import { elapsedAt, formatElapsed, remainingDigit } from '$lib/domain/selectors';
   import type { AppProjection, Digit, GameProjection, GameSettings, PuzzleDifficulty, ReversibleEvent } from '$lib/domain/types';
   import {
+    buildSolveHintVisualization,
     buildSolveWalkthroughAsync,
     countSolveWalkthroughPlacements,
     findNextSolveHint,
     type NextSolveHint,
+    type SolveHintVisualization,
     type SolveWalkthrough,
     type WalkthroughBuildProgress
   } from '$lib/domain/walkthrough';
@@ -73,6 +75,7 @@
   let hintDialogOpen = $state(false);
   let hintAdviceKind = $state<HintAdviceKind | null>(null);
   let hintAdvice = $state<NextSolveHint | null>(null);
+  let visualHint = $state<SolveHintVisualization | null>(null);
   let clearDialogOpen = $state(false);
   let historyPage = $state(0);
   let walkthroughGameId = $state<string | null>(null);
@@ -576,6 +579,7 @@
       if (!applyCommit(result, 'New puzzle ready')) throw new Error('Puzzle generation overlapped another tab');
       selectTabGame(result.gameId);
       reviewedGameId = null;
+      visualHint = null;
       view = 'play';
       generationStatus = 'idle';
     } catch (error) {
@@ -613,6 +617,7 @@
     selectTabGame(result.gameId);
     reviewedGameId = null;
     selectedCell = null;
+    visualHint = null;
     view = 'play';
   }
 
@@ -679,6 +684,7 @@
     } else {
       const result = await store.enterValue(currentGame.id, cell, value, metadata());
       if (!applyCommit(result, `Entered ${value}`)) return;
+      visualHint = null;
       announcement = result.projection.games[currentGame.id].conflicts.includes(cell)
         ? `Entered ${value}, conflict`
         : `Entered ${value}`;
@@ -762,12 +768,12 @@
 
   async function undo(): Promise<void> {
     if (!store || !currentGame?.undoTargetId || isReadOnly || currentGame.paused) return;
-    applyCommit(await store.undo(currentGame.id, currentGame.undoTargetId, metadata()), 'Undid last move');
+    if (applyCommit(await store.undo(currentGame.id, currentGame.undoTargetId, metadata()), 'Undid last move')) visualHint = null;
   }
 
   async function redo(): Promise<void> {
     if (!store || !currentGame?.redoTargetId || isReadOnly || currentGame.paused) return;
-    applyCommit(await store.redo(currentGame.id, currentGame.redoTargetId, metadata()), 'Redid last move');
+    if (applyCommit(await store.redo(currentGame.id, currentGame.redoTargetId, metadata()), 'Redid last move')) visualHint = null;
   }
 
   async function togglePause(): Promise<void> {
@@ -788,10 +794,12 @@
     const result = await store.revealHint(currentGame.id, advice.targetCell, advice.value, metadata());
     if (!applyCommit(result, `Hint revealed ${advice.value} in row ${Math.floor(advice.targetCell / 9) + 1}, column ${(advice.targetCell % 9) + 1}`)) return;
     selectedCell = advice.targetCell;
+    visualHint = null;
     closeHintDialog();
   }
 
   function openHintDialog(): void {
+    visualHint = null;
     hintAdviceKind = null;
     hintAdvice = null;
     hintDialogOpen = true;
@@ -821,10 +829,37 @@
     }
   }
 
+  function showVisualHint(): void {
+    if (!currentGame || isReadOnly || currentGame.paused) return;
+    const advice = findNextSolveHint(currentGame);
+    if (!advice) return;
+    if (advice.rule === 'unknown-rule') {
+      hintAdviceKind = 'technique';
+      hintAdvice = advice;
+      announcement = 'No listed technique was found for the current board';
+      return;
+    }
+    visualHint = buildSolveHintVisualization(currentGame, advice);
+    selectedCell = null;
+    selectedDigit = null;
+    highlightAllNumberPeers = false;
+    hintDialogOpen = false;
+    hintAdviceKind = null;
+    hintAdvice = null;
+    announcement = `Visual hint: ${advice.ruleLabel}. The destination and rule pattern are highlighted without placing its value`;
+  }
+
+  function clearVisualHint(): void {
+    if (!visualHint) return;
+    visualHint = null;
+    announcement = 'Visual hint cleared';
+  }
+
   async function restartGame(): Promise<void> {
     if (!store || !currentGame || isReadOnly) return;
     if (!applyCommit(await store.restart(currentGame.id, metadata()), 'Puzzle restarted')) return;
     selectedCell = null;
+    visualHint = null;
     resetStripes();
   }
 
@@ -907,6 +942,7 @@
   }
 
   function showView(next: View): void {
+    visualHint = null;
     view = next;
     if (next === 'history') historyPage = 0;
     if (next !== 'play') reviewedGameId = null;
@@ -1135,16 +1171,23 @@
                 <span class="pause-icon" aria-hidden="true">Ⅱ</span><strong>Puzzle paused</strong><small role="status" aria-label="Puzzle paused">Tap anywhere to resume. Your active time is frozen.</small>
               </button>
             {:else}
-              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} patternCells={currentGame.patternCells} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
+              <SudokuBoard game={currentGame} selected={selectedCell} {highlightAllNumberPeers} highlightMatchingNotes={projection.settings.highlightMatchingNotes !== false} notesBold={projection.settings.notesBold !== false} notesLarge={projection.settings.notesLarge !== false} stripeMode={inputMode === 'stripes'} {evenStripeOrigin} {oddStripeOrigin} patternCells={currentGame.patternCells} {visualHint} onselect={selectCell} onfocuscell={focusCell} onnumber={(cell, value) => enterDigit(value, cell)} ontoggleNotes={toggleNotesMode} onerase={eraseCellAt} onundo={undo} onredo={redo} />
             {/if}
           </div>
 
           <aside class="play-controls" aria-label="Puzzle controls">
-            <div class="mode-switch" aria-label="Input mode">
-              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => setInputMode('number')}>Number</button>
-              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => setInputMode('notes')}>Notes</button>
-              <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'stripes'} aria-pressed={inputMode === 'stripes'} onclick={() => setInputMode('stripes')}>Stripes</button>
-            </div>
+            {#if visualHint}
+              <div class="visual-hint-status" role="status" aria-label={`Visual hint for ${visualHint.ruleLabel}`}>
+                <p><strong>{visualHint.ruleLabel}</strong><small>Pattern · exclude · target</small></p>
+                <button type="button" onclick={clearVisualHint}>Done</button>
+              </div>
+            {:else}
+              <div class="mode-switch" aria-label="Input mode">
+                <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'number'} aria-pressed={inputMode === 'number'} onclick={() => setInputMode('number')}>Number</button>
+                <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'notes'} aria-pressed={inputMode === 'notes'} onclick={() => setInputMode('notes')}>Notes</button>
+                <button type="button" disabled={currentGame.paused || isReadOnly} class:active={inputMode === 'stripes'} aria-pressed={inputMode === 'stripes'} onclick={() => setInputMode('stripes')}>Stripes</button>
+              </div>
+            {/if}
             {#if inputMode === 'stripes'}
               <div class="stripe-tools" aria-label="Stripe controls">
                 <div class="stripe-status">
@@ -1250,6 +1293,7 @@
           <div class="hint-choices">
             <button type="button" onclick={fillBasicCandidates}><strong>Fill basic candidates</strong><small>Add every candidate allowed by the current row, column, and box.</small></button>
             <button type="button" onclick={() => showHintAdvice('technique')}><strong>Technique only</strong><small>Name the simplest book rule to try.</small></button>
+            <button type="button" onclick={showVisualHint}><strong>Visual hint</strong><small>Show the pattern, links, and exclusions without placing the answer.</small></button>
             <button type="button" onclick={() => showHintAdvice('cell')}><strong>Cell only</strong><small>Point to the next cell without showing its number.</small></button>
             <button type="button" class="confirm" onclick={confirmHint}><strong>Reveal one cell</strong><small>Place its correct number and record the hint.</small></button>
           </div>

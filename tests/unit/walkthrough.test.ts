@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { Digit, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
+import type { Digit, GameImportedEvent, PuzzleDefinition, SudokuEvent } from '../../src/lib/domain/types';
 import {
   buildSolveWalkthrough,
   buildSolveWalkthroughAsync,
   buildHumanSolveSequence,
+  buildSolveHintVisualization,
   countSolveWalkthroughPlacements,
   findNextSolveHint,
   type WalkthroughBuildProgress
@@ -63,12 +64,24 @@ describe('instructional solve walkthroughs', () => {
       hardestTechnique: null
     };
 
-    expect(findNextSolveHint(replay([startEvent(puzzle)]).games[gameId])).toMatchObject({
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const hint = findNextSolveHint(game);
+
+    expect(hint).toMatchObject({
       targetCell: 0,
       value: 5,
       rule: 'full-house',
       ruleLabel: 'Full House'
     });
+    if (!hint) throw new Error('Expected a full-house hint.');
+    const visualization = buildSolveHintVisualization(game, hint);
+    expect(visualization).toMatchObject({
+      rule: 'full-house',
+      targetCell: 0,
+      patternCells: [1, 2, 3, 4, 5, 6, 7, 8],
+      exclusionCells: [1, 2, 3, 4, 5, 6, 7, 8]
+    });
+    expect(visualization.candidateCells.flatMap(({ values }) => values)).not.toContain(5);
   });
 
   it('builds a complete human-ordered solve from the original givens', () => {
@@ -219,6 +232,34 @@ describe('instructional solve walkthroughs', () => {
       explanation: 'The 5 X-Wing at r1c8, r1c9, r8c8, r8c9 eliminates 5 from r3c9, leaving 8.'
     });
     expect(step.contextCells).toEqual([7, 8, 70, 71]);
+
+    const origin = events[0] as GameImportedEvent;
+    const fourthPlacementIndex = work.flatMap((action, index) =>
+      action.type === 'value' ? [index] : []
+    )[3];
+    const before = replay([{
+      ...origin,
+      payload: { ...origin.payload, work: work.slice(0, fourthPlacementIndex) }
+    }]).games[gameId];
+    const visualization = buildSolveHintVisualization(before, {
+      targetCell: 26,
+      value: 8,
+      rule: 'x-wing',
+      ruleLabel: 'X-Wing',
+      explanation: step.explanation,
+      contextCells: step.contextCells
+    });
+
+    expect(visualization.arrows).toHaveLength(4);
+    expect(visualization.exclusionCells).toContain(26);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 26)).toMatchObject({
+      values: [5],
+      excluded: [5]
+    });
+    expect(visualization.candidateCells.find(({ cell }) => cell === 26)?.values).not.toContain(8);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => step.contextCells.includes(cell))
+      .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {
