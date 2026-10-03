@@ -262,6 +262,61 @@ describe('instructional solve walkthroughs', () => {
       .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
   });
 
+  it('draws every candidate link and both target eliminations for an XY-Chain', () => {
+    const puzzle: PuzzleDefinition = {
+      id: 'xy-chain-visual-fixture',
+      givens: '7..218.46.24.698......45...5...316...16.27593..3596..4...973.....168473....1524.9',
+      solution: '735218946124369857689745321592431678416827593873596214248973165951684732367152489',
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const notesByCell: Record<number, Digit[]> = {
+      1: [3, 5, 9], 2: [5, 9], 6: [3, 9], 9: [1, 3], 12: [3, 7],
+      16: [1, 5, 7], 17: [1, 5, 7], 18: [1, 3, 6, 8, 9], 19: [3, 6, 8, 9],
+      20: [8, 9], 21: [3, 7], 24: [3, 9], 25: [1, 2, 7], 26: [1, 2, 7],
+      28: [4, 7, 8, 9], 29: [2, 7, 8, 9], 30: [4, 8], 34: [2, 7, 8],
+      35: [2, 7, 8], 36: [4, 8], 39: [4, 8], 45: [2, 8], 46: [7, 8],
+      51: [1, 2], 52: [1, 2, 7, 8], 54: [2, 4, 6, 8], 55: [4, 5, 6, 8],
+      56: [2, 5, 8], 60: [1, 2], 61: [1, 2, 5, 6, 8], 62: [1, 2, 5, 8],
+      63: [2, 9], 64: [5, 9], 71: [2, 5], 72: [3, 6, 8], 73: [3, 6, 7, 8],
+      74: [7, 8], 79: [6, 8]
+    };
+    for (const [cell, values] of Object.entries(notesByCell)) game.notes[Number(cell)] = values;
+
+    const visualization = buildSolveHintVisualization(game, {
+      targetCell: 45,
+      value: 8,
+      rule: 'xy-chain',
+      ruleLabel: 'XY-Chains',
+      explanation: 'An XY-Chain eliminates 2 from r6c1, leaving 8.',
+      contextCells: [51, 60, 71, 64, 63]
+    });
+
+    expect(visualization.patternCells).toEqual([51, 60, 71, 64, 63]);
+    expect(visualization.arrows).toEqual([
+      { fromCell: 51, toCell: 51, fromValue: 2, toValue: 1 },
+      { fromCell: 51, toCell: 60, fromValue: 1, toValue: 1 },
+      { fromCell: 60, toCell: 60, fromValue: 1, toValue: 2 },
+      { fromCell: 60, toCell: 71, fromValue: 2, toValue: 2 },
+      { fromCell: 71, toCell: 71, fromValue: 2, toValue: 5 },
+      { fromCell: 71, toCell: 64, fromValue: 5, toValue: 5 },
+      { fromCell: 64, toCell: 64, fromValue: 5, toValue: 9 },
+      { fromCell: 64, toCell: 63, fromValue: 9, toValue: 9 },
+      { fromCell: 63, toCell: 63, fromValue: 9, toValue: 2 },
+      { fromCell: 51, toCell: 45, fromValue: 2, toValue: 2 },
+      { fromCell: 63, toCell: 45, fromValue: 2, toValue: 2 }
+    ]);
+    expect(visualization.candidateCells
+      .filter(({ cell }) => visualization.patternCells.includes(cell))
+      .every(({ values, emphasized }) => values.length === 2 && emphasized.length === 2)).toBe(true);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 45)).toMatchObject({
+      values: [2],
+      excluded: [2]
+    });
+  });
+
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {
     const puzzle: PuzzleDefinition = {
       id: 'unknown-rule-fixture',

@@ -80,6 +80,8 @@ export interface VisualHintCandidateCell {
 export interface VisualHintArrow {
   fromCell: number;
   toCell: number;
+  fromValue?: Digit;
+  toValue?: Digit;
 }
 
 export interface SolveHintVisualization {
@@ -258,14 +260,22 @@ export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
 function visualHintArrows(
   rule: WalkthroughRule,
   patternCells: readonly number[],
-  targetCell: number
+  targetCell: number,
+  logical: LogicalStep | null,
+  candidatesAt: (cell: number) => Digit[]
 ): VisualHintArrow[] {
   const arrows: VisualHintArrow[] = [];
-  const add = (fromCell: number, toCell: number): void => {
-    if (fromCell === toCell || arrows.some((arrow) =>
-      arrow.fromCell === fromCell && arrow.toCell === toCell
+  const add = (
+    fromCell: number,
+    toCell: number,
+    fromValue?: Digit,
+    toValue?: Digit
+  ): void => {
+    if ((fromCell === toCell && fromValue === toValue) || arrows.some((arrow) =>
+      arrow.fromCell === fromCell && arrow.toCell === toCell &&
+      arrow.fromValue === fromValue && arrow.toValue === toValue
     )) return;
-    arrows.push({ fromCell, toCell });
+    arrows.push({ fromCell, toCell, fromValue, toValue });
   };
 
   if (rule === 'y-wing' && patternCells.length >= 3) {
@@ -279,7 +289,40 @@ function visualHintArrows(
     patternCells.forEach((cell, index) => patternCells.slice(index + 1).forEach((other) => {
       if (rowOf(cell) === rowOf(other) || columnOf(cell) === columnOf(other)) add(cell, other);
     }));
-  } else if (rule === 'xy-chain' || rule === 'simple-colors' || rule === 'medusa') {
+  } else if (rule === 'xy-chain') {
+    const endpointValue = logical?.eliminated?.find(({ cell }) => cell === targetCell)?.value;
+    const chainCandidates = patternCells.map(candidatesAt);
+    if (endpointValue && chainCandidates.length >= 3 && chainCandidates.every((values) => values.length === 2)) {
+      let currentValue = chainCandidates[0].find((value) => value !== endpointValue);
+      if (currentValue) {
+        add(patternCells[0], patternCells[0], endpointValue, currentValue);
+        for (let index = 1; index < patternCells.length && currentValue; index += 1) {
+          const previous = patternCells[index - 1];
+          const current = patternCells[index];
+          const values = chainCandidates[index];
+          if (!values.includes(currentValue)) {
+            currentValue = undefined;
+            break;
+          }
+          add(previous, current, currentValue, currentValue);
+          const outgoing = values.find((value) => value !== currentValue);
+          if (!outgoing) {
+            currentValue = undefined;
+            break;
+          }
+          add(current, current, currentValue, outgoing);
+          currentValue = outgoing;
+        }
+        if (currentValue === endpointValue) {
+          add(patternCells[0], targetCell, endpointValue, endpointValue);
+          add(patternCells.at(-1) ?? patternCells[0], targetCell, endpointValue, endpointValue);
+          return arrows;
+        }
+      }
+    }
+    arrows.length = 0;
+    patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
+  } else if (rule === 'simple-colors' || rule === 'medusa') {
     patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
   }
 
@@ -309,7 +352,6 @@ export function buildSolveHintVisualization(
   hint: NextSolveHint
 ): SolveHintVisualization {
   const grid = boardFor(game);
-  const patternCells = [...new Set(hint.contextCells)].filter((cell) => cell !== hint.targetCell);
   const logical = hint.rule === 'full-house' || hint.rule === 'unknown-rule'
     ? null
     : analyzeLogicalPlacement(
@@ -319,6 +361,17 @@ export function buildSolveHintVisualization(
         [hint.rule as BookTechnique],
         game.notes
       );
+  const contextCells = hint.rule === 'xy-chain' && logical?.relatedCells?.length
+    ? logical.relatedCells
+    : hint.contextCells;
+  const patternCells = [...new Set(contextCells)].filter((cell) => cell !== hint.targetCell);
+  const candidatesAt = (cell: number): Digit[] => {
+    const legal = candidatesFor(grid, cell);
+    const notes = game.notes[cell] ?? [];
+    return notes.length && cell !== hint.targetCell
+      ? legal.filter((value) => notes.includes(value))
+      : legal;
+  };
   const excludedByCell = new Map<number, Set<Digit>>();
   for (const eliminated of logical?.eliminated ?? []) {
     if (!excludedByCell.has(eliminated.cell)) excludedByCell.set(eliminated.cell, new Set());
@@ -335,7 +388,7 @@ export function buildSolveHintVisualization(
   ]);
   const candidateCells = [...cellsToAnnotate].flatMap((cell): VisualHintCandidateCell[] => {
     if (grid[cell] !== 0) return [];
-    const values = candidatesFor(grid, cell).filter((value) =>
+    const values = candidatesAt(cell).filter((value) =>
       cell !== hint.targetCell || value !== hint.value
     );
     const excluded = [...(excludedByCell.get(cell) ?? [])].filter((value) =>
@@ -346,7 +399,9 @@ export function buildSolveHintVisualization(
     return [{
       cell,
       values: shown,
-      emphasized: shown.filter((value) => patternCells.includes(cell) && patternValues.has(value)),
+      emphasized: shown.filter((value) => patternCells.includes(cell) && (
+        hint.rule === 'xy-chain' || patternValues.has(value)
+      )),
       excluded
     }];
   });
@@ -358,7 +413,7 @@ export function buildSolveHintVisualization(
     patternCells,
     exclusionCells,
     candidateCells,
-    arrows: visualHintArrows(hint.rule, patternCells, hint.targetCell)
+    arrows: visualHintArrows(hint.rule, patternCells, hint.targetCell, logical, candidatesAt)
   };
 }
 
