@@ -8,6 +8,7 @@ export interface LogicalStep {
   value?: Digit;
   eliminated?: Array<{ cell: number; value: Digit }>;
   relatedCells?: number[];
+  relatedCandidates?: Array<{ cell: number; values: Digit[] }>;
 }
 
 export interface LogicalResult {
@@ -288,7 +289,12 @@ function tryXYChain(state: SolverState): LogicalStep | null {
               .map((cell) => ({ cell, value: endpointValue }))
             );
             if (removals.length) {
-              return { technique: 'xy-chain', eliminated: removals, relatedCells: nextPath };
+              return {
+                technique: 'xy-chain',
+                eliminated: removals,
+                relatedCells: nextPath,
+                relatedCandidates: nextPath.map((cell) => ({ cell, values: candidatesIn(state, cell) }))
+              };
             }
           }
 
@@ -623,7 +629,8 @@ export function analyzeLogicalPlacement(
           cell,
           value,
           eliminated: step.eliminated,
-          relatedCells: step.relatedCells ?? []
+          relatedCells: step.relatedCells ?? [],
+          relatedCandidates: step.relatedCandidates
         };
       }
     }

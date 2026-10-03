@@ -1178,7 +1178,9 @@
           <aside class="play-controls" aria-label="Puzzle controls">
             {#if visualHint}
               <div class="visual-hint-status" role="status" aria-label={`Visual hint for ${visualHint.ruleLabel}`}>
-                <p><strong>{visualHint.ruleLabel}</strong><small>Pattern · exclude · target</small></p>
+                <p><strong>{visualHint.ruleLabel}</strong><small>{visualHint.rule === 'xy-chain'
+                  ? 'Follow the arrows; matching endpoints rule out the red candidates.'
+                  : 'Pattern · exclude · target'}</small></p>
                 <button type="button" onclick={clearVisualHint}>Done</button>
               </div>
             {:else}
