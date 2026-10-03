@@ -171,6 +171,23 @@ test('an installed game resumes, completes, and reloads offline', async ({ conte
       } }
     ]
   });
+  await page.getByRole('button', { name: 'Puzzles', exact: true }).click();
+  await page.getByRole('button', { name: 'Start Killer Sudoku' }).click();
+  await page.getByRole('button', { name: 'Start Killer puzzle', exact: true }).click();
+  await expect(page.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+  await page.getByRole('button', { name: /Reveal one cell/ }).click();
+  await expect(page.locator('.sudoku-cell.hinted')).toHaveCount(1);
+  await page.waitForFunction(() => document.documentElement.dataset.eventStorePending !== 'true');
+  await page.reload();
+  await steps.step('killer-created-and-resumed-offline', {
+    description: 'The installed app starts a new Killer and preserves its cage rules and hint offline',
+    verifications: [{ spec: 'Killer generation, logical hints, and cage rendering work without a connection', check: async () => {
+      await expect(page.getByRole('grid', { name: 'Killer Sudoku puzzle' })).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('.sudoku-cell.hinted')).toHaveCount(1);
+      expect(await page.locator('.cage-overlay .cage').count()).toBeGreaterThan(9);
+    } }]
+  });
   await context.setOffline(false);
   steps.generateDocs();
 });

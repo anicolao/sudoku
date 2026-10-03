@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Digit, GameProjection } from '$lib/domain/types';
+  import CageOverlay from './CageOverlay.svelte';
+  import { puzzlePeers } from '$lib/domain/killer';
   import { PEERS } from '$lib/domain/sudoku';
   import { difficultyLabel } from '$lib/domain/difficulty';
 
@@ -45,6 +47,8 @@
     onredo: () => void;
   } = $props();
 
+  const selectedCage = $derived(!stripeMode && selected !== null && game.puzzle.variant === 'killer'
+    ? game.puzzle.cages?.find((cage) => cage.cells.includes(selected)) : undefined);
   const rovingCell = $derived(selected ?? 0);
   const evenStripeCells = $derived(new Set(evenStripeOrigin === null ? [] : PEERS[evenStripeOrigin]));
   const oddStripeCells = $derived(new Set(oddStripeOrigin === null ? [] : PEERS[oddStripeOrigin]));
@@ -72,6 +76,7 @@
     return [
       `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`,
       given === '.' ? 'editable' : 'fixed',
+      game.puzzle.cages?.find((cage) => cage.cells.includes(cell)) ? `cage total ${game.puzzle.cages.find((cage) => cage.cells.includes(cell))!.total}, ${game.puzzle.cages.find((cage) => cage.cells.includes(cell))!.cells.length} cells, no repeated digits` : '',
       value ? String(value) : 'empty',
       notes.length ? `notes ${notes.join(' ')}` : '',
       game.hintedCells.includes(cell) ? 'revealed by hint' : '',
@@ -123,14 +128,14 @@
   }
 </script>
 
-<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
+<div class="sudoku-board" role="grid" class:killer-board={game.puzzle.variant === 'killer'} aria-label={game.puzzle.variant === 'killer' ? 'Killer Sudoku puzzle' : `${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
   {#each Array(9) as _, row}
     <div class="sudoku-row" role="row">
     {#each Array(9) as _, column}
       {@const cell = row * 9 + column}
       {@const given = game.puzzle.givens[cell]}
       {@const value = given === '.' ? game.values[cell] : Number(given)}
-      {@const isPeer = !stripeMode && !highlightAllNumberPeers && selected !== null && PEERS[selected].includes(cell)}
+      {@const isPeer = !stripeMode && !highlightAllNumberPeers && selected !== null && puzzlePeers(game.puzzle, selected).includes(cell)}
       {@const matches = !stripeMode && !highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
       {@const isNumberPeer = highlightAllNumberPeers && matchingPeers.has(cell)}
       {@const isNumberMatch = highlightAllNumberPeers && selectedValue !== null && value === selectedValue}
@@ -140,6 +145,7 @@
         class:given={given !== '.'}
         class:selected={!stripeMode && selected === cell}
         class:peer={isPeer}
+        class:cage-member={selectedCage?.cells.includes(cell) ?? false}
         class:matching={matches}
         class:number-peer={isNumberPeer}
         class:number-match={isNumberMatch}
@@ -189,6 +195,7 @@
     {/each}
     </div>
   {/each}
+  {#if game.puzzle.variant === 'killer'}<svg class="cage-overlay" viewBox="0 0 9 9" aria-hidden="true"><CageOverlay cages={game.puzzle.cages ?? []} selectedCell={stripeMode ? null : selected} /></svg>{/if}
   <svg class="stripe-overlay" data-testid="stripe-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
     <defs>
       <pattern id="sudoku-even-stripes" width=".24" height=".24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">

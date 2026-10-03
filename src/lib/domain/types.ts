@@ -12,8 +12,9 @@ export type PuzzleDifficulty =
 export type PuzzleRating = PuzzleDifficulty | 'custom';
 
 export type PuzzleProvenance =
+  | { kind: 'killer-generated'; seed: string; generatorVersion: 1 | 2 | 3 }
   | { kind: 'generated'; seed: string; generatorVersion: 1 | 2 }
-  | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3 | 4; fingerprint: string }
+  | { kind: 'puzzle-link'; formatVersion: 1 | 2 | 3 | 4 | 5; fingerprint: string }
   | { kind: 'camera-photo'; recognizerVersion: 1; fingerprint: string }
   | { kind: 'progress-transfer'; formatVersion: 1; fingerprint: string };
 
@@ -35,14 +36,21 @@ export type SolveTechnique =
   | 'medusa'
   | 'unique-rectangle';
 
+export interface KillerCage { cells: number[]; total: number; }
+
 export interface PuzzleDefinition {
+  variant?: 'classic' | 'killer';
+  killerRulesVersion?: 1;
+  killerDifficulty?: 'easy' | 'medium' | 'hard';
+  killerRatingVersion?: 1;
+  cages?: KillerCage[];
   id: string;
   givens: string;
   solution: string;
   difficulty: PuzzleRating;
   seed?: string;
   generatorVersion?: 1 | 2;
-  validatorVersion: 1 | 2 | 3;
+  validatorVersion: 1 | 2 | 3 | 4;
   hardestTechnique: SolveTechnique | null;
   provenance?: PuzzleProvenance;
 }
