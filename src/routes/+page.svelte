@@ -1180,6 +1180,8 @@
               <div class="visual-hint-status" role="status" aria-label={`Visual hint for ${visualHint.ruleLabel}`}>
                 <p><strong>{visualHint.ruleLabel}</strong><small>{visualHint.rule === 'xy-chain'
                   ? 'Follow the arrows; matching endpoints rule out the red candidates.'
+                  : visualHint.rule === 'simple-colors'
+                    ? 'Each line joins a conjugate pair; blue and gold candidates alternate.'
                   : 'Pattern · exclude · target'}</small></p>
                 <button type="button" onclick={clearVisualHint}>Done</button>
               </div>

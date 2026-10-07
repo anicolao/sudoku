@@ -97,6 +97,7 @@
       visualExclusionCells.has(cell) ? 'visual hint exclusion' : '',
       visualCandidates?.emphasized.length ? `emphasized candidates ${visualCandidates.emphasized.join(' ')}` : '',
       visualCandidates?.endpoints.length ? `chain endpoint candidates ${visualCandidates.endpoints.join(' ')}` : '',
+      visualCandidates?.colors.length ? `simple colors ${visualCandidates.colors.map(({ value, parity }) => `${value} ${parity}`).join(', ')}` : '',
       visualCandidates?.excluded.length ? `excluded candidates ${visualCandidates.excluded.join(' ')}` : '',
       !stripeMode && selected === cell ? 'selected' : ''
     ].filter(Boolean).join(', ');
@@ -211,14 +212,17 @@
               {@const noteMatches = highlightMatchingNotes && selectedValue === noteValue && noteIsPresent}
               {@const visuallyEmphasized = visualCandidates?.emphasized.includes(noteValue) ?? false}
               {@const visuallyEndpoint = visualCandidates?.endpoints.includes(noteValue) ?? false}
+              {@const visualColor = visualCandidates?.colors.find(({ value }) => value === noteValue)?.parity}
               {@const visuallyExcluded = visualCandidates?.excluded.includes(noteValue) ?? false}
               <i
                 class:matching-note={noteMatches}
                 class:visual-emphasis={visuallyEmphasized}
                 class:visual-endpoint={visuallyEndpoint}
+                class:visual-color-even={visualColor === 'even'}
+                class:visual-color-odd={visualColor === 'odd'}
                 class:visual-excluded={visuallyExcluded}
                 data-highlight={noteMatches ? 'matching-note' : undefined}
-                data-visual-candidate={visuallyExcluded ? 'excluded' : visuallyEndpoint ? 'endpoint' : visuallyEmphasized ? 'emphasized' : undefined}
+                data-visual-candidate={visuallyExcluded ? 'excluded' : visualColor ?? (visuallyEndpoint ? 'endpoint' : visuallyEmphasized ? 'emphasized' : undefined)}
               >{noteIsPresent ? noteValue : ''}</i>
             {/each}
           </span>
@@ -271,11 +275,12 @@
         <line
           class="hint-arrow"
           class:candidate-arrow={arrow.fromValue !== undefined && arrow.toValue !== undefined}
+          class:mutual-link={arrow.kind === 'mutual'}
           x1={hintArrowX(arrow.fromCell, arrow.fromValue)}
           y1={hintArrowY(arrow.fromCell, arrow.fromValue)}
           x2={hintArrowX(arrow.toCell, arrow.toValue)}
           y2={hintArrowY(arrow.toCell, arrow.toValue)}
-          marker-end="url(#visual-hint-arrowhead)"
+          marker-end={arrow.kind === 'mutual' ? undefined : 'url(#visual-hint-arrowhead)'}
           data-hint-arrow={`${arrow.fromCell}:${arrow.fromValue ?? ''}-${arrow.toCell}:${arrow.toValue ?? ''}`}
         />
       {/each}

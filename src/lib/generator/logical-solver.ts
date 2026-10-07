@@ -9,6 +9,8 @@ export interface LogicalStep {
   eliminated?: Array<{ cell: number; value: Digit }>;
   relatedCells?: number[];
   relatedCandidates?: Array<{ cell: number; values: Digit[] }>;
+  relatedLinks?: Array<{ fromCell: number; toCell: number; value: Digit }>;
+  relatedColors?: Array<{ cell: number; value: Digit; color: 0 | 1 }>;
 }
 
 export interface LogicalResult {
@@ -358,11 +360,19 @@ function trySimpleColors(state: SolverState): LogicalStep | null {
         }
       }
       if (colors.size < 4) continue;
+      const colorDetails = (): Pick<LogicalStep, 'relatedCells' | 'relatedLinks' | 'relatedColors'> => ({
+        relatedCells: [...colors.keys()],
+        relatedLinks: [...colors.keys()].flatMap((cell) => [...(graph.get(cell) ?? [])]
+          .filter((peer) => colors.has(peer) && cell < peer)
+          .map((peer) => ({ fromCell: cell, toCell: peer, value: digit })))
+          .sort((left, right) => left.fromCell - right.fromCell || left.toCell - right.toCell),
+        relatedColors: [...colors].map(([cell, color]) => ({ cell, value: digit, color }))
+      });
       for (const color of [0, 1] as const) {
         const cells = [...colors].filter(([, value]) => value === color).map(([cell]) => cell);
         if (!cells.some((cell) => cells.some((peer) => peer !== cell && PEERS[cell].includes(peer)))) continue;
         const removals = removeCandidates(state, cells.map((cell) => ({ cell, value: digit })));
-        if (removals.length) return { technique: 'simple-colors', eliminated: removals, relatedCells: [...colors.keys()] };
+        if (removals.length) return { technique: 'simple-colors', eliminated: removals, ...colorDetails() };
       }
       const colorZero = [...colors].filter(([, color]) => color === 0).map(([cell]) => cell);
       const colorOne = [...colors].filter(([, color]) => color === 1).map(([cell]) => cell);
@@ -372,7 +382,7 @@ function trySimpleColors(state: SolverState): LogicalStep | null {
           colorOne.some((peer) => PEERS[cell].includes(peer)))
         .map((cell) => ({ cell, value: digit }))
       );
-      if (removals.length) return { technique: 'simple-colors', eliminated: removals, relatedCells: [...colors.keys()] };
+      if (removals.length) return { technique: 'simple-colors', eliminated: removals, ...colorDetails() };
     }
   }
   return null;
@@ -630,7 +640,9 @@ export function analyzeLogicalPlacement(
           value,
           eliminated: step.eliminated,
           relatedCells: step.relatedCells ?? [],
-          relatedCandidates: step.relatedCandidates
+          relatedCandidates: step.relatedCandidates,
+          relatedLinks: step.relatedLinks,
+          relatedColors: step.relatedColors
         };
       }
     }

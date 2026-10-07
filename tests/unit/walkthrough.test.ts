@@ -364,7 +364,56 @@ describe('instructional solve walkthroughs', () => {
       .map(({ cell, endpoints }) => ({ cell, endpoints }))).toEqual([
         { cell: 53, endpoints: [8] },
         { cell: 70, endpoints: [8] }
-      ]);
+    ]);
+  });
+
+  it('connects and alternately colors the actual conjugate links for Simple Colors', () => {
+    const puzzle: PuzzleDefinition = {
+      id: 'simple-colors-visual-fixture',
+      givens: '64983125753167298482754961321.39.74549....8327.32.41963.4.2.56.1...6342.9624.537.',
+      solution: '649831257531672984827549613218396745496157832753284196374928561185763429962415378',
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    const notesByCell: Record<number, Digit[]> = {
+      29: [6, 8], 32: [6, 8], 38: [5, 6], 39: [1, 7], 40: [1, 5],
+      41: [6, 7], 46: [5, 8], 49: [5, 8], 55: [5, 8], 57: [1, 7, 9],
+      59: [7, 8], 62: [1, 8, 9], 64: [5, 7, 8], 65: [5, 8],
+      66: [7, 9], 71: [8, 9], 76: [1, 8], 80: [1, 8]
+    };
+    for (const [cell, values] of Object.entries(notesByCell)) game.notes[Number(cell)] = values;
+
+    const hint = findNextSolveHint(game);
+    expect(hint).toMatchObject({ targetCell: 55, value: 7, rule: 'simple-colors' });
+    if (!hint) throw new Error('Expected the Simple Colors step from simplecolors.png.');
+    const visualization = buildSolveHintVisualization(game, hint);
+
+    expect(visualization.arrows).toEqual([
+      { fromCell: 29, toCell: 32, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 29, toCell: 46, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 29, toCell: 65, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 32, toCell: 49, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 32, toCell: 59, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 46, toCell: 49, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 49, toCell: 76, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 59, toCell: 76, fromValue: 8, toValue: 8, kind: 'mutual' },
+      { fromCell: 76, toCell: 80, fromValue: 8, toValue: 8, kind: 'mutual' }
+    ]);
+    expect(visualization.candidateCells.flatMap(({ cell, colors }) =>
+      colors.map(({ value, parity }) => ({ cell, value, parity }))
+    )).toEqual([
+      { cell: 29, value: 8, parity: 'even' },
+      { cell: 32, value: 8, parity: 'odd' },
+      { cell: 65, value: 8, parity: 'odd' },
+      { cell: 46, value: 8, parity: 'odd' },
+      { cell: 59, value: 8, parity: 'even' },
+      { cell: 49, value: 8, parity: 'even' },
+      { cell: 76, value: 8, parity: 'odd' },
+      { cell: 80, value: 8, parity: 'even' }
+    ]);
+    expect(visualization.exclusionCells).toEqual([55, 71]);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {
