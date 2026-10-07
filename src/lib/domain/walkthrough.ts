@@ -75,6 +75,7 @@ export interface VisualHintCandidateCell {
   values: Digit[];
   emphasized: Digit[];
   endpoints: Digit[];
+  colors: Array<{ value: Digit; parity: 'even' | 'odd' }>;
   excluded: Digit[];
 }
 
@@ -83,6 +84,7 @@ export interface VisualHintArrow {
   toCell: number;
   fromValue?: Digit;
   toValue?: Digit;
+  kind?: 'mutual';
 }
 
 export interface SolveHintVisualization {
@@ -270,13 +272,14 @@ function visualHintArrows(
     fromCell: number,
     toCell: number,
     fromValue?: Digit,
-    toValue?: Digit
+    toValue?: Digit,
+    kind?: VisualHintArrow['kind']
   ): void => {
     if ((fromCell === toCell && fromValue === toValue) || arrows.some((arrow) =>
       arrow.fromCell === fromCell && arrow.toCell === toCell &&
       arrow.fromValue === fromValue && arrow.toValue === toValue
     )) return;
-    arrows.push({ fromCell, toCell, fromValue, toValue });
+    arrows.push({ fromCell, toCell, fromValue, toValue, ...(kind ? { kind } : {}) });
   };
 
   if (rule === 'y-wing' && patternCells.length >= 3) {
@@ -321,7 +324,11 @@ function visualHintArrows(
     }
     arrows.length = 0;
     patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
-  } else if (rule === 'simple-colors' || rule === 'medusa') {
+  } else if (rule === 'simple-colors') {
+    for (const link of logical?.relatedLinks ?? []) {
+      add(link.fromCell, link.toCell, link.value, link.value, 'mutual');
+    }
+  } else if (rule === 'medusa') {
     patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
   }
 
@@ -370,6 +377,10 @@ export function buildSolveHintVisualization(
     (hint.rule === 'xy-chain' ? logical?.relatedCandidates ?? [] : [])
       .map(({ cell, values }) => [cell, values] as const)
   );
+  const relatedColors = new Map(
+    (hint.rule === 'simple-colors' ? logical?.relatedColors ?? [] : [])
+      .map(({ cell, value, color }) => [cell, { value, parity: color === 0 ? 'even' as const : 'odd' as const }] as const)
+  );
   const candidatesAt = (cell: number): Digit[] => {
     const related = relatedCandidates.get(cell);
     if (related) return related;
@@ -413,6 +424,10 @@ export function buildSolveHintVisualization(
         hint.rule === 'xy-chain' || patternValues.has(value)
       )),
       endpoints: shown.filter((value) => isXYEndpoint && value === xyEndpointValue),
+      colors: shown.flatMap((value) => {
+        const color = relatedColors.get(cell);
+        return color?.value === value ? [color] : [];
+      }),
       excluded
     }];
   });
