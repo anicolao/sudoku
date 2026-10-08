@@ -390,30 +390,23 @@ describe('instructional solve walkthroughs', () => {
     if (!hint) throw new Error('Expected the Simple Colors step from simplecolors.png.');
     const visualization = buildSolveHintVisualization(game, hint);
 
+    expect(visualization.patternCells).toEqual([59, 32, 29, 46]);
     expect(visualization.arrows).toEqual([
-      { fromCell: 29, toCell: 32, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 29, toCell: 46, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 29, toCell: 65, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 32, toCell: 49, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 32, toCell: 59, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 46, toCell: 49, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 49, toCell: 76, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 59, toCell: 76, fromValue: 8, toValue: 8, kind: 'mutual' },
-      { fromCell: 76, toCell: 80, fromValue: 8, toValue: 8, kind: 'mutual' }
+      { fromCell: 59, toCell: 32, fromValue: 8, toValue: 8, kind: 'conjugate' },
+      { fromCell: 32, toCell: 29, fromValue: 8, toValue: 8, kind: 'conjugate' },
+      { fromCell: 29, toCell: 46, fromValue: 8, toValue: 8, kind: 'conjugate' },
+      { fromCell: 59, toCell: 55, fromValue: 8, toValue: 8, kind: 'elimination' },
+      { fromCell: 46, toCell: 55, fromValue: 8, toValue: 8, kind: 'elimination' }
     ]);
     expect(visualization.candidateCells.flatMap(({ cell, colors }) =>
       colors.map(({ value, parity }) => ({ cell, value, parity }))
     )).toEqual([
-      { cell: 29, value: 8, parity: 'even' },
-      { cell: 32, value: 8, parity: 'odd' },
-      { cell: 65, value: 8, parity: 'odd' },
-      { cell: 46, value: 8, parity: 'odd' },
       { cell: 59, value: 8, parity: 'even' },
-      { cell: 49, value: 8, parity: 'even' },
-      { cell: 76, value: 8, parity: 'odd' },
-      { cell: 80, value: 8, parity: 'even' }
+      { cell: 32, value: 8, parity: 'odd' },
+      { cell: 29, value: 8, parity: 'even' },
+      { cell: 46, value: 8, parity: 'odd' }
     ]);
-    expect(visualization.exclusionCells).toEqual([55, 71]);
+    expect(visualization.exclusionCells).toEqual([55]);
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {

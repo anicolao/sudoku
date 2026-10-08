@@ -158,8 +158,10 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .hint-exclusion-area { fill: #d6453d; fill-opacity: .14; stroke: #b42318; stroke-opacity: .34; stroke-width: .035; }
 .hint-arrow { fill: none; stroke: #277a72; stroke-width: .065; stroke-linecap: round; stroke-opacity: .82; }
 .hint-arrow.candidate-arrow { stroke-width: .038; stroke-opacity: .74; }
-.hint-arrow.mutual-link { stroke: #626b75; stroke-width: .032; stroke-opacity: .68; }
+.hint-arrow.conjugate-link { stroke: #59616d; stroke-width: .034; stroke-opacity: .72; }
+.hint-arrow.elimination-link { stroke: #b42318; stroke-width: .032; stroke-dasharray: .08 .055; stroke-opacity: .62; }
 .hint-visual-overlay marker path { fill: #277a72; fill-opacity: .88; }
+.hint-visual-overlay marker path.exclusion-arrowhead { fill: #b42318; fill-opacity: .76; }
 .play-controls { min-width: 0; display: grid; gap: 12px; }
 .visual-hint-status { min-height: 50px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 6px 5px 10px; border: 1px solid #9dbcb6; border-radius: 10px; background: #f0f8f5; }
 .visual-hint-status p { min-width: 0; margin: 0; display: grid; color: #20242b; line-height: 1.1; }
