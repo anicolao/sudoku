@@ -1181,7 +1181,7 @@
                 <p><strong>{visualHint.ruleLabel}</strong><small>{visualHint.rule === 'xy-chain'
                   ? 'Follow the arrows; matching endpoints rule out the red candidates.'
                   : visualHint.rule === 'simple-colors'
-                    ? 'Each line joins a conjugate pair; blue and gold candidates alternate.'
+                    ? 'Follow the smallest alternating color chain; both endpoints eliminate red.'
                   : 'Pattern · exclude · target'}</small></p>
                 <button type="button" onclick={clearVisualHint}>Done</button>
               </div>

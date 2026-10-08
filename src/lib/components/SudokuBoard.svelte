@@ -260,6 +260,9 @@
         <marker id="visual-hint-arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L5,2.5 L0,5 z" />
         </marker>
+        <marker id="visual-hint-exclusion-arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+          <path class="exclusion-arrowhead" d="M0,0 L5,2.5 L0,5 z" />
+        </marker>
       </defs>
       {#each visualHint.exclusionCells as cell}
         <rect
@@ -275,12 +278,15 @@
         <line
           class="hint-arrow"
           class:candidate-arrow={arrow.fromValue !== undefined && arrow.toValue !== undefined}
-          class:mutual-link={arrow.kind === 'mutual'}
+          class:conjugate-link={arrow.kind === 'conjugate'}
+          class:elimination-link={arrow.kind === 'elimination'}
           x1={hintArrowX(arrow.fromCell, arrow.fromValue)}
           y1={hintArrowY(arrow.fromCell, arrow.fromValue)}
           x2={hintArrowX(arrow.toCell, arrow.toValue)}
           y2={hintArrowY(arrow.toCell, arrow.toValue)}
-          marker-end={arrow.kind === 'mutual' ? undefined : 'url(#visual-hint-arrowhead)'}
+          marker-end={arrow.kind === 'elimination'
+            ? 'url(#visual-hint-exclusion-arrowhead)'
+            : 'url(#visual-hint-arrowhead)'}
           data-hint-arrow={`${arrow.fromCell}:${arrow.fromValue ?? ''}-${arrow.toCell}:${arrow.toValue ?? ''}`}
         />
       {/each}

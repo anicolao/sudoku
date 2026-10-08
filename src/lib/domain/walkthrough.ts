@@ -1,7 +1,7 @@
 import { analyzeLogicalPlacement, type LogicalStep } from '$lib/generator/logical-solver';
 import { describeMove } from './game-log';
 import { replay } from './reducer';
-import { DIGITS, UNITS, candidatesFor, columnOf, rowOf, serializeGrid } from './sudoku';
+import { DIGITS, PEERS, UNITS, candidatesFor, columnOf, rowOf, serializeGrid } from './sudoku';
 import type {
   Digit,
   GameImportedEvent,
@@ -84,7 +84,7 @@ export interface VisualHintArrow {
   toCell: number;
   fromValue?: Digit;
   toValue?: Digit;
-  kind?: 'mutual';
+  kind?: 'conjugate' | 'elimination';
 }
 
 export interface SolveHintVisualization {
@@ -130,6 +130,17 @@ const RULE_LABELS: Record<WalkthroughRule, string> = {
   'medusa': '3D Medusa',
   'unknown-rule': 'Unknown rule'
 };
+
+type LogicalLink = NonNullable<LogicalStep['relatedLinks']>[number];
+type LogicalColor = NonNullable<LogicalStep['relatedColors']>[number];
+
+interface SimpleColorsProof {
+  cells: number[];
+  links: LogicalLink[];
+  colors: LogicalColor[];
+  eliminated: Array<{ cell: number; value: Digit }>;
+  conclusionLinks: LogicalLink[];
+}
 
 const boardFor = (game: GameProjection): number[] => [...game.puzzle.givens].map((given, cell) =>
   given === '.' ? game.values[cell] ?? 0 : Number(given)
@@ -265,7 +276,8 @@ function visualHintArrows(
   patternCells: readonly number[],
   targetCell: number,
   logical: LogicalStep | null,
-  candidatesAt: (cell: number) => Digit[]
+  candidatesAt: (cell: number) => Digit[],
+  simpleColorsProof: SimpleColorsProof | null
 ): VisualHintArrow[] {
   const arrows: VisualHintArrow[] = [];
   const add = (
@@ -325,14 +337,121 @@ function visualHintArrows(
     arrows.length = 0;
     patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
   } else if (rule === 'simple-colors') {
-    for (const link of logical?.relatedLinks ?? []) {
-      add(link.fromCell, link.toCell, link.value, link.value, 'mutual');
+    for (const link of simpleColorsProof?.links ?? []) {
+      add(link.fromCell, link.toCell, link.value, link.value, 'conjugate');
+    }
+    for (const link of simpleColorsProof?.conclusionLinks ?? []) {
+      add(link.fromCell, link.toCell, link.value, link.value, 'elimination');
     }
   } else if (rule === 'medusa') {
     patternCells.slice(1).forEach((cell, index) => add(patternCells[index], cell));
   }
 
   return arrows;
+}
+
+function shortestLinkPath(
+  links: readonly LogicalLink[],
+  start: number,
+  finish: number
+): number[] | null {
+  const adjacency = new Map<number, number[]>();
+  for (const { fromCell, toCell } of links) {
+    adjacency.set(fromCell, [...(adjacency.get(fromCell) ?? []), toCell]);
+    adjacency.set(toCell, [...(adjacency.get(toCell) ?? []), fromCell]);
+  }
+  const queue: number[][] = [[start]];
+  const visited = new Set([start]);
+  while (queue.length) {
+    const path = queue.shift() as number[];
+    const cell = path.at(-1) as number;
+    if (cell === finish) return path;
+    for (const next of (adjacency.get(cell) ?? []).toSorted((left, right) => left - right)) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      queue.push([...path, next]);
+    }
+  }
+  return null;
+}
+
+function simpleColorsProof(logical: LogicalStep | null, targetCell: number): SimpleColorsProof | null {
+  const allLinks = logical?.relatedLinks ?? [];
+  const allColors = logical?.relatedColors ?? [];
+  const eliminated = logical?.eliminated ?? [];
+  if (!allLinks.length || !allColors.length || !eliminated.length) return null;
+  const colorByCell = new Map(allColors.map((color) => [color.cell, color]));
+  const linkFor = (fromCell: number, toCell: number): LogicalLink | null => {
+    const link = allLinks.find((candidate) =>
+      (candidate.fromCell === fromCell && candidate.toCell === toCell) ||
+      (candidate.fromCell === toCell && candidate.toCell === fromCell)
+    );
+    return link ? { fromCell, toCell, value: link.value } : null;
+  };
+  const proofForPath = (
+    path: number[],
+    removal: { cell: number; value: Digit },
+    conclusionLinks: LogicalLink[]
+  ): SimpleColorsProof | null => {
+    const links = path.slice(1).map((cell, index) => linkFor(path[index], cell));
+    if (links.some((link) => link === null)) return null;
+    return {
+      cells: path,
+      links: links as LogicalLink[],
+      colors: path.flatMap((cell) => colorByCell.has(cell) ? [colorByCell.get(cell) as LogicalColor] : []),
+      eliminated: [removal],
+      conclusionLinks
+    };
+  };
+  const proofs: SimpleColorsProof[] = [];
+
+  // Color trap: an uncolored candidate that sees both colors can be removed.
+  for (const removal of eliminated) {
+    if (colorByCell.has(removal.cell)) continue;
+    const witnesses = allColors.filter(({ cell, value }) =>
+      value === removal.value && PEERS[removal.cell].includes(cell)
+    );
+    const even = witnesses.filter(({ color }) => color === 0).toSorted((left, right) => left.cell - right.cell);
+    const odd = witnesses.filter(({ color }) => color === 1).toSorted((left, right) => left.cell - right.cell);
+    for (const left of even) {
+      for (const right of odd) {
+        const path = shortestLinkPath(allLinks, left.cell, right.cell);
+        if (!path) continue;
+        const proof = proofForPath(path, removal, [
+          { fromCell: left.cell, toCell: removal.cell, value: removal.value },
+          { fromCell: right.cell, toCell: removal.cell, value: removal.value }
+        ]);
+        if (proof) proofs.push(proof);
+      }
+    }
+  }
+
+  // Color wrap: two candidates of one color see each other, so that color is false.
+  for (const color of [0, 1] as const) {
+    const cells = allColors.filter((candidate) => candidate.color === color);
+    for (let leftIndex = 0; leftIndex < cells.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < cells.length; rightIndex += 1) {
+        const left = cells[leftIndex];
+        const right = cells[rightIndex];
+        if (left.value !== right.value || !PEERS[left.cell].includes(right.cell)) continue;
+        const path = shortestLinkPath(allLinks, left.cell, right.cell);
+        const removal = eliminated.find(({ cell, value }) => cell === targetCell && value === left.value) ??
+          eliminated.find(({ cell, value }) => colorByCell.get(cell)?.color === color && value === left.value);
+        if (!path || !removal) continue;
+        const proof = proofForPath(path, removal, [
+          { fromCell: left.cell, toCell: right.cell, value: left.value }
+        ]);
+        if (proof) proofs.push(proof);
+      }
+    }
+  }
+  return proofs.toSorted((left, right) =>
+    left.cells.length - right.cells.length ||
+    left.conclusionLinks.length - right.conclusionLinks.length ||
+    Number(right.eliminated[0].cell === targetCell) - Number(left.eliminated[0].cell === targetCell) ||
+    left.eliminated[0].cell - right.eliminated[0].cell ||
+    left.cells[0] - right.cells[0] || left.cells.at(-1)! - right.cells.at(-1)!
+  )[0] ?? null;
 }
 
 function visualPatternValues(
@@ -367,9 +486,10 @@ export function buildSolveHintVisualization(
         [hint.rule as BookTechnique],
         game.notes
       );
-  const contextCells = hint.rule === 'xy-chain' && logical?.relatedCells?.length
-    ? logical.relatedCells
-    : hint.contextCells;
+  const colorProof = hint.rule === 'simple-colors' ? simpleColorsProof(logical, hint.targetCell) : null;
+  const contextCells = colorProof?.cells ?? (
+    hint.rule === 'xy-chain' && logical?.relatedCells?.length ? logical.relatedCells : hint.contextCells
+  );
   const patternCells = [...new Set(contextCells)].filter((cell) =>
     hint.rule === 'xy-chain' || cell !== hint.targetCell
   );
@@ -378,7 +498,7 @@ export function buildSolveHintVisualization(
       .map(({ cell, values }) => [cell, values] as const)
   );
   const relatedColors = new Map(
-    (hint.rule === 'simple-colors' ? logical?.relatedColors ?? [] : [])
+    (hint.rule === 'simple-colors' ? colorProof?.colors ?? [] : [])
       .map(({ cell, value, color }) => [cell, { value, parity: color === 0 ? 'even' as const : 'odd' as const }] as const)
   );
   const candidatesAt = (cell: number): Digit[] => {
@@ -391,7 +511,7 @@ export function buildSolveHintVisualization(
       : legal;
   };
   const excludedByCell = new Map<number, Set<Digit>>();
-  for (const eliminated of logical?.eliminated ?? []) {
+  for (const eliminated of colorProof?.eliminated ?? logical?.eliminated ?? []) {
     if (!excludedByCell.has(eliminated.cell)) excludedByCell.set(eliminated.cell, new Set());
     excludedByCell.get(eliminated.cell)?.add(eliminated.value);
   }
@@ -439,7 +559,7 @@ export function buildSolveHintVisualization(
     patternCells,
     exclusionCells,
     candidateCells,
-    arrows: visualHintArrows(hint.rule, patternCells, hint.targetCell, logical, candidatesAt)
+    arrows: visualHintArrows(hint.rule, patternCells, hint.targetCell, logical, candidatesAt, colorProof)
   };
 }
 
