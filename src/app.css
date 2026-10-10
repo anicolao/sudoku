@@ -548,6 +548,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .app-shell.playing .number-pad button { min-width: 0; min-height: 44px; }
   .app-shell.playing .number-pad small { display: none; }
   .app-shell.playing .utility-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .app-shell.playing .utility-actions.killer-utilities { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .app-shell.playing:has(.visual-hint-status) .play-view { width: min(100%, calc(100svh - 532px), 720px); }
   .app-shell.playing:has(.stripe-tools) .play-view { width: min(100%, calc(100svh - 543px), 720px); }
   .app-shell.playing:has(.completion-panel) .mode-switch,
