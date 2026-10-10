@@ -161,7 +161,7 @@
       <h2>Photograph a printed Sudoku</h2>
       <p>Fill the frame with one straight, well-lit 9×9 grid. Printed digits work best; handwriting may need correction.</p>
       <button type="button" class="capture-action" onclick={() => fileInput?.click()}>Take or choose photo</button>
-      <input bind:this={fileInput} class="file-input" type="file" accept="image/*" capture="environment" onchange={choosePhoto} aria-label="Choose Sudoku photo" />
+      <input bind:this={fileInput} class="file-input" type="file" accept="image/*" capture="environment" onchange={choosePhoto} aria-label="Choose Sudoku photo" data-e2e-allow-clipping />
       <small>The photo and digit recognition stay entirely on this device.</small>
       {#if error}<p class="photo-error" role="alert">{error}</p>{/if}
     </div>

@@ -15,10 +15,31 @@ interface DocStep {
 
 export function assertNoClippedDescendants(): void {
   const tolerance = 1;
+  const viewport = { width: window.innerWidth, height: window.innerHeight };
+  const ignored = '.sr-live, .sr-live *, #svelte-announcer, #svelte-announcer *, [data-e2e-allow-clipping], [data-e2e-allow-clipping] *';
+  const describe = (element: HTMLElement): string =>
+    `${element.tagName.toLowerCase()}${element.className && typeof element.className === 'string' ? `.${element.className.trim().replace(/\s+/g, '.')}` : ''}`;
+
   for (const element of document.querySelectorAll<HTMLElement>('body *')) {
-    if (element.matches('.sr-live, .sr-live *, #svelte-announcer, #svelte-announcer *') || !element.checkVisibility()) continue;
+    if (element.matches(ignored) || !element.checkVisibility()) continue;
     const rect = element.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) continue;
+    if (rect.left < -tolerance || rect.right > viewport.width + tolerance || rect.top < -tolerance || rect.bottom > viewport.height + tolerance) {
+      throw new Error(
+        `${describe(element)} escapes or is clipped by the viewport at ` +
+        `${rect.left},${rect.top}–${rect.right},${rect.bottom} inside ${viewport.width}×${viewport.height}`
+      );
+    }
+
+    const elementStyle = getComputedStyle(element);
+    const clipsWidth = element.scrollWidth > element.clientWidth + tolerance && elementStyle.overflowX !== 'visible';
+    const clipsHeight = element.scrollHeight > element.clientHeight + tolerance && elementStyle.overflowY !== 'visible';
+    if (element.clientWidth > 0 && element.clientHeight > 0 && (clipsWidth || clipsHeight)) {
+      throw new Error(
+        `${describe(element)} clips ${element.scrollWidth}×${element.scrollHeight} ` +
+        `inside ${element.clientWidth}×${element.clientHeight}`
+      );
+    }
 
     for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
       const style = getComputedStyle(ancestor);
@@ -33,10 +54,35 @@ export function assertNoClippedDescendants(): void {
       if ((clipsX && (rect.left < left - tolerance || rect.right > right + tolerance)) ||
           (clipsY && (rect.top < top - tolerance || rect.bottom > bottom + tolerance))) {
         throw new Error(
-          `${element.tagName.toLowerCase()}${element.className && typeof element.className === 'string' ? `.${element.className.trim().replace(/\s+/g, '.')}` : ''} ` +
-          `is clipped by ${ancestor.tagName.toLowerCase()}${typeof ancestor.className === 'string' && ancestor.className ? `.${ancestor.className.trim().replace(/\s+/g, '.')}` : ''}: ` +
+          `${describe(element)} is clipped by ${describe(ancestor)}: ` +
           `${rect.left},${rect.top}–${rect.right},${rect.bottom} outside ${left},${top}–${right},${bottom}`
         );
+      }
+    }
+  }
+
+  // Geometry alone cannot detect a control painted underneath a fixed nav or
+  // another sibling. Probe its centre and inset corners as a user would.
+  const modal = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]');
+  const controlRoot: ParentNode = modal ?? document;
+  const selector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [role="button"]:not([aria-disabled="true"])';
+  for (const control of controlRoot.querySelectorAll<HTMLElement>(selector)) {
+    if (control.matches(ignored) || !control.checkVisibility()) continue;
+    const rect = control.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const insetX = Math.min(4, rect.width / 4);
+    const insetY = Math.min(4, rect.height / 4);
+    const points = [
+      [rect.left + rect.width / 2, rect.top + rect.height / 2],
+      [rect.left + insetX, rect.top + insetY],
+      [rect.right - insetX, rect.top + insetY],
+      [rect.left + insetX, rect.bottom - insetY],
+      [rect.right - insetX, rect.bottom - insetY]
+    ];
+    for (const [x, y] of points) {
+      const hit = document.elementsFromPoint(x, y).find((candidate) => candidate instanceof HTMLElement);
+      if (hit && hit !== control && !control.contains(hit)) {
+        throw new Error(`${describe(control)} is covered by ${describe(hit)} at ${x},${y}`);
       }
     }
   }
@@ -97,27 +143,6 @@ export class TestStepHelper {
           `page requires scrolling: ${scrollingElement.scrollWidth}×${scrollingElement.scrollHeight} ` +
           `inside ${viewport.width}×${viewport.height}`
         );
-      }
-
-      for (const element of document.querySelectorAll<HTMLElement>('body *')) {
-        if (element.matches('.sr-live, .sr-live *, #svelte-announcer, #svelte-announcer *') || !element.checkVisibility()) continue;
-        const rect = element.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) continue;
-        if (rect.left < -1 || rect.right > viewport.width + 1 || rect.top < -1 || rect.bottom > viewport.height + 1) {
-          throw new Error(
-            `${element.tagName.toLowerCase()} escapes or is clipped by the viewport at ` +
-            `${rect.left},${rect.top}–${rect.right},${rect.bottom}`
-          );
-        }
-        const style = getComputedStyle(element);
-        const clipsWidth = element.scrollWidth > element.clientWidth + 1 && style.overflowX !== 'visible';
-        const clipsHeight = element.scrollHeight > element.clientHeight + 1 && style.overflowY !== 'visible';
-        if (element.clientWidth > 0 && element.clientHeight > 0 && (clipsWidth || clipsHeight)) {
-          throw new Error(
-            `${element.tagName.toLowerCase()} clips ${element.scrollWidth}×${element.scrollHeight} ` +
-            `inside ${element.clientWidth}×${element.clientHeight}`
-          );
-        }
       }
 
       for (const control of document.querySelectorAll<HTMLElement>('button:not([disabled]):not([data-e2e-board-cell]), a[href]')) {
