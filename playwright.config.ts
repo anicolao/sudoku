@@ -63,6 +63,11 @@ export default defineConfig({
       use: { viewport: { width: 320, height: 640 } }
     },
     {
+      name: 'phone-se',
+      testMatch: '**/029-screen-fit/*.spec.ts',
+      use: { viewport: { width: 375, height: 667 } }
+    },
+    {
       name: 'phone-landscape',
       testMatch: [
         '**/007-complete-history-repeat/*.spec.ts',

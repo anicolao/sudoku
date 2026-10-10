@@ -296,14 +296,14 @@
     details, .detected-note { display: none; }
   }
 
-  @media (max-height: 650px) {
+  @media (max-height: 700px) {
     .photo-import { gap: 5px; }
     header .eyebrow { display: none; }
     header h1 { font-size: 1.35rem; }
     .capture-card, .recognition-card { gap: 7px; margin-top: 0; padding: 12px; }
   }
 
-  @media (min-width: 600px) and (max-height: 650px) {
+  @media (min-width: 600px) and (max-height: 700px) {
     .review-workspace { grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; }
     .photo-grid { width: min(100%, calc(100svh - 120px)); }
     .review-controls { gap: 5px; padding: 9px; }
