@@ -500,6 +500,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .app-shell.playing .sudoku-cell { font-size: clamp(.7rem, 3svh, 1.35rem); line-height: 1; }
   .app-shell.playing .sudoku-board,
   .app-shell.playing .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 314px)); width: var(--board-size); height: var(--board-size); }
+  .app-shell.playing:has(.stripe-tools) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 330px)); }
   .app-shell.playing:has(.visual-hint-status) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 320px)); }
   .app-shell.playing:has(.completion-panel) .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 270px)); }
   .app-shell.playing:has(.app-warning) .puzzle-heading { display: none; }
@@ -532,6 +533,32 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .primary-nav button { min-height: 50px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; border-radius: 9px; font-size: .95rem; }
   .primary-nav button[aria-current='page'] { background: #eceefa; box-shadow: inset 3px 0 #4654a3; }
   footer { grid-column: 1; grid-row: 3; flex-direction: column; align-items: flex-start; padding: 12px 24px; border-right: 1px solid #dedcd4; }
+}
+
+/* Tall portrait screens have room below the board, not beside it. The aspect-ratio
+   guard keeps the side controls when that arrangement produces the larger board. */
+@media (min-width: 600px) and (min-height: 900px) and (max-aspect-ratio: 3 / 4) {
+  .app-shell.playing .play-view { width: min(100%, calc(100svh - 528px), 720px); gap: 6px; }
+  .app-shell.playing .game-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; gap: 10px; }
+  .app-shell.playing .sudoku-board,
+  .app-shell.playing .paused-cover { width: 100%; }
+  .app-shell.playing .play-controls { width: 100%; gap: 6px; }
+  .app-shell.playing .number-pad { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .app-shell.playing .number-pad button { min-width: 0; min-height: 44px; }
+  .app-shell.playing .number-pad small { display: none; }
+  .app-shell.playing .utility-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .app-shell.playing:has(.visual-hint-status) .play-view { width: min(100%, calc(100svh - 532px), 720px); }
+  .app-shell.playing:has(.stripe-tools) .play-view { width: min(100%, calc(100svh - 543px), 720px); }
+  .app-shell.playing:has(.completion-panel) .mode-switch,
+  .app-shell.playing:has(.completion-panel) .number-pad,
+  .app-shell.playing:has(.completion-panel) .stripe-tools { display: none; }
+  .app-shell.playing:has(.app-warning) .puzzle-heading { display: none; }
+}
+
+@media (min-width: 900px) and (min-height: 1200px) and (max-aspect-ratio: 3 / 4) {
+  .app-shell.playing .play-view,
+  .app-shell.playing:has(.visual-hint-status) .play-view,
+  .app-shell.playing:has(.stripe-tools) .play-view { width: 100%; }
 }
 
 @page { size: letter portrait; margin: 0; }
