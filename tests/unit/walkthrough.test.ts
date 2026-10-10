@@ -253,10 +253,9 @@ describe('instructional solve walkthroughs', () => {
     expect(visualization.arrows).toHaveLength(4);
     expect(visualization.exclusionCells).toContain(26);
     expect(visualization.candidateCells.find(({ cell }) => cell === 26)).toMatchObject({
-      values: [5],
+      values: [5, 8],
       excluded: [5]
     });
-    expect(visualization.candidateCells.find(({ cell }) => cell === 26)?.values).not.toContain(8);
     expect(visualization.candidateCells
       .filter(({ cell }) => step.contextCells.includes(cell))
       .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
@@ -310,7 +309,7 @@ describe('instructional solve walkthroughs', () => {
       .filter(({ cell }) => visualization.patternCells.includes(cell))
       .every(({ values, emphasized }) => values.length === 2 && emphasized.length === 2)).toBe(true);
     expect(visualization.candidateCells.find(({ cell }) => cell === 45)).toMatchObject({
-      values: [2],
+      values: [2, 8],
       excluded: [2]
     });
   });
@@ -407,6 +406,10 @@ describe('instructional solve walkthroughs', () => {
       { cell: 46, value: 8, parity: 'odd' }
     ]);
     expect(visualization.exclusionCells).toEqual([55]);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 55)).toMatchObject({
+      values: [7, 8],
+      excluded: [8]
+    });
   });
 
   it('uses Unknown rule for a correct placement that no listed rule proves', () => {

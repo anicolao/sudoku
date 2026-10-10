@@ -526,13 +526,12 @@ export function buildSolveHintVisualization(
   ]);
   const candidateCells = [...cellsToAnnotate].flatMap((cell): VisualHintCandidateCell[] => {
     if (grid[cell] !== 0) return [];
-    const targetIsChainCell = hint.rule === 'xy-chain' && patternCells.includes(cell);
-    const values = candidatesAt(cell).filter((value) =>
-      cell !== hint.targetCell || targetIsChainCell || value !== hint.value
-    );
-    const excluded = [...(excludedByCell.get(cell) ?? [])].filter((value) =>
-      cell !== hint.targetCell || value !== hint.value
-    );
+    // Direct-placement hints keep their answer hidden by leaving the destination
+    // blank. Elimination hints can safely show its complete candidate set: the
+    // styling identifies only the eliminated candidate, not the answer.
+    if (cell === hint.targetCell && excludedByCell.size === 0) return [];
+    const values = candidatesAt(cell);
+    const excluded = [...(excludedByCell.get(cell) ?? [])];
     const shown = [...new Set([...values, ...excluded])].sort((left, right) => left - right);
     if (!shown.length) return [];
     const xyEndpointValue = hint.rule === 'xy-chain' ? logical?.eliminated?.[0]?.value : undefined;
