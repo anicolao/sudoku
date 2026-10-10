@@ -55,6 +55,9 @@ test('every primary screen and modal fits without scrolling or occluded controls
   await expectScreenToFit('Visual hint');
   await page.getByRole('button', { name: 'Done' }).click();
 
+  await page.getByRole('button', { name: 'Stripes' }).click();
+  await expectScreenToFit('Stripe controls');
+
   await page.getByRole('button', { name: 'History', exact: true }).click();
   await expectScreenToFit('History');
 
@@ -109,4 +112,45 @@ test('the completed puzzle screen fits without hiding its actions', async ({ pag
   await expect(page.getByRole('button', { name: 'View history' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose another puzzle' })).toBeVisible();
   await expect(page.evaluate(assertNoClippedDescendants)).resolves.toBeUndefined();
+});
+
+test('portrait play layouts put controls below the board when that wastes less space', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'tablet');
+
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
+  await expect(page.getByRole('grid')).toBeVisible();
+
+  const layout = async () => {
+    const board = await page.getByRole('grid').boundingBox();
+    const controls = await page.locator('.play-controls').boundingBox();
+    const main = await page.locator('main').boundingBox();
+    expect(board).not.toBeNull();
+    expect(controls).not.toBeNull();
+    expect(main).not.toBeNull();
+    return { board: board!, controls: controls!, main: main! };
+  };
+
+  let bounds = await layout();
+  expect(bounds.board.width).toBeGreaterThanOrEqual(650);
+  expect(bounds.controls.y).toBeGreaterThanOrEqual(bounds.board.y + bounds.board.height);
+  expect(bounds.controls.y + bounds.controls.height).toBeLessThanOrEqual(bounds.main.y + bounds.main.height);
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  bounds = await layout();
+  expect(bounds.board.width).toBeGreaterThanOrEqual(490);
+  expect(bounds.controls.y).toBeGreaterThanOrEqual(bounds.board.y + bounds.board.height);
+  expect(bounds.controls.y + bounds.controls.height).toBeLessThanOrEqual(bounds.main.y + bounds.main.height);
+
+  await page.setViewportSize({ width: 1024, height: 1366 });
+  bounds = await layout();
+  expect(bounds.board.width).toBeGreaterThanOrEqual(700);
+  expect(bounds.controls.y).toBeGreaterThanOrEqual(bounds.board.y + bounds.board.height);
+  expect(bounds.controls.y + bounds.controls.height).toBeLessThanOrEqual(bounds.main.y + bounds.main.height);
+
+  await page.setViewportSize({ width: 899, height: 1000 });
+  bounds = await layout();
+  expect(bounds.board.width).toBeGreaterThanOrEqual(590);
+  expect(bounds.controls.x).toBeGreaterThanOrEqual(bounds.board.x + bounds.board.width);
 });
