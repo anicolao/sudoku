@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Sudoku grid</title>
+  <rect width="512" height="512" rx="96" fill="#f7f5ef"/>
+  <rect x="72" y="72" width="368" height="368" rx="18" fill="#fffdf8" stroke="#343840" stroke-width="20"/>
+  <path d="M195 82v348M317 82v348M82 195h348M82 317h348" stroke="#4654a3" stroke-width="16"/>
+  <path d="M113 82v348M154 82v348M236 82v348M276 82v348M358 82v348M399 82v348M82 113h348M82 154h348M82 236h348M82 276h348M82 358h348M82 399h348" stroke="#c8c7c2" stroke-width="5"/>
+</svg>
