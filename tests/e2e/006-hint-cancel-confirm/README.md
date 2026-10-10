@@ -1,6 +1,6 @@
 # Choose how much help a hint provides
 
-The hint menu can fill every basic candidate in one undoable action. Technique, visual, and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.
+The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance can identify the simplest available placement or elimination, while cell guidance and reveal use the simplest book-rule placement.
 
 ## The generated puzzle offers an enabled Hint action
 

@@ -1,11 +1,22 @@
 import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
+const ELIMINATION_ONLY_HINT_PAYLOAD =
+  '8.......19.7.85.....3.7..8.....2.19.6.....5.8..95...6..84.62......719..........36' +
+  '_438_532_668_743_781_878_929_931_948_955_964' +
+  '_12+246+_13+56+_14+2469+_15+349+_16+36+_17+24679+_18+2457+' +
+  '_22+1246+_24+1246+_27+2346+_28+24+_29+234+_31+1245+_32+12456+' +
+  '_34+12469+_36+16+_37+2469+_39+2459+_41+345+_42+3457+_44+46+' +
+  '_46+367+_49+347+_52+347+_54+149+_55+349+_56+137+_58+47+' +
+  '_61+134+_62+1347+_65+34+_67+2347+_69+2347+_71+57+_77+79+' +
+  '_79+579+_81+23+_82+236+_83+56+_88+245+_89+24+_91+27+_97+27+' +
+  '_time=792871_mistakes=0_settings=01110111';
+
 test('a hint can fill candidates, visualize or name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Choose how much help a hint provides',
-    'The hint menu can fill every basic candidate in one undoable action. Technique, visual, and cell guidance use the same simplest book-rule placement without changing canonical history, while a reveal records the exact cell and value.'
+    'The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance can identify the simplest available placement or elimination, while cell guidance and reveal use the simplest book-rule placement.'
   );
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
@@ -166,4 +177,16 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
   });
 
   steps.generateDocs();
+});
+
+test('Technique only names the simplest elimination when no technique immediately places a digit', async ({ page }) => {
+  await page.goto(`/?p=${encodeURIComponent(ELIMINATION_ONLY_HINT_PAYLOAD)}`);
+  await page.getByRole('button', { name: 'Open shared work' }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await page.getByRole('button', { name: /Technique only/ }).click({ timeout: 15_000 });
+
+  const dialog = page.getByRole('dialog', { name: 'Try Hidden Pairs' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('simplest book rule');
+  await expect(page.getByRole('heading', { name: 'No listed technique found' })).toHaveCount(0);
 });
