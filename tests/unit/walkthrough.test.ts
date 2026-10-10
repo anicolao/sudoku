@@ -7,6 +7,7 @@ import {
   buildSolveHintVisualization,
   countSolveWalkthroughPlacements,
   findNextSolveHint,
+  findNextVisualHint,
   type WalkthroughBuildProgress
 } from '../../src/lib/domain/walkthrough';
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
@@ -259,6 +260,48 @@ describe('instructional solve walkthroughs', () => {
     expect(visualization.candidateCells
       .filter(({ cell }) => step.contextCells.includes(cell))
       .every(({ emphasized }) => emphasized.includes(5))).toBe(true);
+  });
+
+  it('falls back to the simplest visual elimination when no technique immediately places a value', () => {
+    const payload = '.623948.7.3....2...7....4.3...1...3.6.9....42.......8.2..6..974....5.6.8.967.83..' +
+      '_342_11+15+_18+15+_21+14589+_23+1458+_24+58+_25+1678+_26+1567+_28+1569+_29+1569+' +
+      '_31+1589+_33+158+_35+168+_36+156+_38+1569+_41+4578+_42+2458+_43+4578+_45+24678+' +
+      '_46+25679+_47+57+_49+569+_52+158+_54+58+_55+378+_56+357+_57+157+_61+13457+' +
+      '_62+1245+_63+13457+_64+49+_65+23467+_66+235679+_67+157+_69+1569+_72+58+_73+58+' +
+      '_75+13+_76+13+_81+37+_82+14+_83+37+_84+49+_86+129+_88+12+_91+14+_95+124+' +
+      '_98+125+_99+15+_time=753688_mistakes=0_settings=01110011';
+    const { givens, values, notes } = parseSharedPuzzlePayload(payload);
+    const solution = solveFirst(givens);
+    if (!solution) throw new Error('The shared visual-hint regression puzzle must have a solution.');
+    const puzzle: PuzzleDefinition = {
+      id: 'visual-elimination-regression',
+      givens,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    game.values = values;
+    game.notes = notes;
+
+    expect(findNextSolveHint(game)?.rule).toBe('unknown-rule');
+    const hint = findNextVisualHint(game);
+    expect(hint).toMatchObject({
+      rule: 'naked-pair',
+      ruleLabel: 'Naked Pairs',
+      targetCell: 68,
+      contextCells: [58, 59]
+    });
+    if (!hint) throw new Error('Expected a visual elimination hint.');
+
+    const visualization = buildSolveHintVisualization(game, hint);
+    expect(visualization.patternCells).toEqual([58, 59]);
+    expect(visualization.exclusionCells).toEqual([68, 76]);
+    expect(visualization.candidateCells.find(({ cell }) => cell === 68)).toMatchObject({
+      values: [1, 2, 9],
+      excluded: [1]
+    });
   });
 
   it('draws every candidate link for an XY-Chain', () => {

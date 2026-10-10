@@ -1,4 +1,8 @@
-import { analyzeLogicalPlacement, type LogicalStep } from '$lib/generator/logical-solver';
+import {
+  analyzeLogicalPlacement,
+  findLogicalElimination,
+  type LogicalStep
+} from '$lib/generator/logical-solver';
 import { describeMove } from './game-log';
 import { replay } from './reducer';
 import { DIGITS, PEERS, UNITS, candidatesFor, columnOf, rowOf, serializeGrid } from './sudoku';
@@ -68,6 +72,10 @@ interface PlacementExplanation {
 export interface NextSolveHint extends PlacementExplanation {
   targetCell: number;
   value: Digit;
+}
+
+export interface NextVisualHint extends NextSolveHint {
+  logicalStep?: LogicalStep;
 }
 
 export interface VisualHintCandidateCell {
@@ -269,6 +277,35 @@ export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
   const targetCell = targets[0];
   const value = Number(game.puzzle.solution[targetCell]) as Digit;
   return { targetCell, value, ...placementExplanation(game, targetCell, value, [], false, []) };
+}
+
+export function findNextVisualHint(game: GameProjection): NextVisualHint | null {
+  const placement = findNextSolveHint(game);
+  if (!placement || placement.rule !== 'unknown-rule') return placement;
+
+  const logicalStep = findLogicalElimination(
+    serializeGrid(boardFor(game)),
+    BOOK_TECHNIQUE_ORDER,
+    game.notes
+  );
+  const removal = logicalStep?.eliminated?.[0];
+  if (!logicalStep || !removal) return placement;
+
+  const rule = logicalStep.technique as BookTechnique;
+  const ruleLabel = RULE_LABELS[rule];
+  const contextCells = logicalStep.relatedCells ?? [];
+  const removals = logicalStep.eliminated?.map(({ cell, value }) =>
+    `${value} from ${cellName(cell)}`
+  ).join(', ') ?? '';
+  return {
+    rule,
+    ruleLabel,
+    targetCell: removal.cell,
+    value: Number(game.puzzle.solution[removal.cell]) as Digit,
+    explanation: `${ruleLabel} at ${contextCells.map(cellName).join(', ')} eliminates ${removals}.`,
+    contextCells,
+    logicalStep
+  };
 }
 
 function visualHintArrows(
@@ -474,10 +511,10 @@ function visualPatternValues(
 
 export function buildSolveHintVisualization(
   game: GameProjection,
-  hint: NextSolveHint
+  hint: NextVisualHint
 ): SolveHintVisualization {
   const grid = boardFor(game);
-  const logical = hint.rule === 'full-house' || hint.rule === 'unknown-rule'
+  const logical = hint.logicalStep ?? (hint.rule === 'full-house' || hint.rule === 'unknown-rule'
     ? null
     : analyzeLogicalPlacement(
         serializeGrid(grid),
@@ -485,7 +522,7 @@ export function buildSolveHintVisualization(
         hint.value,
         [hint.rule as BookTechnique],
         game.notes
-      );
+      ));
   const colorProof = hint.rule === 'simple-colors' ? simpleColorsProof(logical, hint.targetCell) : null;
   const contextCells = colorProof?.cells ?? (
     hint.rule === 'xy-chain' && logical?.relatedCells?.length ? logical.relatedCells : hint.contextCells
@@ -506,7 +543,7 @@ export function buildSolveHintVisualization(
     if (related) return related;
     const legal = candidatesFor(grid, cell);
     const notes = game.notes[cell] ?? [];
-    return notes.length && cell !== hint.targetCell
+    return notes.length && (cell !== hint.targetCell || hint.logicalStep !== undefined)
       ? legal.filter((value) => notes.includes(value))
       : legal;
   };
