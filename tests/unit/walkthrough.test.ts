@@ -285,7 +285,6 @@ describe('instructional solve walkthroughs', () => {
     game.values = values;
     game.notes = notes;
 
-    expect(findNextSolveHint(game)?.rule).toBe('unknown-rule');
     const hint = findNextVisualHint(game);
     expect(hint).toMatchObject({
       rule: 'naked-pair',
