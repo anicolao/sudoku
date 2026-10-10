@@ -24,8 +24,10 @@ contract, and deterministic test evidence.
 - Camera or image import for conventional printed Sudoku grids. Grid finding,
   perspective correction, digit recognition, correction, solution proof, and
   rating all happen in the browser; the source photo is never persisted.
-- Touch, mouse, and keyboard play with number-first or cell-first input,
-  pencil notes, fill-all notes, erase, undo, redo, restart, pause, and hints.
+- Touch, mouse, keyboard, and pen play with number-first or cell-first input.
+  A stylus can write digits directly into cells in either Number or Notes mode;
+  pencil notes, fill-all notes, erase, undo, redo, restart, pause, and hints are
+  also available.
 - Accessible board semantics, roving keyboard focus, visible focus and
   non-colour state cues, reduced-motion support, and responsive layouts from a
   320 px phone through tablet and desktop.
