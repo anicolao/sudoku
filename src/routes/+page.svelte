@@ -814,7 +814,9 @@
 
   function showHintAdvice(kind: HintAdviceKind): void {
     if (!currentGame || isReadOnly || currentGame.paused) return;
-    const advice = findNextSolveHint(currentGame);
+    const advice = kind === 'technique'
+      ? findNextVisualHint(currentGame)
+      : findNextSolveHint(currentGame);
     if (!advice) return;
     hintAdviceKind = kind;
     hintAdvice = advice;
@@ -1288,7 +1290,7 @@
           <p>{hintAdviceKind === 'technique'
             ? hintAdvice.rule === 'unknown-rule'
               ? 'The current position is not accounted for by the book rules yet.'
-              : 'This is the simplest book rule that can produce a placement from the current board.'
+              : 'This is the simplest book rule available from the current board.'
             : 'That cell is ready to solve. Its number is still yours to find.'}</p>
           <button type="button" class="confirm" onclick={closeHintDialog}>Back to puzzle</button>
         {:else}
