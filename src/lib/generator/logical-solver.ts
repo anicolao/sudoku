@@ -650,6 +650,35 @@ export function analyzeLogicalPlacement(
   return null;
 }
 
+export function findLogicalElimination(
+  givens: string,
+  techniqueOrder: readonly SolveTechnique[],
+  notes: readonly (readonly Digit[])[] = []
+): LogicalStep | null {
+  const base: SolverState = {
+    grid: parseGrid(givens),
+    eliminated: Array.from({ length: 81 }, () => new Set<Digit>())
+  };
+  if (hasContradiction(base)) return null;
+
+  for (let cell = 0; cell < 81; cell += 1) {
+    if (base.grid[cell] !== 0 || !notes[cell]?.length) continue;
+    const retained = new Set(notes[cell]);
+    for (const candidate of candidatesIn(base, cell)) {
+      if (!retained.has(candidate)) base.eliminated[cell].add(candidate);
+    }
+  }
+  if (hasContradiction(base)) return null;
+
+  for (const technique of techniqueOrder) {
+    if (technique === 'naked-single' || technique === 'hidden-single') continue;
+    const state = cloneState(base);
+    const step = placementTechniqueStep(state, technique);
+    if (step?.eliminated?.length && !hasContradiction(state)) return step;
+  }
+  return null;
+}
+
 function difficultyFromSteps(steps: readonly LogicalStep[]): PuzzleDifficulty {
   const expertSteps = steps.filter((step) => TECHNIQUE_DIFFICULTY[step.technique] === 'expert');
   if (expertSteps.length >= 3) return 'master';

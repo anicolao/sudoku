@@ -16,6 +16,7 @@
     buildSolveWalkthroughAsync,
     countSolveWalkthroughPlacements,
     findNextSolveHint,
+    findNextVisualHint,
     type NextSolveHint,
     type SolveHintVisualization,
     type SolveWalkthrough,
@@ -831,7 +832,7 @@
 
   function showVisualHint(): void {
     if (!currentGame || isReadOnly || currentGame.paused) return;
-    const advice = findNextSolveHint(currentGame);
+    const advice = findNextVisualHint(currentGame);
     if (!advice) return;
     if (advice.rule === 'unknown-rule') {
       hintAdviceKind = 'technique';
