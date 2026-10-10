@@ -1,3 +1,4 @@
+import { copyPuzzleDefinition } from './event-store';
 import { replay } from '$lib/domain/reducer';
 import type {
   AppProjection,
@@ -119,6 +120,7 @@ export class IndexedDbEventStore {
   private revisions = new Map<string, number>();
   private warning: string;
   private pendingWrites = 0;
+  private idleWaiters: Array<() => void> = [];
   private reloadQueue: Promise<void> = Promise.resolve();
 
   constructor(
@@ -137,6 +139,15 @@ export class IndexedDbEventStore {
 
   getProjection(): AppProjection { return structuredClone(this.projection); }
   getDocument(): StoredEventDocumentV1 { return structuredClone(this.document); }
+  /** Wait for this tab's writes, then read all streams in one transaction.
+   * Unlike reload(), an export must report a read error instead of using stale data.
+   */
+  async snapshotForExport(): Promise<StoredEventDocumentV1> {
+    while (this.pendingWrites > 0) await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
+    if (!this.database) return this.getDocument();
+    return (await readDatabase(this.database)).document;
+  }
+
   isPersistent(): boolean { return this.database !== null; }
   getWarning(): string { return this.warning; }
 
@@ -147,6 +158,7 @@ export class IndexedDbEventStore {
 
   private endWrite(): void {
     this.pendingWrites -= 1;
+    if (this.pendingWrites === 0) this.idleWaiters.splice(0).forEach((resolve) => resolve());
     if (typeof globalThis.document !== 'undefined' && this.pendingWrites === 0) {
       globalThis.document.documentElement.dataset.eventStorePending = 'false';
     }
@@ -240,7 +252,7 @@ export class IndexedDbEventStore {
   }
 
   startGame(puzzle: PuzzleDefinition, metadata: EventMetadata): Promise<CommitResult> {
-    const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings = { ...this.projection.settings };
     return this.append((sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;
@@ -261,7 +273,7 @@ export class IndexedDbEventStore {
     importKind: 'puzzle-link' | 'camera-photo' = 'puzzle-link',
     startingNotesMode?: StartingNotesMode
   ): Promise<CommitResult> {
-    const storedPuzzle = { ...puzzle, provenance: puzzle.provenance ? { ...puzzle.provenance } : undefined };
+    const storedPuzzle = copyPuzzleDefinition(puzzle);
     const settings = { ...importedSettings };
     return this.append((sequence) => {
       const gameId = `game-${storedPuzzle.id}-${sequence}`;

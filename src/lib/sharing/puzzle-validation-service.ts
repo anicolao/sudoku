@@ -3,7 +3,7 @@ import type { StartingNotesMode } from '$lib/domain/types';
 
 export function validateSharedPuzzleInWorker(
   payload: string,
-  options: { signal?: AbortSignal; timeoutMs?: number; givensOption?: StartingNotesMode } = {}
+  options: { signal?: AbortSignal; timeoutMs?: number; givensOption?: StartingNotesMode; walkthrough?: boolean } = {}
 ): Promise<SharedPuzzleValidation> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./puzzle-validator.worker.ts', import.meta.url), { type: 'module' });
@@ -17,7 +17,7 @@ export function validateSharedPuzzleInWorker(
     };
     const timeout = window.setTimeout(() => finish(() =>
       reject(new Error('This puzzle could not be checked safely.'))
-    ), options.timeoutMs ?? 2_000);
+    ), options.timeoutMs ?? (payload.startsWith('K1!') ? 10_000 : 2_000));
     options.signal?.addEventListener('abort', () => finish(() =>
       reject(new DOMException('Puzzle check cancelled', 'AbortError'))
     ), { once: true });
@@ -28,6 +28,6 @@ export function validateSharedPuzzleInWorker(
     worker.addEventListener('error', () => finish(() =>
       reject(new Error('This puzzle could not be checked safely.'))
     ));
-    worker.postMessage({ payload, givensOption: options.givensOption });
+    worker.postMessage({ payload, givensOption: options.givensOption, walkthrough: options.walkthrough });
   });
 }

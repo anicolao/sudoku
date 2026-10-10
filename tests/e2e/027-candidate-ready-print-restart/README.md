@@ -1,6 +1,6 @@
 # Print and restart a candidate-ready puzzle
 
-A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form.
+A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form. Opening another link takes priority over preparing the old puzzle for print.
 
 ## The compact candidate-ready link is checked before it changes local history
 

@@ -71,9 +71,10 @@ function printablePuzzleLinksForSequence(
     game.puzzle.givens,
     startingWork,
     metadata,
+    game.puzzle,
     compactCandidates ? 'basic' : null
   );
-  const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, work, metadata));
+  const walkthroughUrl = new URL(puzzleUrl(base, game.puzzle.givens, game.puzzle.variant === 'killer' ? [] : work, metadata, game.puzzle));
   walkthroughUrl.searchParams.set('view', 'walkthrough');
   return { puzzle, walkthrough: walkthroughUrl.toString(), sequence };
 }

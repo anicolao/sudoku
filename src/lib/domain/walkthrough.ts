@@ -3,6 +3,7 @@ import {
   findLogicalElimination,
   type LogicalStep
 } from '$lib/generator/logical-solver';
+import { nextKillerPlacement } from './killer-analysis';
 import { describeMove } from './game-log';
 import { replay } from './reducer';
 import { DIGITS, PEERS, UNITS, candidatesFor, columnOf, rowOf, serializeGrid } from './sudoku';
@@ -17,6 +18,7 @@ import type {
 } from './types';
 
 export type WalkthroughRule =
+  | 'killer-cage' | 'killer-house' | 'killer-45'
   | 'full-house'
   | 'naked-single'
   | 'hidden-single'
@@ -33,9 +35,10 @@ export type WalkthroughRule =
   | 'medusa'
   | 'unknown-rule';
 
-type BookTechnique = Exclude<WalkthroughRule, 'full-house' | 'unknown-rule'>;
+type BookTechnique = Extract<WalkthroughRule, SolveTechnique>;
 
 export interface WalkthroughStep {
+  prerequisites?: string[];
   eventId: string;
   rule: WalkthroughRule;
   ruleLabel: string;
@@ -63,6 +66,7 @@ export interface AsyncWalkthroughOptions {
 }
 
 interface PlacementExplanation {
+  prerequisites?: string[];
   rule: WalkthroughRule;
   ruleLabel: string;
   explanation: string;
@@ -122,6 +126,9 @@ const BOOK_TECHNIQUE_ORDER: readonly BookTechnique[] = [
 ];
 
 const RULE_LABELS: Record<WalkthroughRule, string> = {
+  'killer-cage': 'Cage combinations',
+  'killer-house': 'Sudoku with cage restrictions',
+  'killer-45': 'Rule of 45',
   'full-house': 'Full House',
   'naked-single': 'Naked Single',
   'hidden-single': 'Hidden Single',
@@ -170,6 +177,11 @@ function placementExplanation(
   includeFullHouse = true,
   notes: readonly (readonly Digit[])[] = game.notes
 ): PlacementExplanation {
+  if (game.puzzle.variant === 'killer') {
+    const next = nextKillerPlacement(boardFor(game), game.puzzle.cages ?? []);
+    if (next?.targetCell === cell && next.value === value) return next;
+    return { rule: 'unknown-rule', ruleLabel: 'Unknown rule', contextCells: [], explanation: `${cellName(cell)} was entered as ${value}. The supported Killer rules do not explain this placement in the recorded position.` };
+  }
   const target = cellName(cell);
   const grid = boardFor(game);
   const containingUnits = UNITS
@@ -255,6 +267,7 @@ function placementExplanation(
 }
 
 export function findNextSolveHint(game: GameProjection): NextSolveHint | null {
+  if (game.puzzle.variant === 'killer') return nextKillerPlacement(boardFor(game), game.puzzle.cages ?? []);
   const targets = game.values.flatMap((value, cell) =>
     game.puzzle.givens[cell] === '.' && value === null ? [cell] : []
   );
@@ -606,6 +619,7 @@ export function buildHumanSolveSequence(game: GameProjection): NextSolveHint[] {
     const next = appendNextHumanPlacement(solving, sequence);
     if (!next) return sequence;
   }
+  if (!boardFor(solving).includes(0)) return sequence;
   throw new Error('Human solve ordering did not finish within 81 placements.');
 }
 
@@ -628,7 +642,10 @@ function appendNextHumanPlacement(
   sequence: NextSolveHint[]
 ): NextSolveHint | null {
   const next = findNextSolveHint(solving);
-  if (!next) return null;
+  if (!next) {
+    if (solving.puzzle.variant === 'killer' && boardFor(solving).includes(0)) throw new Error('The supported Killer techniques cannot finish this walkthrough.');
+    return null;
+  }
   sequence.push(next);
   solving.values[next.targetCell] = next.value;
   return next;
@@ -650,6 +667,7 @@ export async function buildHumanSolveSequenceAsync(
     if (!next) return sequence;
     options.onProgress?.({ completed: sequence.length, total });
   }
+  if (!boardFor(solving).includes(0)) return sequence;
   throw new Error('Human solve ordering did not finish within 81 placements.');
 }
 
@@ -710,7 +728,7 @@ function importWithWorkPrefix(event: GameImportedEvent, actionCount: number): Ga
         provenance: event.payload.puzzle.provenance?.kind === 'puzzle-link'
           ? {
               ...event.payload.puzzle.provenance,
-              formatVersion: event.payload.sharedMetadata?.patternCells
+              formatVersion: event.payload.puzzle.variant === 'killer' ? 5 : event.payload.sharedMetadata?.patternCells
                 ? 4
                 : event.payload.sharedMetadata ? 3 : work.length ? 2 : 1
             }

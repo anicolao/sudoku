@@ -47,7 +47,7 @@ test('a compact candidate-ready book link prints, shares, and restarts from its 
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Print and restart a candidate-ready puzzle',
-    'A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form.'
+    'A compact givens=basic link computes the complete starting candidate grid locally and keeps it separate from later work. It can be shared with candidate removals, printed with a compact matching QR, reloaded, restarted, or opened through the legacy explicit-note form. Opening another link takes priority over preparing the old puzzle for print.'
   );
 
   await page.goto(startUrl());
@@ -196,6 +196,8 @@ test('a compact candidate-ready book link prints, shares, and restarts from its 
 
   await page.goto(legacyStartUrl());
   await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
+  // No print sheets for the previous puzzle are prepared on the import screen.
+  await expect(page.locator('.print-page')).toHaveCount(0);
   await page.getByRole('button', { name: /Abandon current and open shared puzzle/ }).click();
   await expect(page.getByRole('grid')).toBeVisible();
   expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
