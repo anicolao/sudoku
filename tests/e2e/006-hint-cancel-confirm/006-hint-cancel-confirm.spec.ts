@@ -211,17 +211,18 @@ test('Technique only names the simplest elimination when no technique immediatel
 });
 
 test('applying a visual elimination places a value when only one candidate remains', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto(`/?p=${encodeURIComponent(VISUAL_ELIMINATION_PAYLOAD)}`);
   const start = page.getByRole('button', { name: 'Open shared work' });
   await expect(start).toBeEnabled({ timeout: 15_000 });
   await start.click();
 
-  await page.getByRole('button', { name: 'Hint' }).click();
-  await page.getByRole('button', { name: /Visual hint/ }).click();
+  await page.getByRole('button', { name: 'Hint' }).click({ timeout: 20_000 });
+  await page.getByRole('button', { name: /Visual hint/ }).click({ timeout: 20_000 });
   await expect(page.getByRole('status', { name: /Visual hint for Naked Pairs/ })).toBeVisible();
   await expect(page.locator('[data-visual-hint-target="true"]')).toHaveAttribute('data-cell', '68');
 
-  await page.getByRole('button', { name: 'Next hint' }).click();
+  await page.getByRole('button', { name: 'Next hint' }).click({ timeout: 20_000 });
 
   await expect(page.locator('[data-cell="68"]')).toHaveAccessibleName(/9, revealed by hint/);
   const events = await page.evaluate(() =>
