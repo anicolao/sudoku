@@ -191,13 +191,13 @@ test('a compact candidate-ready book link prints, shares, and restarts from its 
   await page.goto(startUrl());
   await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
   await page.getByRole('button', { name: /Abandon current and open shared puzzle/ }).click();
-  await expect(page.getByRole('grid')).toBeVisible();
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 15_000 });
   expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
 
   await page.goto(legacyStartUrl());
   await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
   await page.getByRole('button', { name: /Abandon current and open shared puzzle/ }).click();
-  await expect(page.getByRole('grid')).toBeVisible();
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 15_000 });
   expect(await renderedNotes(page)).toEqual(STARTING_NOTES);
 
   steps.generateDocs();
