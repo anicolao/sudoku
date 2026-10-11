@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { Digit, GameProjection } from '$lib/domain/types';
   import type { SolveHintVisualization } from '$lib/domain/walkthrough';
   import { PEERS } from '$lib/domain/sudoku';
   import { difficultyLabel } from '$lib/domain/difficulty';
+  import { recognizeStylusDigit, type StylusPoint, type StylusStroke } from '$lib/input/stylus-digit-recognizer';
 
   let {
     game,
@@ -56,6 +58,17 @@
   const visualCandidateCells = $derived(new Map(
     (visualHint?.candidateCells ?? []).map((candidate) => [candidate.cell, candidate])
   ));
+  let stylusCell = $state<number | null>(null);
+  let stylusStrokes = $state<StylusStroke[]>([]);
+  let stylusFeedback = $state<{ cell: number; digit: Digit | null } | null>(null);
+  let stylusAnnouncement = $state('');
+  let activeStylusPointer: number | null = null;
+  let activeStylusStroke = -1;
+  let activeCellBounds: DOMRect | null = null;
+  let recognitionTimer: ReturnType<typeof setTimeout> | null = null;
+  let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let suppressPenClickCell: number | null = null;
+  let suppressPenClickUntil = 0;
 
   const selectedValue = $derived(
     selected === null || stripeMode
@@ -110,6 +123,123 @@
     });
   }
 
+  function clearTimer(timer: ReturnType<typeof setTimeout> | null): void {
+    if (timer !== null) clearTimeout(timer);
+  }
+
+  function stylusPoint(event: PointerEvent): StylusPoint | null {
+    if (!activeCellBounds) return null;
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - activeCellBounds.left) / activeCellBounds.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - activeCellBounds.top) / activeCellBounds.height))
+    };
+  }
+
+  function appendStylusPoints(event: PointerEvent): void {
+    if (activeStylusStroke < 0) return;
+    const samples = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [event];
+    for (const sample of samples.length ? samples : [event]) {
+      const point = stylusPoint(sample);
+      if (!point) continue;
+      const stroke = stylusStrokes[activeStylusStroke];
+      const previous = stroke.at(-1);
+      if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= .008) stroke.push(point);
+    }
+  }
+
+  function clearStylusInk(): void {
+    stylusCell = null;
+    stylusStrokes = [];
+    stylusFeedback = null;
+  }
+
+  function recognizeStylusInk(): void {
+    recognitionTimer = null;
+    if (stylusCell === null) return;
+    const cell = stylusCell;
+    const recognition = recognizeStylusDigit(stylusStrokes);
+    stylusFeedback = { cell, digit: recognition.digit };
+    if (recognition.digit !== null) {
+      stylusAnnouncement = `Handwritten ${recognition.digit} recognized in row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
+      onnumber(cell, recognition.digit);
+    } else {
+      stylusAnnouncement = `Handwriting was not recognized in row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}. Try the digit again`;
+    }
+    clearTimer(feedbackTimer);
+    feedbackTimer = setTimeout(clearStylusInk, recognition.digit === null ? 900 : 550);
+  }
+
+  function handleStylusDown(event: PointerEvent): void {
+    if (event.pointerType !== 'pen' || !interactive || stripeMode) return;
+    const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-cell]') : null;
+    const cell = Number(target?.dataset.cell);
+    if (!target || !Number.isInteger(cell) || game.puzzle.givens[cell] !== '.' || game.paused) return;
+    event.preventDefault();
+    event.stopPropagation();
+    clearTimer(recognitionTimer);
+    clearTimer(feedbackTimer);
+    if (stylusCell !== cell || stylusFeedback) stylusStrokes = [];
+    stylusCell = cell;
+    stylusFeedback = null;
+    activeStylusPointer = event.pointerId;
+    activeCellBounds = target.getBoundingClientRect();
+    activeStylusStroke = stylusStrokes.length;
+    stylusStrokes.push([]);
+    appendStylusPoints(event);
+    suppressPenClickCell = cell;
+    suppressPenClickUntil = performance.now() + 600;
+    try {
+      (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
+    } catch {
+      // Synthetic pointer events and a few older pen implementations do not support capture.
+    }
+  }
+
+  function handleStylusMove(event: PointerEvent): void {
+    if (event.pointerType !== 'pen' || event.pointerId !== activeStylusPointer) return;
+    event.preventDefault();
+    appendStylusPoints(event);
+  }
+
+  function handleStylusUp(event: PointerEvent): void {
+    if (event.pointerType !== 'pen' || event.pointerId !== activeStylusPointer) return;
+    event.preventDefault();
+    appendStylusPoints(event);
+    activeStylusPointer = null;
+    activeStylusStroke = -1;
+    activeCellBounds = null;
+    try {
+      (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
+    } catch {
+      // The pointer may already have lost capture.
+    }
+    clearTimer(recognitionTimer);
+    recognitionTimer = setTimeout(recognizeStylusInk, 320);
+  }
+
+  function handleStylusCancel(event: PointerEvent): void {
+    if (event.pointerId !== activeStylusPointer) return;
+    activeStylusPointer = null;
+    activeStylusStroke = -1;
+    activeCellBounds = null;
+    clearTimer(recognitionTimer);
+    clearStylusInk();
+  }
+
+  function handleCellClick(event: MouseEvent, cell: number): void {
+    if (suppressPenClickCell === cell && performance.now() < suppressPenClickUntil) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (interactive) onselect(cell);
+  }
+
+  onDestroy(() => {
+    clearTimer(recognitionTimer);
+    clearTimer(feedbackTimer);
+  });
+
   function hintArrowX(cell: number, value?: Digit): number {
     return (cell % 9) + (value === undefined ? .5 : ((value - 1) % 3 + .5) / 3);
   }
@@ -147,7 +277,19 @@
   }
 </script>
 
-<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
+<div
+  class="sudoku-board"
+  role="grid"
+  tabindex="-1"
+  aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle, stylus handwriting enabled`}
+  data-testid="sudoku-board"
+  data-notes-bold={notesBold}
+  data-notes-large={notesLarge}
+  onpointerdown={handleStylusDown}
+  onpointermove={handleStylusMove}
+  onpointerup={handleStylusUp}
+  onpointercancel={handleStylusCancel}
+>
   {#each Array(9) as _, row}
     <div class="sudoku-row" role="row">
     {#each Array(9) as _, column}
@@ -195,7 +337,7 @@
         data-visual-hint-pattern={visualPatternCells.has(cell) ? 'true' : undefined}
         data-visual-hint-exclusion={visualExclusionCells.has(cell) ? 'true' : undefined}
         data-e2e-board-cell
-        onclick={() => { if (interactive) onselect(cell); }}
+        onclick={(event) => handleCellClick(event, cell)}
         onkeydown={(event) => { if (interactive) handleKeydown(event, cell); }}
       >
         {#if evenStripeOrigin === cell}<span class="stripe-source-mark even" aria-hidden="true">E</span>{/if}
@@ -230,6 +372,9 @@
         {#if game.conflicts.includes(cell)}<span class="conflict-mark" aria-hidden="true">!</span>{/if}
         {#if game.mistakeCells.includes(cell) && !game.conflicts.includes(cell)}<span class="mistake-mark" aria-hidden="true">×</span>{/if}
         {#if game.hintedCells.includes(cell)}<span class="hint-mark" aria-hidden="true">◆</span>{/if}
+        {#if stylusFeedback?.cell === cell}
+          <span class:rejected={stylusFeedback.digit === null} class="stylus-result-mark" aria-hidden="true">{stylusFeedback.digit ?? '?'}</span>
+        {/if}
       </button>
     {/each}
     </div>
@@ -292,4 +437,25 @@
       {/each}
     </svg>
   {/if}
+  {#if stylusCell !== null && stylusStrokes.length}
+    {@const inkCell = stylusCell}
+    <svg
+      class:rejected={stylusFeedback?.digit === null}
+      class:recognized={stylusFeedback?.digit !== null && stylusFeedback !== null}
+      class="stylus-overlay"
+      data-testid="stylus-overlay"
+      viewBox="0 0 9 9"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      {#each stylusStrokes as stroke}
+        {#if stroke.length}
+          <polyline
+            points={stroke.map(({ x, y }) => `${(inkCell % 9) + x},${Math.floor(inkCell / 9) + y}`).join(' ')}
+          />
+        {/if}
+      {/each}
+    </svg>
+  {/if}
 </div>
+<span class="sr-live" role="status" aria-live="polite">{stylusAnnouncement}</span>
