@@ -909,6 +909,14 @@
           )) return;
         }
       }
+      for (const { cell, value } of applied.application.placements) {
+        const latest = projection.games[gameId];
+        if (!latest || latest.values[cell] !== null) continue;
+        if (!applyCommit(
+          await store.revealHint(gameId, cell, value, metadata()),
+          `Applied ${applied.ruleLabel}`
+        )) return;
+      }
     }
 
     const nextGame = projection.games[gameId];

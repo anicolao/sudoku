@@ -333,12 +333,60 @@ describe('instructional solve walkthroughs', () => {
     expect(visualization.application.type).toBe('elimination');
     if (visualization.application.type === 'elimination') {
       expect(visualization.application.removals).toContainEqual({ cell: 68, value: 1 });
+      expect(visualization.application.placements).toEqual([]);
     }
     expect(visualization.patternCells).toEqual([58, 59]);
     expect(visualization.exclusionCells).toEqual([68, 76]);
     expect(visualization.candidateCells.find(({ cell }) => cell === 68)).toMatchObject({
       values: [1, 2, 9],
       excluded: [1]
+    });
+
+    // A prior verified elimination may already have removed 2. Applying this
+    // naked pair must then promote the remaining 9 instead of stranding it as
+    // a one-digit pencil mark.
+    game.notes[68] = [1, 9];
+    const concludingHint = findNextVisualHint(game);
+    expect(concludingHint).toMatchObject({ rule: 'naked-pair', targetCell: 68 });
+    if (!concludingHint) throw new Error('Expected the naked pair to conclude a value.');
+    expect(buildSolveHintVisualization(game, concludingHint).application).toEqual({
+      type: 'elimination',
+      removals: [{ cell: 68, value: 1 }, { cell: 76, value: 1 }],
+      placements: [{ cell: 68, value: 9 }]
+    });
+  });
+
+  it('places a value when a verified visual elimination leaves one candidate', () => {
+    const solution = '549371628826945371173628945654719283917283456382456719738562194491837562265194837';
+    const puzzle: PuzzleDefinition = {
+      id: 'visual-elimination-placement',
+      givens: `.${solution.slice(1)}`,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    game.notes[0] = [4, 5];
+
+    const visualization = buildSolveHintVisualization(game, {
+      rule: 'hidden-pair',
+      ruleLabel: 'Hidden Pairs',
+      targetCell: 0,
+      value: 5,
+      explanation: 'A hidden pair removes 4 from r1c1, leaving 5.',
+      contextCells: [1, 2],
+      logicalStep: {
+        technique: 'hidden-pair',
+        eliminated: [{ cell: 0, value: 4 }],
+        relatedCells: [1, 2]
+      }
+    });
+
+    expect(visualization.application).toEqual({
+      type: 'elimination',
+      removals: [{ cell: 0, value: 4 }],
+      placements: [{ cell: 0, value: 5 }]
     });
   });
 

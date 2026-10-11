@@ -102,7 +102,11 @@ export interface SolveHintVisualization {
   targetCell: number;
   application:
     | { type: 'placement'; cell: number; value: Digit }
-    | { type: 'elimination'; removals: Array<{ cell: number; value: Digit }> };
+    | {
+        type: 'elimination';
+        removals: Array<{ cell: number; value: Digit }>;
+        placements: Array<{ cell: number; value: Digit }>;
+      };
   patternCells: number[];
   exclusionCells: number[];
   candidateCells: VisualHintCandidateCell[];
@@ -591,6 +595,23 @@ export function buildSolveHintVisualization(
       excluded
     }];
   });
+  const removals = [...(colorProof?.eliminated ?? logical?.eliminated ?? [])];
+  const removedByCell = new Map<number, Set<Digit>>();
+  for (const { cell, value } of removals) {
+    if (!removedByCell.has(cell)) removedByCell.set(cell, new Set());
+    removedByCell.get(cell)?.add(value);
+  }
+  const placements = [...removedByCell].flatMap(([cell, removed]): Array<{ cell: number; value: Digit }> => {
+    const shown = candidateCells.find((candidate) => candidate.cell === cell)?.values ?? [];
+    const retained = shown.filter((value) => !removed.has(value));
+    const value = retained[0];
+    // Notes can be entered manually and need not be a complete candidate set.
+    // Only promote a visual-hint singleton when the verified elimination leaves
+    // exactly one shown candidate and it agrees with the puzzle solution.
+    return retained.length === 1 && value === Number(game.puzzle.solution[cell])
+      ? [{ cell, value }]
+      : [];
+  });
 
   return {
     rule: hint.rule,
@@ -599,7 +620,8 @@ export function buildSolveHintVisualization(
     application: hint.logicalStep
       ? {
           type: 'elimination',
-          removals: [...(colorProof?.eliminated ?? logical?.eliminated ?? [])]
+          removals,
+          placements
         }
       : { type: 'placement', cell: hint.targetCell, value: hint.value },
     patternCells,
