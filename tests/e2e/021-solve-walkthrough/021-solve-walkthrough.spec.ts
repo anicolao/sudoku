@@ -11,18 +11,19 @@ test('History turns a recorded solve into an instructional walkthrough', async (
   await page.goto('/');
   await page.getByRole('button', { name: 'Generate Foundations puzzle' }).click();
   await expect(page.getByRole('grid')).toBeVisible();
-  const finalCells = await page.evaluate(async () => {
+  const fixture = await page.evaluate(async () => {
     const document = JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '');
     const generated = document.events[0];
+    const blanks = [...generated.payload.puzzle.givens].flatMap((value, cell) => value === '.' ? [cell] : []);
+    const final = blanks.slice(-2);
     const puzzle = {
       ...generated.payload.puzzle,
-      provenance: { kind: 'puzzle-link', formatVersion: 2, fingerprint: 'walkthrough-fixture' }
+      givens: [...generated.payload.puzzle.solution]
+        .map((value, cell) => final.includes(cell) ? '.' : value)
+        .join('')
     };
-    const blanks = [...puzzle.givens].flatMap((value, cell) => value === '.' ? [cell] : []);
-    const final = blanks.slice(-2);
-    const values = Array.from({ length: 81 }, (_, cell) =>
-      puzzle.givens[cell] === '.' && !final.includes(cell) ? Number(puzzle.solution[cell]) : null
-    );
+    const noteCell = final[1];
+    const noteValue = Number(puzzle.solution[noteCell]);
     const gameId = 'game-walkthrough-fixture';
     const base = {
       gameId,
@@ -31,22 +32,27 @@ test('History turns a recorded solve into an instructional walkthrough', async (
     };
     const events = [
       {
-        ...base, id: 'walkthrough-1', sequence: 1, type: 'game/imported',
+        ...base, id: 'walkthrough-1', sequence: 1, type: 'game/started',
         payload: {
           gameId,
-          importKind: 'puzzle-link',
-          transferId: null,
           puzzle,
-          settings: generated.payload.settings,
-          checkpoint: null,
-          work: values.flatMap((value, cell) => value === null ? [] : [{ type: 'value', cell, value }])
+          settings: generated.payload.settings
         },
         occurredAt: '2026-08-16T12:00:00.000Z', elapsedMs: 120_000
       },
+      {
+        ...base,
+        id: 'walkthrough-2',
+        sequence: 2,
+        type: 'cell/note-toggled',
+        payload: { cell: noteCell, value: noteValue, enabled: true },
+        occurredAt: '2026-08-16T12:00:01.000Z',
+        elapsedMs: 120_500
+      },
       ...final.map((cell, index) => ({
         ...base,
-        id: `walkthrough-${index + 2}`,
-        sequence: index + 2,
+        id: `walkthrough-${index + 3}`,
+        sequence: index + 3,
         type: 'cell/value-entered',
         payload: { cell, value: Number(puzzle.solution[cell]) },
         occurredAt: `2026-08-16T12:00:0${index + 2}.000Z`,
@@ -54,9 +60,10 @@ test('History turns a recorded solve into an instructional walkthrough', async (
       }))
     ];
     await (window as unknown as { __sudokuReplaceEventDocument: (value: unknown) => Promise<unknown> })
-      .__sudokuReplaceEventDocument({ storageVersion: 1, nextSequence: 4, events });
-    return final;
+      .__sudokuReplaceEventDocument({ storageVersion: 1, nextSequence: 5, events });
+    return { finalCells: final, noteCell, noteValue };
   });
+  const { finalCells } = fixture;
   await page.reload();
   await page.getByRole('button', { name: 'History', exact: true }).click();
 
@@ -94,6 +101,7 @@ test('History turns a recorded solve into an instructional walkthrough', async (
       } },
       { spec: 'The replay board is read-only and the event stream is unchanged', check: async () => {
         await expect(page.getByRole('gridcell').first()).toBeDisabled();
+        await expect(page.locator(`[data-cell="${fixture.noteCell}"] .cell-notes`)).toContainText(String(fixture.noteValue));
         expect(await eventCount()).toBe(originalEventCount);
       } }
     ]
@@ -120,6 +128,24 @@ test('History turns a recorded solve into an instructional walkthrough', async (
       } }
     ]
   });
+
+  await page.getByRole('button', { name: 'Share walkthrough' }).click();
+  const shareDialog = page.getByRole('dialog', { name: 'Scan on the other device' });
+  await expect(shareDialog).toBeVisible();
+  await expect(shareDialog.getByAltText('QR code for opening this solve walkthrough')).toBeVisible();
+  const shareLink = await shareDialog.getByTestId('share-link').getAttribute('data-link');
+  expect(shareLink).toBeTruthy();
+  const sharedUrl = new URL(shareLink ?? '');
+  expect(sharedUrl.searchParams.get('view')).toBe('walkthrough');
+  const payload = sharedUrl.searchParams.get('p') ?? '';
+  const coordinates = `${Math.floor(fixture.noteCell / 9) + 1}${(fixture.noteCell % 9) + 1}`;
+  const noteToken = `_${coordinates}+${fixture.noteValue}+`;
+  const placementToken = `_${coordinates}${fixture.noteValue}`;
+  expect(payload.indexOf(noteToken)).toBeGreaterThanOrEqual(0);
+  expect(payload.indexOf(placementToken)).toBeGreaterThan(payload.indexOf(noteToken));
+  await expect(shareDialog).toContainText('candidate notes');
+  expect(await eventCount()).toBe(originalEventCount);
+  await shareDialog.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('button', { name: 'Previous placement' }).click();
   await expect(page.getByText('Placement 1 of 2 · 02:01')).toBeVisible();

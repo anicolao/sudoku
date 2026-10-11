@@ -1,6 +1,6 @@
 # Choose how much help a hint provides
 
-The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance can identify the simplest available placement or elimination, while cell guidance and reveal use the simplest book-rule placement.
+The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance identify the simplest available placement or elimination; visual guidance can apply that deduction and advance, while cell guidance and reveal use the simplest book-rule placement.
 
 ## The generated puzzle offers an enabled Hint action
 
@@ -53,7 +53,7 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 **Verifications:**
 
 - [x] The result names one coordinate and selects that still-empty cell
-- [x] Cell advice reveals no number and appends no event
+- [x] Cell advice reveals no additional number and appends no event
 
 ## The player can still cancel from the choice menu
 
@@ -61,7 +61,7 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 **Verifications:**
 
-- [x] The dialog closes and the board still has only its fixed givens
+- [x] The dialog closes without revealing another cell
 - [x] Cancellation leaves the event stream unchanged
 
 ## The player returns and chooses the full reveal
@@ -78,5 +78,5 @@ The hint menu can fill every basic candidate in one undoable action. Technique a
 
 **Verifications:**
 
-- [x] Exactly one cell is labelled as revealed by hint and selected
-- [x] One hint/revealed fact records the exact cell and solution value
+- [x] Both applied hints are labelled and the newly revealed cell is selected
+- [x] The second hint/revealed fact records the exact cell and solution value

@@ -157,9 +157,10 @@ active, the existing abandon-or-keep consent remains in force.
 Placement actions are analyzed in their URL order. Notes between placements are
 replayed into subsequent board states but are not walkthrough steps. Because the
 format carries one final elapsed time rather than per-action timestamps, each
-shared walkthrough step displays that shared time. The Share dialog never emits
-`view=walkthrough`; it is reserved for intentionally authored links such as
-those printed in the book.
+shared walkthrough step displays that shared time. Ordinary puzzle/work sharing
+does not emit `view=walkthrough`. The walkthrough viewer's **Share walkthrough**
+action does: it serializes the solve's ordered placements and candidate-note
+changes for exposition, then adds the selector.
 
 ## 4. Sharing flow
 
@@ -169,6 +170,10 @@ offers:
 - **Share puzzle only** — prepare clean givens without changing the source;
 - **Share puzzle with work** — prepare current values, candidates, time, hinted
   cells, mistakes, and settings.
+
+The walkthrough viewer also offers **Share walkthrough**. Its link includes the
+recorded placement order and candidate-note changes, opens at walkthrough step
+1, and does not include the source event log or undo history.
 
 Neither choice pauses the source game or appends an event. The ready dialog
 contains a locally rendered QR, **Copy link**, optional native **Share link…**,
