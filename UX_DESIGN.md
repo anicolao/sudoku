@@ -176,18 +176,24 @@ events. A new reversible action after undo retires the previous redo branch.
 attempt. **Start over** from History creates a distinct game stream over the
 same immutable puzzle.
 
-Hint offers a board-preparation action plus three progressively stronger choices
+Hint offers a board-preparation action plus four progressively stronger choices
 based on the same simplest placement in book-rule order:
 
 - **Fill basic candidates** replaces notes in every empty cell with the digits
   allowed by its current row, column, and box. It is one undoable action and
   does not increment the hint count.
 - **Technique only** names the rule without identifying its target or value.
+- **Visual hint** draws the rule, its candidate emphasis, and its exclusions on
+  the board without showing a placement's answer. **Next hint** applies that
+  displayed placement or candidate elimination and draws the next simplest
+  supported rule, producing a visual step-by-step solve.
 - **Cell only** names and selects the target without revealing its value.
 - **Reveal one cell** places the target value with a visible and programmatic
   hint mark, records the exact reveal, and increments the hint count.
 
 Technique and cell guidance are ephemeral and do not change canonical history.
+Opening or dismissing a visual hint is also ephemeral; **Next hint** records the
+deduction it applies.
 Live hint analysis uses the committed board rather than assuming that a
 player's partial pencil notes form a complete candidate set. Cancelling changes
 nothing.
@@ -256,13 +262,18 @@ supported viewport scroll-free. **Newer** and **Older** page through retained
 attempts.
 
 A card reports state, level and short puzzle ID, active time, mistakes, and
-hints. Active attempts offer **Open puzzle** and **Share**. Solved or abandoned
-attempts offer **Review board**, **Start over**, and **Share**.
+hints. Active attempts offer **Open puzzle**, **Share**, and **Walkthrough**.
+Solved or abandoned attempts offer **Review board**, **Start over**, **Share**,
+and **Walkthrough**.
 
 Share presents the same clean-puzzle or current-work choice used during play.
 A work link contains the selected attempt's current values, notes, time, hints,
 mistakes, and settings, but not its source event log, undo history, or the rest
 of History. Sharing adds no event and does not pause an active attempt.
+
+The walkthrough viewer adds **Share walkthrough** beside **Back to History**.
+It exports the analyzed solve's ordered placements and candidate-note changes
+as a readable `view=walkthrough` link without changing the local attempt.
 
 There is no individual history deletion. Settings provides the explicit
 privacy operation **Clear all local Sudoku data**, whose confirmation states
@@ -280,8 +291,10 @@ An authored progress link with `view=walkthrough` changes the consent action to
 **Open walkthrough**. After acceptance it shows walkthrough analysis progress
 and opens directly at placement 1. Rule analysis preserves recorded candidate
 eliminations between placements, so patterns such as X-Wings highlight their
-pattern cells and explain the candidate removed from the placement cell. Share
-never generates this parameter.
+pattern cells and explain the candidate removed from the placement cell. The
+walkthrough viewer's **Share walkthrough** action generates this form with the
+solve's ordered placements and candidate notes; ordinary puzzle/work sharing
+does not.
 
 An authored puzzle link may carry a persistent pattern hint. Its cells use the
 same pale-green **Rule pattern** treatment as walkthrough context cells, without

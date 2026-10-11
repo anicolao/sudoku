@@ -12,11 +12,19 @@ const ELIMINATION_ONLY_HINT_PAYLOAD =
   '_79+579+_81+23+_82+236+_83+56+_88+245+_89+24+_91+27+_97+27+' +
   '_time=792871_mistakes=0_settings=01110111';
 
+const VISUAL_ELIMINATION_PAYLOAD = '.623948.7.3....2...7....4.3...1...3.6.9....42.......8.2..6..974....5.6.8.967.83..' +
+  '_342_11+15+_18+15+_21+14589+_23+1458+_24+58+_25+1678+_26+1567+_28+1569+_29+1569+' +
+  '_31+1589+_33+158+_35+168+_36+156+_38+1569+_41+4578+_42+2458+_43+4578+_45+24678+' +
+  '_46+25679+_47+57+_49+569+_52+158+_54+58+_55+378+_56+357+_57+157+_61+13457+' +
+  '_62+1245+_63+13457+_64+49+_65+23467+_66+235679+_67+157+_69+1569+_72+58+_73+58+' +
+  '_75+13+_76+13+_81+37+_82+14+_83+37+_84+49+_86+19+_88+12+_91+14+_95+124+' +
+  '_98+125+_99+15+_time=753688_mistakes=0_settings=01110011';
+
 test('a hint can fill candidates, visualize or name a technique, identify a cell, or reveal it', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Choose how much help a hint provides',
-    'The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance can identify the simplest available placement or elimination, while cell guidance and reveal use the simplest book-rule placement.'
+    'The hint menu can fill every basic candidate in one undoable action. Technique and visual guidance identify the simplest available placement or elimination; visual guidance can apply that deduction and advance, while cell guidance and reveal use the simplest book-rule placement.'
   );
   const stream = async () => page.evaluate(() =>
     JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
@@ -91,6 +99,7 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
   await page.getByRole('button', { name: 'Back to puzzle' }).click();
   await page.getByRole('button', { name: 'Hint' }).click();
   await page.getByRole('button', { name: /Visual hint/ }).click();
+  let firstVisualCell = -1;
   await steps.step('visual-hint-shown', {
     description: 'The player sees the rule on the board without receiving its answer',
     verifications: [
@@ -103,6 +112,7 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
       { spec: 'The destination omits its solved digit and visual guidance appends no event', check: async () => {
         const target = page.locator('[data-visual-hint-target="true"]');
         const targetCell = Number(await target.getAttribute('data-cell'));
+        firstVisualCell = targetCell;
         const events = await stream();
         const solvedValue = events[0].payload.puzzle.solution[targetCell];
         await expect(target).not.toContainText(solvedValue);
@@ -110,6 +120,15 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
       } }
     ]
   });
+
+  await page.getByRole('button', { name: 'Next hint' }).click();
+  await expect(page.locator(`[data-cell="${firstVisualCell}"]`)).toHaveAccessibleName(/revealed by hint/);
+  const nextTarget = page.locator('[data-visual-hint-target="true"]');
+  await expect(nextTarget).toHaveCount(1);
+  expect(Number(await nextTarget.getAttribute('data-cell'))).not.toBe(firstVisualCell);
+  const eventsAfterNextHint = await stream();
+  expect(eventsAfterNextHint).toHaveLength(4);
+  expect(eventsAfterNextHint[3]).toMatchObject({ type: 'hint/revealed', payload: { cell: firstVisualCell } });
 
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('.mode-switch')).toBeVisible();
@@ -127,9 +146,9 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
         const coordinate = `r${Math.floor(advisedCell / 9) + 1}c${(advisedCell % 9) + 1}`;
         await expect(page.getByRole('dialog', { name: `Try ${coordinate}` })).toContainText('number is still yours to find');
       } },
-      { spec: 'Cell advice reveals no number and appends no event', check: async () => {
-        await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(0);
-        expect(await stream()).toHaveLength(3);
+      { spec: 'Cell advice reveals no additional number and appends no event', check: async () => {
+        await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(1);
+        expect(await stream()).toHaveLength(4);
       } }
     ]
   });
@@ -140,11 +159,11 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
   await steps.step('hint-cancelled', {
     description: 'The player can still cancel from the choice menu',
     verifications: [
-      { spec: 'The dialog closes and the board still has only its fixed givens', check: async () => {
+      { spec: 'The dialog closes without revealing another cell', check: async () => {
         await expect(page.getByRole('dialog')).toHaveCount(0);
-        await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(0);
+        await expect(page.getByRole('gridcell', { name: /revealed by hint/ })).toHaveCount(1);
       } },
-      { spec: 'Cancellation leaves the event stream unchanged', check: async () => expect(await stream()).toHaveLength(3) }
+      { spec: 'Cancellation leaves the event stream unchanged', check: async () => expect(await stream()).toHaveLength(4) }
     ]
   });
 
@@ -160,16 +179,16 @@ test('a hint can fill candidates, visualize or name a technique, identify a cell
   await steps.step('one-cell-revealed', {
     description: 'Reveal places the same simplest target identified by Cell only',
     verifications: [
-      { spec: 'Exactly one cell is labelled as revealed by hint and selected', check: async () => {
+      { spec: 'Both applied hints are labelled and the newly revealed cell is selected', check: async () => {
         const hinted = page.getByRole('gridcell', { name: /revealed by hint/ });
-        await expect(hinted).toHaveCount(1);
-        await expect(hinted).toHaveAttribute('aria-selected', 'true');
+        await expect(hinted).toHaveCount(2);
         await expect(page.locator(`[data-cell="${advisedCell}"]`)).toHaveAccessibleName(/revealed by hint/);
+        await expect(page.locator(`[data-cell="${advisedCell}"]`)).toHaveAttribute('aria-selected', 'true');
       } },
-      { spec: 'One hint/revealed fact records the exact cell and solution value', check: async () => {
+      { spec: 'The second hint/revealed fact records the exact cell and solution value', check: async () => {
         const events = await stream();
-        expect(events).toHaveLength(4);
-        const hint = events[3];
+        expect(events).toHaveLength(5);
+        const hint = events[4];
         expect(hint).toMatchObject({ type: 'hint/revealed' });
         expect(hint.payload.value).toBe(Number(events[0].payload.puzzle.solution[hint.payload.cell]));
       } }
@@ -189,4 +208,28 @@ test('Technique only names the simplest elimination when no technique immediatel
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('simplest book rule');
   await expect(page.getByRole('heading', { name: 'No listed technique found' })).toHaveCount(0);
+});
+
+test('applying a visual elimination places a value when only one candidate remains', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto(`/?p=${encodeURIComponent(VISUAL_ELIMINATION_PAYLOAD)}`);
+  const start = page.getByRole('button', { name: 'Open shared work' });
+  await expect(start).toBeEnabled({ timeout: 15_000 });
+  await start.click();
+
+  await page.getByRole('button', { name: 'Hint' }).click({ timeout: 20_000 });
+  await page.getByRole('button', { name: /Visual hint/ }).click({ timeout: 20_000 });
+  await expect(page.getByRole('status', { name: /Visual hint for Naked Pairs/ })).toBeVisible();
+  await expect(page.locator('[data-visual-hint-target="true"]')).toHaveAttribute('data-cell', '68');
+
+  await page.getByRole('button', { name: 'Next hint' }).click({ timeout: 20_000 });
+
+  await expect(page.locator('[data-cell="68"]')).toHaveAccessibleName(/9, revealed by hint/);
+  const events = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('sudoku.event-store.v1') ?? '{"events":[]}').events
+  );
+  expect(events).toContainEqual(expect.objectContaining({
+    type: 'hint/revealed',
+    payload: expect.objectContaining({ cell: 68, value: 9 })
+  }));
 });

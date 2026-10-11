@@ -50,6 +50,7 @@ export interface WalkthroughStep {
 export interface SolveWalkthrough {
   gameId: string;
   steps: WalkthroughStep[];
+  work: ImportedPuzzleWorkAction[];
 }
 
 export interface WalkthroughBuildProgress {
@@ -99,6 +100,13 @@ export interface SolveHintVisualization {
   rule: WalkthroughRule;
   ruleLabel: string;
   targetCell: number;
+  application:
+    | { type: 'placement'; cell: number; value: Digit }
+    | {
+        type: 'elimination';
+        removals: Array<{ cell: number; value: Digit }>;
+        placements: Array<{ cell: number; value: Digit }>;
+      };
   patternCells: number[];
   exclusionCells: number[];
   candidateCells: VisualHintCandidateCell[];
@@ -587,11 +595,35 @@ export function buildSolveHintVisualization(
       excluded
     }];
   });
+  const removals = [...(colorProof?.eliminated ?? logical?.eliminated ?? [])];
+  const removedByCell = new Map<number, Set<Digit>>();
+  for (const { cell, value } of removals) {
+    if (!removedByCell.has(cell)) removedByCell.set(cell, new Set());
+    removedByCell.get(cell)?.add(value);
+  }
+  const placements = [...removedByCell].flatMap(([cell, removed]): Array<{ cell: number; value: Digit }> => {
+    const shown = candidateCells.find((candidate) => candidate.cell === cell)?.values ?? [];
+    const retained = shown.filter((value) => !removed.has(value));
+    const value = retained[0];
+    // Notes can be entered manually and need not be a complete candidate set.
+    // Only promote a visual-hint singleton when the verified elimination leaves
+    // exactly one shown candidate and it agrees with the puzzle solution.
+    return retained.length === 1 && value === Number(game.puzzle.solution[cell])
+      ? [{ cell, value }]
+      : [];
+  });
 
   return {
     rule: hint.rule,
     ruleLabel: hint.ruleLabel,
     targetCell: hint.targetCell,
+    application: hint.logicalStep
+      ? {
+          type: 'elimination',
+          removals,
+          placements
+        }
+      : { type: 'placement', cell: hint.targetCell, value: hint.value },
     patternCells,
     exclusionCells,
     candidateCells,
@@ -657,6 +689,12 @@ type PlacementReference =
   | { kind: 'event'; eventIndex: number }
   | { kind: 'shared-work'; eventIndex: number; actionIndex: number };
 
+interface PlacementFrame {
+  event: ValueEnteredEvent;
+  before: GameProjection;
+  after: GameProjection;
+}
+
 const cloneWork = (work: readonly ImportedPuzzleWorkAction[]): ImportedPuzzleWorkAction[] =>
   work.map((action) => action.type === 'value'
     ? { ...action }
@@ -677,25 +715,16 @@ export function countSolveWalkthroughPlacements(events: readonly SudokuEvent[], 
   return placementReferences(events, gameId).length;
 }
 
-function buildEventPlacementStep(
+function buildEventPlacementFrame(
   events: readonly SudokuEvent[],
   index: number,
   gameId: string
-): WalkthroughStep | null {
+): PlacementFrame | null {
   const event = events[index] as ValueEnteredEvent;
   const before = replay(events.slice(0, index)).games[gameId];
   const after = replay(events.slice(0, index + 1)).games[gameId];
   if (!before || !after) return null;
-  const detail = placementExplanation(before, event.payload.cell, event.payload.value);
-  return {
-    eventId: event.id,
-    elapsedMs: event.elapsedMs,
-    game: after,
-    ...detail,
-    action: describeMove(event),
-    targetCell: event.payload.cell,
-    explanation: `${detail.explanation}${after.status === 'complete' ? ' This placement completed the puzzle.' : ''}`
-  };
+  return { event, before, after };
 }
 
 function importWithWorkPrefix(event: GameImportedEvent, actionCount: number): GameImportedEvent {
@@ -721,12 +750,12 @@ function importWithWorkPrefix(event: GameImportedEvent, actionCount: number): Ga
   };
 }
 
-function buildSharedWorkPlacementStep(
+function buildSharedWorkPlacementFrame(
   events: readonly SudokuEvent[],
   eventIndex: number,
   actionIndex: number,
   gameId: string
-): WalkthroughStep | null {
+): PlacementFrame | null {
   const origin = events[eventIndex] as GameImportedEvent;
   const action = origin.payload.work?.[actionIndex];
   if (!action || action.type !== 'value') return null;
@@ -734,39 +763,88 @@ function buildSharedWorkPlacementStep(
   const before = replay([...preceding, importWithWorkPrefix(origin, actionIndex)]).games[gameId];
   const after = replay([...preceding, importWithWorkPrefix(origin, actionIndex + 1)]).games[gameId];
   if (!before || !after) return null;
-  const detail = placementExplanation(before, action.cell, action.value);
   const placementEvent: ValueEnteredEvent = {
     ...origin,
     id: `${origin.id}-work-${actionIndex + 1}`,
     type: 'cell/value-entered',
     payload: { cell: action.cell, value: action.value }
   };
+  return { event: placementEvent, before, after };
+}
+
+function buildPlacementFrame(
+  events: readonly SudokuEvent[],
+  reference: PlacementReference,
+  gameId: string
+): PlacementFrame | null {
+  return reference.kind === 'event'
+    ? buildEventPlacementFrame(events, reference.eventIndex, gameId)
+    : buildSharedWorkPlacementFrame(events, reference.eventIndex, reference.actionIndex, gameId);
+}
+
+function buildPlacementStep(frame: PlacementFrame): WalkthroughStep {
+  const { event, before, after } = frame;
+  const detail = placementExplanation(before, event.payload.cell, event.payload.value);
   return {
-    eventId: placementEvent.id,
-    elapsedMs: origin.elapsedMs,
+    eventId: event.id,
+    elapsedMs: event.elapsedMs,
     game: after,
     ...detail,
-    action: describeMove(placementEvent),
-    targetCell: action.cell,
+    action: describeMove(event),
+    targetCell: event.payload.cell,
     explanation: `${detail.explanation}${after.status === 'complete' ? ' This placement completed the puzzle.' : ''}`
   };
 }
 
-function buildPlacementStep(
-  events: readonly SudokuEvent[],
-  reference: PlacementReference,
-  gameId: string
-): WalkthroughStep | null {
-  return reference.kind === 'event'
-    ? buildEventPlacementStep(events, reference.eventIndex, gameId)
-    : buildSharedWorkPlacementStep(events, reference.eventIndex, reference.actionIndex, gameId);
+function buildWalkthroughWork(frames: readonly PlacementFrame[]): ImportedPuzzleWorkAction[] {
+  const first = frames[0];
+  if (!first) return [];
+  const values = Array<Digit | null>(81).fill(null);
+  const notes = first.before.startingNotesMode === 'basic'
+    ? structuredClone(first.before.startingNotes)
+    : Array.from({ length: 81 }, () => [] as Digit[]);
+  const work: ImportedPuzzleWorkAction[] = [];
+
+  const syncNotes = (targetNotes: readonly (readonly Digit[])[], targetValues: readonly (Digit | null)[]): void => {
+    for (let cell = 0; cell < 81; cell += 1) {
+      if (values[cell] !== null || targetValues[cell] !== null) continue;
+      const current = new Set(notes[cell]);
+      const target = new Set(targetNotes[cell]);
+      const additions = [...target].filter((value) => !current.has(value)).sort();
+      const removals = [...current].filter((value) => !target.has(value)).sort();
+      if (additions.length) work.push({ type: 'notes', cell, values: additions, enabled: true });
+      if (removals.length) work.push({ type: 'notes', cell, values: removals, enabled: false });
+      notes[cell] = [...target].sort();
+    }
+  };
+  const syncValues = (targetValues: readonly (Digit | null)[]): void => {
+    targetValues.forEach((value, cell) => {
+      if (value === null || values[cell] === value) return;
+      work.push({ type: 'value', cell, value });
+      values[cell] = value;
+      notes[cell] = [];
+    });
+  };
+
+  for (const { event, before, after } of frames) {
+    // Candidate edits made since the previous placement are shown before this
+    // move. Automatic peer removals follow the placement that caused them, so
+    // the readable work stream preserves the solve's explanatory order.
+    syncNotes(before.notes, before.values);
+    syncValues(before.values);
+    work.push({ type: 'value', cell: event.payload.cell, value: event.payload.value });
+    values[event.payload.cell] = event.payload.value;
+    notes[event.payload.cell] = [];
+    syncNotes(after.notes, after.values);
+  }
+  return work;
 }
 
 export function buildSolveWalkthrough(events: readonly SudokuEvent[], gameId: string): SolveWalkthrough {
-  const steps = placementReferences(events, gameId)
-    .map((reference) => buildPlacementStep(events, reference, gameId))
-    .filter((step): step is WalkthroughStep => step !== null);
-  return { gameId, steps };
+  const frames = placementReferences(events, gameId)
+    .map((reference) => buildPlacementFrame(events, reference, gameId))
+    .filter((frame): frame is PlacementFrame => frame !== null);
+  return { gameId, steps: frames.map(buildPlacementStep), work: buildWalkthroughWork(frames) };
 }
 
 const defaultYield = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
@@ -778,14 +856,18 @@ export async function buildSolveWalkthroughAsync(
 ): Promise<SolveWalkthrough> {
   const references = placementReferences(events, gameId);
   const steps: WalkthroughStep[] = [];
+  const frames: PlacementFrame[] = [];
   const yieldControl = options.yieldControl ?? defaultYield;
   options.onProgress?.({ completed: 0, total: references.length });
 
   for (let position = 0; position < references.length; position += 1) {
     await yieldControl();
-    const step = buildPlacementStep(events, references[position], gameId);
-    if (step) steps.push(step);
+    const frame = buildPlacementFrame(events, references[position], gameId);
+    if (frame) {
+      frames.push(frame);
+      steps.push(buildPlacementStep(frame));
+    }
     options.onProgress?.({ completed: position + 1, total: references.length });
   }
-  return { gameId, steps };
+  return { gameId, steps, work: buildWalkthroughWork(frames) };
 }

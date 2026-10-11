@@ -64,6 +64,10 @@ test('every primary screen and modal fits without scrolling or occluded controls
   await page.getByRole('button', { name: 'Walkthrough' }).click();
   await expect(page.getByText('Placement 1 of 1')).toBeVisible();
   await expectScreenToFit('Walkthrough');
+  await page.getByRole('button', { name: 'Share walkthrough' }).click();
+  await expect(page.getByTestId('share-qr')).toBeVisible();
+  await expectScreenToFit('Walkthrough share QR code');
+  await page.getByRole('dialog', { name: 'Scan on the other device' }).getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Back to History' }).click();
 
   await page.getByRole('button', { name: 'Share' }).click();

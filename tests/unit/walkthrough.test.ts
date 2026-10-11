@@ -13,7 +13,7 @@ import {
 import { generateEasyPuzzle } from '../../src/lib/generator/generate-puzzle';
 import { solveLogically } from '../../src/lib/generator/logical-solver';
 import { solveFirst } from '../../src/lib/generator/solve';
-import { parseSharedPuzzlePayload } from '../../src/lib/sharing/puzzle-link';
+import { parseSharedPuzzlePayload, puzzleUrl } from '../../src/lib/sharing/puzzle-link';
 import { replay } from '../../src/lib/domain/reducer';
 
 const gameId = 'game-walkthrough';
@@ -79,6 +79,7 @@ describe('instructional solve walkthroughs', () => {
     expect(visualization).toMatchObject({
       rule: 'full-house',
       targetCell: 0,
+      application: { type: 'placement', cell: 0, value: 5 },
       patternCells: [1, 2, 3, 4, 5, 6, 7, 8],
       exclusionCells: [1, 2, 3, 4, 5, 6, 7, 8]
     });
@@ -128,6 +129,40 @@ describe('instructional solve walkthroughs', () => {
     ].includes(step.ruleLabel))).toBe(true);
     expect(walkthrough.steps.at(-1)?.game.status).toBe('complete');
     expect(walkthrough.steps.at(-1)?.explanation).toContain('completed the puzzle');
+  });
+
+  it('serializes placements and candidate notes in explanatory order for sharing', () => {
+    const solution = '549371628826945371173628945654719283917283456382456719738562194491837562265194837';
+    const puzzle: PuzzleDefinition = {
+      id: 'shared-walkthrough-notes-fixture',
+      givens: `..${solution.slice(2)}`,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const events: SudokuEvent[] = [
+      startEvent(puzzle),
+      { ...envelope(2), type: 'cell/notes-filled', payload: { cell: 0, values: [5, 6] } },
+      { ...envelope(3), type: 'cell/notes-filled', payload: { cell: 1, values: [4, 5] } },
+      { ...envelope(4), type: 'cell/value-entered', payload: { cell: 0, value: 5 } },
+      { ...envelope(5), type: 'cell/value-entered', payload: { cell: 1, value: 4 } }
+    ];
+
+    const walkthrough = buildSolveWalkthrough(events, gameId);
+
+    expect(walkthrough.work).toEqual([
+      { type: 'notes', cell: 0, values: [5, 6], enabled: true },
+      { type: 'notes', cell: 1, values: [4, 5], enabled: true },
+      { type: 'value', cell: 0, value: 5 },
+      { type: 'notes', cell: 1, values: [5], enabled: false },
+      { type: 'value', cell: 1, value: 4 }
+    ]);
+    const link = new URL(puzzleUrl('https://sudoku.annasdadpress.com/', puzzle.givens, walkthrough.work));
+    link.searchParams.set('view', 'walkthrough');
+    expect(decodeURIComponent(link.searchParams.get('p') ?? '')).toContain('_11+56+_12+45+_115_12-5-_124');
+    expect(link.searchParams.get('view')).toBe('walkthrough');
+    expect(parseSharedPuzzlePayload(link.searchParams.get('p') ?? '').work).toEqual(walkthrough.work);
   });
 
   it('skips notes, undo, and correction events and marks an unproved placement Unknown rule', () => {
@@ -295,11 +330,50 @@ describe('instructional solve walkthroughs', () => {
     if (!hint) throw new Error('Expected a visual elimination hint.');
 
     const visualization = buildSolveHintVisualization(game, hint);
+    expect(visualization.application.type).toBe('elimination');
+    if (visualization.application.type === 'elimination') {
+      expect(visualization.application.removals).toContainEqual({ cell: 68, value: 1 });
+      expect(visualization.application.placements).toEqual([]);
+    }
     expect(visualization.patternCells).toEqual([58, 59]);
     expect(visualization.exclusionCells).toEqual([68, 76]);
     expect(visualization.candidateCells.find(({ cell }) => cell === 68)).toMatchObject({
       values: [1, 2, 9],
       excluded: [1]
+    });
+  });
+
+  it('places a value when a verified visual elimination leaves one candidate', () => {
+    const solution = '549371628826945371173628945654719283917283456382456719738562194491837562265194837';
+    const puzzle: PuzzleDefinition = {
+      id: 'visual-elimination-placement',
+      givens: `.${solution.slice(1)}`,
+      solution,
+      difficulty: 'custom',
+      validatorVersion: 3,
+      hardestTechnique: null
+    };
+    const game = replay([startEvent(puzzle)]).games[gameId];
+    game.notes[0] = [4, 5];
+
+    const visualization = buildSolveHintVisualization(game, {
+      rule: 'hidden-pair',
+      ruleLabel: 'Hidden Pairs',
+      targetCell: 0,
+      value: 5,
+      explanation: 'A hidden pair removes 4 from r1c1, leaving 5.',
+      contextCells: [1, 2],
+      logicalStep: {
+        technique: 'hidden-pair',
+        eliminated: [{ cell: 0, value: 4 }],
+        relatedCells: [1, 2]
+      }
+    });
+
+    expect(visualization.application).toEqual({
+      type: 'elimination',
+      removals: [{ cell: 0, value: 4 }],
+      placements: [{ cell: 0, value: 5 }]
     });
   });
 

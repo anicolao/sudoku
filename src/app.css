@@ -168,6 +168,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .visual-hint-status strong { font-size: .84rem; }
 .visual-hint-status small { margin-top: 3px; color: #62656b; font-size: .68rem; }
 .visual-hint-status button { min-width: 60px; min-height: 44px; padding: 4px 8px; border: 1px solid #6a9c95; border-radius: 7px; color: #25645d; background: #fff; font-weight: 700; cursor: pointer; }
+.visual-hint-actions { display: grid; grid-template-columns: repeat(2, auto); gap: 5px; }
+.visual-hint-status button.next { color: #fff; background: #277a72; }
 .mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border: 1px solid #c8c7c2; border-radius: 10px; background: #efeee9; }
 .mode-switch button { min-height: 44px; border: 0; border-radius: 7px; color: #62656b; background: transparent; font-weight: 700; cursor: pointer; }
 .mode-switch button.active { color: #4654a3; background: #fffdf8; box-shadow: 0 1px 3px #0002; }
@@ -286,6 +288,8 @@ h1 { margin: 0; color: #20242b; font-size: clamp(2rem, 5vw, 3.15rem); line-heigh
 .walkthrough-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .walkthrough-heading h1 { font-size: clamp(2rem, 5vw, 3.15rem); }
 .walkthrough-heading button { flex: 0 0 auto; min-height: 44px; padding: 7px 12px; border: 1px solid #c8c7c2; border-radius: 8px; color: #4654a3; background: #fffdf8; font-weight: 700; cursor: pointer; }
+.walkthrough-heading button:disabled { color: #999; background: #efeee9; }
+.walkthrough-heading-actions { display: flex; gap: 7px; }
 .walkthrough-workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 600px) minmax(260px, 300px); gap: 24px; align-items: start; justify-content: center; }
 .walkthrough-board { min-width: 0; display: grid; justify-items: center; gap: 8px; }
 .walkthrough-board .sudoku-board { width: min(100%, 600px); }
@@ -403,6 +407,8 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .walkthrough-heading .eyebrow { margin-bottom: 2px; font-size: .68rem; }
   .walkthrough-heading h1 { font-size: 1.45rem; }
   .walkthrough-heading button { min-height: 44px; padding-inline: 8px; font-size: .78rem; }
+  .walkthrough-heading { grid-template-columns: 1fr; display: grid; }
+  .walkthrough-heading-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .walkthrough-workspace { grid-template-columns: 1fr; grid-template-rows: auto auto; align-content: start; gap: 6px; }
   .walkthrough-board { gap: 3px; }
   .walkthrough-board .sudoku-board { --board-size: min(calc(100vw - 24px), calc(100svh - 380px), 540px); width: var(--board-size); height: var(--board-size); }

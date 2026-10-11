@@ -47,7 +47,7 @@
   type IncomingStatus = 'none' | 'checking' | 'ready' | 'invalid';
   type IncomingView = 'play' | 'walkthrough';
   type ShareStage = 'choose' | 'ready';
-  type ShareKind = 'puzzle' | 'work';
+  type ShareKind = 'puzzle' | 'work' | 'walkthrough';
   type WalkthroughStatus = 'idle' | 'loading' | 'ready' | 'failed';
   type HintAdviceKind = 'technique' | 'cell';
   type PrintStatus = 'idle' | 'preparing';
@@ -451,6 +451,26 @@
     announcement = 'Puzzle work link ready';
   }
 
+  async function shareSolveWalkthrough(): Promise<void> {
+    if (!walkthrough || !walkthroughGameId) return;
+    const game = projection.games[walkthroughGameId];
+    if (!game || !walkthrough.work.some((action) => action.type === 'value')) return;
+    const givensOption = game.startingNotesMode === 'basic' ? 'basic' : null;
+    const url = new URL(puzzleUrl(window.location.href, game.puzzle.givens, walkthrough.work, {
+      ...(game.patternCells.length ? { patternCells: [...game.patternCells] } : {}),
+      elapsedMs: elapsedAt(game, timerNow),
+      ...(game.hintedCells.length ? { hintedCells: [...game.hintedCells] } : {}),
+      mistakes: game.mistakes,
+      settings: { ...game.settings }
+    }, givensOption));
+    url.searchParams.set('view', 'walkthrough');
+    shareGameId = game.id;
+    shareDialogOpen = true;
+    shareStage = 'ready';
+    await showShareLink(url.toString(), 'walkthrough');
+    announcement = 'Walkthrough link ready';
+  }
+
   async function copyShareLink(): Promise<void> {
     try {
       await navigator.clipboard.writeText(shareLink);
@@ -463,7 +483,7 @@
 
   async function openSystemShare(): Promise<void> {
     if (!navigator.share) return;
-    try { await navigator.share({ title: 'Sudoku puzzle', url: shareLink }); }
+    try { await navigator.share({ title: shareKind === 'walkthrough' ? 'Sudoku solve walkthrough' : 'Sudoku puzzle', url: shareLink }); }
     catch (error) { if ((error as DOMException).name !== 'AbortError') shareError = 'System sharing is unavailable.'; }
   }
 
@@ -852,6 +872,69 @@
     announcement = `Visual hint: ${advice.ruleLabel}. The destination and rule pattern are highlighted without placing its value`;
   }
 
+  async function applyVisualHintAndShowNext(): Promise<void> {
+    if (!store || !currentGame || !visualHint || isReadOnly || currentGame.paused) return;
+    const gameId = currentGame.id;
+    const applied = visualHint;
+    if (applied.application.type === 'placement') {
+      const { cell, value } = applied.application;
+      if (!applyCommit(
+        await store.revealHint(gameId, cell, value, metadata()),
+        `Applied ${applied.ruleLabel}`
+      )) return;
+    } else {
+      const removals = new Map<number, Set<Digit>>();
+      for (const { cell, value } of applied.application.removals) {
+        if (!removals.has(cell)) removals.set(cell, new Set());
+        removals.get(cell)?.add(value);
+      }
+      for (const [cell, values] of removals) {
+        const latest = projection.games[gameId];
+        if (!latest || latest.values[cell] !== null) continue;
+        if (latest.notes[cell].length === 0) {
+          const shown = applied.candidateCells.find((candidate) => candidate.cell === cell)?.values ?? [];
+          const retained = shown.filter((value) => !values.has(value));
+          if (retained.length && !applyCommit(
+            await store.fillNotes(gameId, cell, retained, metadata()),
+            `Applied ${applied.ruleLabel}`
+          )) return;
+          continue;
+        }
+        for (const value of values) {
+          const current = projection.games[gameId];
+          if (!current?.notes[cell].includes(value)) continue;
+          if (!applyCommit(
+            await store.toggleNote(gameId, cell, value, false, metadata()),
+            `Applied ${applied.ruleLabel}`
+          )) return;
+        }
+      }
+      for (const { cell, value } of applied.application.placements) {
+        const latest = projection.games[gameId];
+        if (!latest || latest.values[cell] !== null) continue;
+        if (!applyCommit(
+          await store.revealHint(gameId, cell, value, metadata()),
+          `Applied ${applied.ruleLabel}`
+        )) return;
+      }
+    }
+
+    const nextGame = projection.games[gameId];
+    const next = nextGame?.status === 'active' ? findNextVisualHint(nextGame) : null;
+    if (!next || next.rule === 'unknown-rule') {
+      visualHint = null;
+      announcement = nextGame?.status === 'complete'
+        ? 'Puzzle complete. No more visual hints'
+        : 'Applied the visual hint. No further supported visual hint was found';
+      return;
+    }
+    visualHint = buildSolveHintVisualization(nextGame, next);
+    selectedCell = null;
+    selectedDigit = null;
+    highlightAllNumberPeers = false;
+    announcement = `Applied ${applied.ruleLabel}. Next visual hint: ${next.ruleLabel}`;
+  }
+
   function clearVisualHint(): void {
     if (!visualHint) return;
     visualHint = null;
@@ -1076,7 +1159,10 @@
       <section class="walkthrough-view" aria-labelledby="walkthrough-title">
         <div class="walkthrough-heading">
           <div><p class="eyebrow">Solve walkthrough</p><h1 id="walkthrough-title">Learn from this solve</h1></div>
-          <button type="button" onclick={closeWalkthrough}>Back to History</button>
+          <div class="walkthrough-heading-actions">
+            <button type="button" onclick={shareSolveWalkthrough} disabled={walkthroughStatus !== 'ready' || !walkthrough?.steps.length}>Share walkthrough</button>
+            <button type="button" onclick={closeWalkthrough}>Back to History</button>
+          </div>
         </div>
         {#if walkthroughStatus === 'loading'}
           <div class="walkthrough-loading" role="status" aria-live="polite">
@@ -1186,7 +1272,10 @@
                   : visualHint.rule === 'simple-colors'
                     ? 'Follow the smallest alternating color chain; both endpoints eliminate red.'
                   : 'Pattern · exclude · target'}</small></p>
-                <button type="button" onclick={clearVisualHint}>Done</button>
+                <div class="visual-hint-actions">
+                  <button type="button" class="next" onclick={applyVisualHintAndShowNext}>Next hint</button>
+                  <button type="button" onclick={clearVisualHint}>Done</button>
+                </div>
               </div>
             {:else}
               <div class="mode-switch" aria-label="Input mode">
@@ -1268,10 +1357,10 @@
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <button type="button" class="text-action" onclick={() => shareDialogOpen = false}>Cancel</button>
         {:else}
-          <p class="eyebrow">{shareKind === 'work' ? 'Puzzle with work' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
-          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareKind === 'work' ? 'QR code for opening this puzzle with its current work' : 'QR code for opening this puzzle'} />
+          <p class="eyebrow">{shareKind === 'walkthrough' ? 'Solve walkthrough' : shareKind === 'work' ? 'Puzzle with work' : 'Puzzle link'}</p><h2 id="share-title">Scan on the other device</h2>
+          <img class="share-qr" data-testid="share-qr" src={shareQr} alt={shareKind === 'walkthrough' ? 'QR code for opening this solve walkthrough' : shareKind === 'work' ? 'QR code for opening this puzzle with its current work' : 'QR code for opening this puzzle'} />
           <p class="share-link-status" data-testid="share-link" data-link={shareLink}>Local link ready · {shareLink.length} characters</p>
-          {#if shareKind === 'work'}<p class="transfer-note">The current values, candidates, time, hints, mistakes, and settings are readable in the link.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
+          {#if shareKind === 'walkthrough'}<p class="transfer-note">The ordered placements and candidate notes are readable in the link and open as an instructional walkthrough.</p>{:else if shareKind === 'work'}<p class="transfer-note">The current values, candidates, time, hints, mistakes, and settings are readable in the link.</p>{:else}<p class="transfer-note">The other device will validate the puzzle before asking to start it.</p>{/if}
           {#if shareError}<p class="share-error" role="alert">{shareError}</p>{/if}
           <div class="share-actions"><button type="button" class="confirm" onclick={copyShareLink}>{shareCopied ? 'Link copied' : 'Copy link'}</button>{#if systemShareAvailable}<button type="button" onclick={openSystemShare}>Share link…</button>{/if}<button type="button" onclick={() => shareDialogOpen = false}>Done</button></div>
         {/if}
