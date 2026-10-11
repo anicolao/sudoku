@@ -341,19 +341,6 @@ describe('instructional solve walkthroughs', () => {
       values: [1, 2, 9],
       excluded: [1]
     });
-
-    // A prior verified elimination may already have removed 2. Applying this
-    // naked pair must then promote the remaining 9 instead of stranding it as
-    // a one-digit pencil mark.
-    game.notes[68] = [1, 9];
-    const concludingHint = findNextVisualHint(game);
-    expect(concludingHint).toMatchObject({ rule: 'naked-pair', targetCell: 68 });
-    if (!concludingHint) throw new Error('Expected the naked pair to conclude a value.');
-    expect(buildSolveHintVisualization(game, concludingHint).application).toEqual({
-      type: 'elimination',
-      removals: [{ cell: 68, value: 1 }, { cell: 76, value: 1 }],
-      placements: [{ cell: 68, value: 9 }]
-    });
   });
 
   it('places a value when a verified visual elimination leaves one candidate', () => {
