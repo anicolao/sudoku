@@ -186,7 +186,9 @@ based on the same simplest placement in book-rule order:
 - **Visual hint** draws the rule, its candidate emphasis, and its exclusions on
   the board without showing a placement's answer. **Next hint** applies that
   displayed placement or candidate elimination and draws the next simplest
-  supported rule, producing a visual step-by-step solve.
+  supported rule, producing a visual step-by-step solve. Candidate arrows meet
+  the left or right boundary of their boxes or ellipses at mid-height; curved
+  connections keep the ends clear of digits and follow the shapes as the board resizes.
 - **Cell only** names and selects the target without revealing its value.
 - **Reveal one cell** places the target value with a visible and programmatic
   hint mark, records the exact reveal, and increments the hint count.

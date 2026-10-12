@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { candidateArrowPath } from '$lib/rendering/hint-arrow';
   import type { Digit, GameProjection } from '$lib/domain/types';
   import type { SolveHintVisualization } from '$lib/domain/walkthrough';
   import { PEERS } from '$lib/domain/sudoku';
@@ -118,6 +119,44 @@
     return Math.floor(cell / 9) + (value === undefined ? .5 : (Math.floor((value - 1) / 3) + .5) / 3);
   }
 
+  let board: HTMLDivElement;
+  let hintOverlay = $state<SVGSVGElement>();
+  let candidatePaths = $state<string[]>([]);
+
+  $effect(() => {
+    const arrows = visualHint?.arrows;
+    const overlay = hintOverlay;
+    // Re-measure when note styling changes as well as when the board resizes.
+    notesLarge; notesBold;
+    if (!arrows || !overlay) return;
+    const measure = () => {
+      const viewport = overlay.getBoundingClientRect();
+      if (!viewport.width || !viewport.height) return;
+      const bounds = (cell: number, value: Digit) => {
+        const candidate = board.querySelector<HTMLElement>(`[data-cell="${cell}"] [data-note-value="${value}"]`);
+        if (!candidate) return null;
+        const rect = candidate.getBoundingClientRect();
+        return {
+          left: (rect.left - viewport.left) * 9 / viewport.width,
+          right: (rect.right - viewport.left) * 9 / viewport.width,
+          top: (rect.top - viewport.top) * 9 / viewport.height,
+          bottom: (rect.bottom - viewport.top) * 9 / viewport.height
+        };
+      };
+      candidatePaths = arrows.map(arrow => {
+        if (arrow.fromValue === undefined || arrow.toValue === undefined) return '';
+        const from = bounds(arrow.fromCell, arrow.fromValue);
+        const to = bounds(arrow.toCell, arrow.toValue);
+        return from && to ? candidateArrowPath(from, to) : '';
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(board);
+    board.querySelectorAll('[data-visual-candidate]').forEach(candidate => observer.observe(candidate));
+    return () => observer.disconnect();
+  });
+
   function handleKeydown(event: KeyboardEvent, cell: number): void {
     let target: number | null = null;
     if (event.key === 'ArrowLeft') target = cell % 9 === 0 ? cell : cell - 1;
@@ -147,7 +186,7 @@
   }
 </script>
 
-<div class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
+<div bind:this={board} class="sudoku-board" role="grid" aria-label={`${difficultyLabel(game.puzzle.difficulty)} Sudoku puzzle`} data-testid="sudoku-board" data-notes-bold={notesBold} data-notes-large={notesLarge}>
   {#each Array(9) as _, row}
     <div class="sudoku-row" role="row">
     {#each Array(9) as _, column}
@@ -221,6 +260,7 @@
                 class:visual-color-even={visualColor === 'even'}
                 class:visual-color-odd={visualColor === 'odd'}
                 class:visual-excluded={visuallyExcluded}
+                data-note-value={noteValue}
                 data-highlight={noteMatches ? 'matching-note' : undefined}
                 data-visual-candidate={visuallyExcluded ? 'excluded' : visualColor ?? (visuallyEndpoint ? 'endpoint' : visuallyEmphasized ? 'emphasized' : undefined)}
               >{noteIsPresent ? noteValue : ''}</i>
@@ -255,12 +295,12 @@
     {/each}
   </svg>
   {#if visualHint}
-    <svg class="hint-visual-overlay" data-testid="visual-hint-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
+    <svg bind:this={hintOverlay} class="hint-visual-overlay" data-testid="visual-hint-overlay" viewBox="0 0 9 9" preserveAspectRatio="none" aria-hidden="true">
       <defs>
-        <marker id="visual-hint-arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+        <marker id="visual-hint-arrowhead" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L5,2.5 L0,5 z" />
         </marker>
-        <marker id="visual-hint-exclusion-arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+        <marker id="visual-hint-exclusion-arrowhead" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
           <path class="exclusion-arrowhead" d="M0,0 L5,2.5 L0,5 z" />
         </marker>
       </defs>
@@ -274,16 +314,15 @@
           data-hint-exclusion={cell}
         />
       {/each}
-      {#each visualHint.arrows as arrow}
-        <line
+      {#each visualHint.arrows as arrow, index}
+        <path
           class="hint-arrow"
           class:candidate-arrow={arrow.fromValue !== undefined && arrow.toValue !== undefined}
           class:conjugate-link={arrow.kind === 'conjugate'}
           class:elimination-link={arrow.kind === 'elimination'}
-          x1={hintArrowX(arrow.fromCell, arrow.fromValue)}
-          y1={hintArrowY(arrow.fromCell, arrow.fromValue)}
-          x2={hintArrowX(arrow.toCell, arrow.toValue)}
-          y2={hintArrowY(arrow.toCell, arrow.toValue)}
+          d={arrow.fromValue !== undefined && arrow.toValue !== undefined
+            ? candidatePaths[index] ?? ''
+            : `M ${hintArrowX(arrow.fromCell)} ${hintArrowY(arrow.fromCell)} L ${hintArrowX(arrow.toCell)} ${hintArrowY(arrow.toCell)}`}
           marker-end={arrow.kind === 'elimination'
             ? 'url(#visual-hint-exclusion-arrowhead)'
             : 'url(#visual-hint-arrowhead)'}
