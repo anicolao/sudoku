@@ -1,6 +1,6 @@
 # Follow arrows between candidate shapes
 
-As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board.
+As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board. A slow-loading validator stays in the checking state until validation can run, without consuming its computation budget.
 
 ## XY-Chains links meet the highlighted shapes at mid-height without crossing their digits
 
