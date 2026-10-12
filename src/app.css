@@ -436,7 +436,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .game-workspace { grid-template-columns: minmax(0, 1fr) 230px; gap: 18px; }
 }
 
-@media (max-height: 700px) {
+@media (max-height: 760px) {
   .shell-header,
   footer { display: none; }
   .primary-nav { min-height: 54px; }
@@ -502,7 +502,7 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .app-shell.playing:has(.completion-panel) .stripe-tools { display: none; }
 }
 
-@media (max-width: 599px) and (max-height: 700px) {
+@media (max-width: 599px) and (max-height: 760px) {
   .app-shell.playing .sudoku-cell { font-size: clamp(.7rem, 3svh, 1.35rem); line-height: 1; }
   .app-shell.playing .sudoku-board,
   .app-shell.playing .paused-cover { --board-size: min(calc(100vw - 24px), calc(100svh - 314px)); width: var(--board-size); height: var(--board-size); }
@@ -527,6 +527,26 @@ footer { min-height: 28px; display: flex; align-items: center; justify-content: 
   .app-shell.playing:has(.app-warning) .puzzle-heading { display: none; }
   .app-shell.playing .walkthrough-workspace { grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; }
   .app-shell.playing .walkthrough-board .sudoku-board { --board-size: min(100%, calc(100svh - 120px)); width: var(--board-size); height: var(--board-size); }
+}
+
+/* Playwright's Pixel 10 landscape profile leaves a 756×308 CSS-pixel viewport. */
+@media (min-width: 600px) and (max-height: 340px) {
+  .difficulty-picker > div { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .library-view { gap: 3px; padding-block: 0; }
+  .settings-build { display: none; }
+  .hint-dialog,
+  .share-dialog { width: min(100%, 700px); }
+  .hint-choices { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .hint-choices button.confirm:last-child { grid-column: auto; }
+  .share-dialog { gap: 4px; }
+  .share-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .share-choices .transfer-note { grid-column: 1 / -1; }
+  .incoming-card:has(.incoming-facts) > .eyebrow,
+  .incoming-card:has(.incoming-facts) > p:not(.eyebrow, .dialog-symbol, .incoming-warning) { display: none; }
+  .app-shell.playing main { padding-block: 0; }
+  .app-shell.playing .play-view,
+  .app-shell.playing .play-controls { gap: 2px; }
+  .app-shell.playing .walkthrough-view { gap: 1px; }
 }
 
 @media (min-width: 900px) {
