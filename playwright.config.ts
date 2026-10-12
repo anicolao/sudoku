@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -75,6 +75,16 @@ export default defineConfig({
         '**/029-screen-fit/*.spec.ts'
       ],
       use: { viewport: { width: 852, height: 393 } }
+    },
+    {
+      name: 'pixel-10',
+      testMatch: '**/029-screen-fit/*.spec.ts',
+      use: { ...devices['Pixel 10'] }
+    },
+    {
+      name: 'pixel-10-landscape',
+      testMatch: '**/029-screen-fit/*.spec.ts',
+      use: { ...devices['Pixel 10 landscape'] }
     },
     {
       name: 'zoom-200',

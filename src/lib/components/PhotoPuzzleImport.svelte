@@ -309,4 +309,9 @@
     .review-controls { gap: 5px; padding: 9px; }
     details, .detected-note { display: none; }
   }
+
+  @media (min-width: 600px) and (max-height: 340px) {
+    .capture-card .camera-symbol,
+    .capture-card > small { display: none; }
+  }
 </style>
