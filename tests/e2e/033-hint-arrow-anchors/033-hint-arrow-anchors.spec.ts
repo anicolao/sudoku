@@ -29,9 +29,31 @@ async function checkAnchors(page: Page) {
 test('visual arrows follow candidate boundaries through chains, colors, and resizing', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Follow arrows between candidate shapes', 'As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board.');
+  steps.setMetadata('Follow arrows between candidate shapes', 'As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board. A slow-loading validator stays in the checking state until validation can run, without consuming its computation budget.');
+  await page.clock.install();
+  let releaseWorker!: () => void;
+  let workerRequested!: () => void;
+  const workerRequest = new Promise<void>(resolve => { workerRequested = resolve; });
+  const startupGate = new Promise<void>(resolve => { releaseWorker = resolve; });
+  await page.route('**/puzzle-validator.worker-*.js', async route => {
+    workerRequested();
+    await startupGate;
+    await route.continue();
+  }, { times: 1 });
   for (const [name, payload] of fixtures) {
     await page.goto(`/?p=${encodeURIComponent(payload)}`);
+    if (name.startsWith('xy-')) {
+      await workerRequest;
+      // Reproduce the CI script-loading delay without sleeping or weakening
+      // the worker's computation limit. The real worker runs after release.
+      try {
+        await page.clock.fastForward(2_750);
+        await expect(page.getByRole('heading', { name: 'Checking shared puzzle…' })).toBeVisible();
+        expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
+      } finally {
+        releaseWorker();
+      }
+    }
     await page.getByRole('button', { name: /^(Open shared work|Abandon current and open shared puzzle)$/ }).click({ timeout: 20_000 });
     await page.getByRole('button', { name: 'Hint', exact: true }).click({ timeout: 20_000 });
     await page.getByRole('button', { name: /Visual hint/ }).click({ timeout: 20_000 });

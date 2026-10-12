@@ -31,8 +31,19 @@ test('view=walkthrough opens shared progress at its first ordered placement', as
     ]
   });
 
+  // Observe before clicking: a short solve can finish between Playwright polls.
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const progress = document.querySelector('[role="progressbar"][aria-label="Walkthrough analysis progress"]');
+      if (progress?.checkVisibility()) {
+        document.documentElement.dataset.analysisProgressSeen = 'true';
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
   await page.getByRole('button', { name: 'Open walkthrough' }).click();
-  await expect(page.getByRole('progressbar', { name: 'Walkthrough analysis progress' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-analysis-progress-seen', 'true');
   await steps.step('first-shared-placement', {
     description: 'The imported solve opens directly on its first shared placement',
     verifications: [

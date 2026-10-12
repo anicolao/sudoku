@@ -14,4 +14,6 @@ self.addEventListener('message', (event: MessageEvent<{ payload: string; givensO
   );
 });
 
+self.postMessage({ type: 'ready' });
+
 export {};

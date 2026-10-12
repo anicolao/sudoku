@@ -55,7 +55,8 @@ message. Omitting the parameter retains the blank-note behavior.
 Opening a link:
 
 1. renders **Checking shared puzzle…** without writing an event;
-2. validates and solves the givens in a worker with a two-second default
+2. allows up to ten seconds for the validation worker to load and announce
+   readiness, then validates and solves the givens with a two-second default
    deadline;
 3. shows level, clue count, work counts, and a short local fingerprint only
    after success;
