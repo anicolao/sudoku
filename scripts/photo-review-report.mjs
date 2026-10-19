@@ -55,18 +55,21 @@ export function photoReviewReport(examples, results = [], policies = {default: {
     const differences = result || example.status !== 'transcribed' ? masterDifferences(example, result ?? {}, policy) : [];
     const payload = masterPayload(example);
     const allData = masterPayload(example, true);
+    const givenComparison = [...(example.givens ?? EMPTY_BOARD)].map((digit,cell) =>
+      policy.unclassifiedRoles === 'either' && example.unclassified?.[cell] && example.unclassified[cell] !== '.'
+        ? (result?.givens?.[cell] && result.givens[cell] !== '.' ? example.unclassified[cell] : '.') : digit).join('');
     return `<article id="${escape(example.filename)}" data-status="${result ? pass ? 'pass' : 'fail' : 'golden'}">
       <h2>${escape(example.filename)}${result ? ` — ${pass ? 'PASS' : 'FAIL'}` : ''}</h2>
       <p>${escape(example.description ?? '')}</p>
-      <p>Source: ${escape(example.status)}. Validating: ${policy.layers.join(', ')}. Expected outcome: ${policy.outcome === 'review' ? 'exact recognition; review required; puzzle start blocked' : 'exact recognition and successful puzzle start'}.</p>
+      <p>Source: ${escape(example.status)}. Validating: ${policy.layers.join(', ')}${policy.unclassifiedRoles === 'either' ? '; unclassified digits must match exactly, in either full-size layer' : ''}. Expected outcome: ${policy.outcome === 'review' ? 'exact recognition; review required; puzzle start blocked' : 'exact recognition and successful puzzle start'}.</p>
       <div class="comparison"><figure><a href="${escape(image)}"><img loading="lazy" src="${escape(image)}" alt="Original ${escape(example.filename)}"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
       <figure>${example.givens !== null && example.placements !== null && example.notes !== null ? boardSvg(example.givens, example.givens, example.placements, example.notes, example.unclassified, example.ambiguities) : '<p>Not yet transcribed. No accepted master.</p>'}<figcaption>Source transcription · bold black givens · blue placements · small grey notes · amber digits of unknown role · ? unresolved notes</figcaption></figure>
       ${result?.preview ? `<figure><img loading="lazy" src="${escape(result.preview)}" alt="Straightened grid"><figcaption>Actual straightened grid</figcaption></figure>` : ''}
-      ${result?.givens?.length === 81 ? `<figure>${boardSvg(result.givens, example.givens ?? EMPTY_BOARD, result.placements ?? EMPTY_BOARD, result.notes)}<figcaption>Actual recognized layers · given differences shaded red; all layer differences listed below</figcaption></figure>` : ''}</div>
+      ${result?.givens?.length === 81 ? `<figure>${boardSvg(result.givens, givenComparison, result.placements ?? EMPTY_BOARD, result.notes)}<figcaption>Actual recognized layers · given differences shaded red; all layer differences listed below</figcaption></figure>` : ''}</div>
       ${result ? `<p>${escape(result.error ?? (result.reviewRequired ? 'Review required; non-unique puzzle cannot start' : result.ready ? 'Puzzle ready' : 'Recognition needs correction'))}${result.started ? '; successfully started as a playable puzzle.' : ''}</p>` : ''}
       ${differences.length ? `<details open><summary>${differences.length} differing cells</summary><p>${differences.map(escape).join('; ')}</p></details>` : ''}
       ${Object.keys(example.ambiguities ?? {}).length ? `<p>Unresolved source details: ${escape(JSON.stringify(example.ambiguities))}</p>` : ''}
-      ${payload ? `<p><a href="https://sudoku.annasdadpress.com/?p=${encodeURIComponent(payload)}">Open givens with player placements</a>${allData ? ` · <a href="https://sudoku.annasdadpress.com/?p=${encodeURIComponent(allData)}">Open with notes too</a>` : ' · Notes link withheld: candidate transcription is ambiguous.'}</p>` : '<p>No puzzle link until givens and placement roles are known.</p>'}
+      ${payload ? `<p><a href="https://sudoku.annasdadpress.com/?p=${encodeURIComponent(payload)}">Open givens with player placements</a>${allData ? ` · <a href="https://sudoku.annasdadpress.com/?p=${encodeURIComponent(allData)}">Open with notes too</a>` : ' · Notes link withheld: candidate transcription is ambiguous.'}</p>` : '<p>No authoritative original-puzzle link: given/placement roles cannot be recovered from this image.</p>'}
       <details><summary>Layered source data</summary><pre>${escape(JSON.stringify({givens:example.givens,placements:example.placements,notes:example.notes,unclassified:example.unclassified,ambiguities:example.ambiguities},null,2))}</pre></details>
     </article>`.replace(/^[ \t]+$/gm, '');
   }).join('\n');

@@ -7,6 +7,43 @@ test.beforeEach(({}, testInfo) => {
 });
 
 const GIVENS = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
+
+for (const dark of [false, true]) {
+  test(`preserves colored progress and inverted selected cells on a ${dark ? 'dark' : 'light'} board`, async ({page}) => {
+    await page.goto('/');
+    const photo = await page.evaluate(({givens,dark}) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1000;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = dark ? '#111' : '#fff';
+      ctx.fillRect(0,0,1000,1000);
+      // White-on-blue selection on a light board has opposite local polarity.
+      if (!dark) {ctx.fillStyle='#245bc2';ctx.fillRect(250,50,100,100);}
+      ctx.strokeStyle = dark ? '#bbb' : '#222';
+      for(let i=0;i<=9;i++) {
+        ctx.lineWidth=i%3===0?6:2;
+        ctx.beginPath();ctx.moveTo(50+i*100,50);ctx.lineTo(50+i*100,950);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(50,50+i*100);ctx.lineTo(950,50+i*100);ctx.stroke();
+      }
+      ctx.font='bold 62px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=dark?'#bbb':'#222';
+      [...givens].forEach((v,c)=>{if(v!=='.')ctx.fillText(v,100+c%9*100,102+Math.floor(c/9)*100);});
+      for (const [cell,value] of [[2,4],[3,6],[5,8]]) {
+        ctx.fillStyle = !dark && cell===2 ? '#fff' : '#2862ff';
+        ctx.fillText(String(value),100+cell*100,102);
+      }
+      return canvas.toDataURL().split(',')[1];
+    },{givens:GIVENS,dark});
+    await page.getByRole('button',{name:'Puzzles',exact:true}).click();
+    await page.getByRole('button',{name:'Import from photo'}).click();
+    await page.getByLabel('Choose Sudoku photo').setInputFiles({name:'contrast.png',mimeType:'image/png',buffer:Buffer.from(photo,'base64')});
+    await expect(page.getByRole('heading',{name:'Puzzle ready',exact:true})).toBeVisible({timeout:150000});
+    const expected=[...GIVENS];expected[2]='4';expected[3]='6';expected[5]='8';
+    expect((await page.locator('[data-photo-cell]').allTextContents()).map(v=>v||'.').join('')).toBe(expected.join(''));
+    // Selection can hide a digit's role; do not invent ground truth for it.
+    for(const cell of dark?[2,3,5]:[3,5]) await expect(page.locator(`[data-photo-cell="${cell}"]`)).toHaveAttribute('data-photo-role','placement');
+  });
+}
 const REAL_PHOTOS = [
   {
     name: 'textured book page with dark handwriting',

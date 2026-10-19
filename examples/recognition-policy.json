@@ -4,6 +4,13 @@
     "outcome": "start"
   },
   "overrides": {
+    "14whyhere.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "25obvious.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "12paper.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "13missing.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "15nohint.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "15whatnext.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "22handwritten.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
     "21forward.webp": {
       "layers": ["givens", "placements"],
       "outcome": "review"

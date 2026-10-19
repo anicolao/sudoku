@@ -864,7 +864,9 @@
     "filename": "14whyhere.jpeg",
     "status": "transcribed",
     "givens": "......2..9.67..1....78.9..31....7...47.1.6.95...3....48..6.59....5..16.7..4......",
-    "placements": "3..56..79.......5852..1.46....9...26.........6.....71.....7..4229.......76....5.1",
+    "placements": "3..56..79.......5852..1.46........26.........6.....71.....7..4229.......76....5.1",
+    "unclassified": "..............................9..................................................",
+    "ambiguities": {"roles":"r4c4 is white on a dark selected-cell fill. Selection hides the normal black-given/blue-placement distinction; the annotation does not establish its original role."},
     "notes": {},
     "description": "Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes."
   },
@@ -1500,8 +1502,10 @@
   {
     "filename": "25obvious.jpeg",
     "status": "transcribed",
-    "givens": "8.159...2.....29...4.....1..6398...7.............37.....6.7.38.............85..79",
-    "placements": ".........6.......82.9.68..............8.2.....24...8.....2......8........12......",
+    "givens": "8.159...2.....29.........1..6398...7.............37.....6.7.38.............85..79",
+    "placements": ".........6.......82.9.68..............8.2.....2....8.....2......8........12......",
+    "unclassified": "...................4...........................4.................................",
+    "ambiguities": {"roles":"r3c2 and r6c3 use the same neutral digit color on blue selection fills, which hide the normal neutral-given/blue-placement distinction. Their values are clear but their original roles are not."},
     "notes": {
       "12": "37",
       "16": "34",

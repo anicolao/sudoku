@@ -58,6 +58,25 @@ describe('independent photo source and recognition policy', () => {
     expect(masterPayload(source,true)).toBeNull();
   });
 
+  it('checks indistinguishable digits without guessing roles or ignoring wrong values', () => {
+    const source = {...master, unclassified:'..3'+'.'.repeat(78), ambiguities:{roles:'Identical full-size digit styles'}};
+    const either: PhotoPolicy = {...policy, unclassifiedRoles:'either'};
+    const fixed = {...reviewed,givens:'1.3'+'.'.repeat(78)};
+    const work = {...reviewed,placements:'.23'+'.'.repeat(78)};
+    expect(photoExamplePassed(source,fixed,policy)).toBe(false);
+    expect(photoExamplePassed(source,fixed,either)).toBe(true);
+    expect(photoExamplePassed(source,work,either)).toBe(true);
+    expect(photoExamplePassed(source,{...fixed,placements:undefined},either)).toBe(false);
+    expect(() => validateMaster({...source,ambiguities:{'notes:13':'Unclear note'}})).toThrow('explicit ambiguity');
+    expect(photoExamplePassed(source,reviewed,either)).toBe(false);
+    expect(photoExamplePassed(source,{...fixed,placements:work.placements},either)).toBe(false);
+    expect(photoExamplePassed(source,{...fixed,givens:'1.4'+'.'.repeat(78)},either)).toBe(false);
+    expect(photoExamplePassed(source,{...fixed,givens:'4.3'+'.'.repeat(78)},either)).toBe(false);
+    expect(photoExamplePassed(source,{...fixed,givens:'1.35'+'.'.repeat(77)},either)).toBe(false);
+    expect(masterPayload(source)).toBeNull();
+    expect(source.unclassified).toBe('..3'+'.'.repeat(78));
+  });
+
   it('shows the complete source regardless of which layers the policy validates', () => {
     const html = photoReviewReport([master],[reviewed],{default:policy,overrides:{}});
     expect(html).toContain('data-status="pass"');

@@ -3,6 +3,9 @@ import { createWorker, OEM, PSM, type Worker } from 'tesseract.js';
 import type { Digit } from '$lib/domain/types';
 import { findAlignedGrid, findGridQuadrilateral, perspectiveCoefficients, projectPoint } from './grid-extraction';
 import { glyphDistance, normalizeGlyph } from './glyph-matching';
+import { backgroundPlacementCells } from './cell-backgrounds';
+import { combineReadings } from './reading-consensus';
+import { isFullSizeDigit } from './full-size-digit';
 
 
 export type PhotoRecognitionPhase = 'preparing' | 'finding-grid' | 'loading-reader' | 'reading-digits' | 'checking-puzzle';
@@ -33,6 +36,8 @@ interface CellImage {
   inkBlue: number;
   relativeInkLightness: number;
   componentWidth: number;
+  centerX: number;
+  centerY: number;
   obscured: boolean;
 }
 
@@ -209,7 +214,7 @@ function otsuThreshold(values: readonly number[]): number {
   return Math.max(75, Math.min(205, threshold));
 }
 
-function cellImages(warped: WarpedGrid, wide = false): CellImage[] {
+function cellImages(warped: WarpedGrid, wide = false, preserveStrokes = false): CellImage[] {
   const images: CellImage[] = [];
   const edge = (vertical: boolean, nominal: number, from: number): number => {
     if (nominal === 0 || nominal === WARP_SIZE) return nominal;
@@ -239,6 +244,12 @@ function cellImages(warped: WarpedGrid, wide = false): CellImage[] {
         if (Math.max(...colors) - Math.min(...colors) > 100 && warped.gray[y * WARP_SIZE + x] > 140) annotationPixels++;
       }
     }
+    // A selected cell may use white text on a dark fill even on a light board.
+    // Normalize that cell independently; board-wide polarity cannot handle it.
+    const sortedSample = [...sample].sort((a, b) => a - b);
+    const localBackground = sortedSample[Math.floor(sample.length * 0.6)];
+    const reverseCell = localBackground < 140 && sortedSample[Math.floor(sample.length * 0.95)] > localBackground + 40;
+    if (reverseCell) sample.forEach((value, index) => sample[index] = 255 - value);
     const threshold = otsuThreshold(sample);
     const sampleWidth = right - left;
     const sampleHeight = bottom - top;
@@ -291,7 +302,7 @@ function cellImages(warped: WarpedGrid, wide = false): CellImage[] {
       }
     }
     remove.forEach((index) => ink[index] = 0);
-    if (wide) {
+    if (wide && !preserveStrokes) {
       // Opening removes pen-width annotation strokes while retaining thicker
       // printed digits. The independent unfiltered pass remains available.
       const opened = new Uint8Array(ink.length);
@@ -361,6 +372,9 @@ function cellImages(warped: WarpedGrid, wide = false): CellImage[] {
       inkRed += warped.color[colorOffset];
       inkGreen += warped.color[colorOffset + 1];
       inkBlue += warped.color[colorOffset + 2];
+      const colors = warped.color.subarray(colorOffset, colorOffset + 3);
+      // Colored glyph ink is not an annotation obscuring that same glyph.
+      if (Math.max(...colors) - Math.min(...colors) > 100 && warped.gray[y * WARP_SIZE + x] > 140) annotationPixels--;
     }
 
     const crop = document.createElement('canvas');
@@ -400,6 +414,8 @@ function cellImages(warped: WarpedGrid, wide = false): CellImage[] {
       canvas: crop,
       componentHeight,
       componentWidth,
+      centerX: (largest.minX + largest.maxX) / (2 * sampleWidth),
+      centerY: (largest.minY + largest.maxY) / (2 * sampleHeight),
       obscured: annotationPixels > sample.length * 0.05 && annotationPixels < sample.length * 0.5,
       inkRed: inkRed / largest.count,
       inkGreen: inkGreen / largest.count,
@@ -597,7 +613,11 @@ function glyphOutliers(readings: readonly CellReading[]): Set<number> {
     const cluster = clusters.sort((a, b) => b.length - a.length)[0];
     if (cluster.length < 2 || cluster.length < group.length / 2) continue;
     for (const candidate of group) {
-      if (Math.min(...cluster.map(reference => glyphDistance(reference.pixels, candidate.pixels))) > 0.8) {
+      const aspect = candidate.reading.image.componentWidth / candidate.reading.image.componentHeight;
+      const referenceAspects = cluster.map(reference => reference.reading.image.componentWidth / reference.reading.image.componentHeight).sort((a,b)=>a-b);
+      const referenceAspect = referenceAspects[Math.floor(referenceAspects.length / 2)];
+      if (Math.min(...cluster.map(reference => glyphDistance(reference.pixels, candidate.pixels))) > 0.8 ||
+        aspect > referenceAspect * 1.18 || aspect < referenceAspect / 1.18) {
         outliers.add(candidate.reading.image.cell);
       }
     }
@@ -657,10 +677,15 @@ export async function recognizeSudokuPhoto(
   const reader = await createDigitReader();
   let readings: CellReading[] = [];
   let wideReadings: CellReading[] = [];
+  let strokeReadings: CellReading[] = [];
   const readCells = async (images: CellImage[]): Promise<CellReading[]> => {
     const output: CellReading[] = [];
     for (let index = 0; index < images.length; index += 1) {
       onProgress({ phase: 'reading-digits', completed: index, total: images.length });
+      if (images[index].componentHeight < 30) {
+        output.push({image:images[index],value:null,confidence:0});
+        continue;
+      }
       let result = await reader.recognize(images[index].canvas);
       if (result.data.confidence < 80 || !/^[1-9]\s*$/.test(result.data.text)) {
         await reader.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_CHAR });
@@ -687,25 +712,41 @@ export async function recognizeSudokuPhoto(
       }
     }
     wideReadings = await readCells(cellImages(warped, true));
+    strokeReadings = await readCells(cellImages(warped, true, true));
   } finally {
     await reader.terminate();
   }
   const preview = previewDataUrl(warped.gray);
+  const backgrounds = Array.from({length:81}, (_,cell) => {
+    const samples: number[] = [];
+    for (let y = 15; y < 85; y += 5) for (let x = 15; x < 85; x += 5) {
+      samples.push(warped.gray[(Math.floor(cell / 9) * CELL_SIZE + y) * WARP_SIZE + cell % 9 * CELL_SIZE + x]);
+    }
+    samples.sort((a,b)=>a-b);
+    return samples[Math.floor(samples.length * 0.8)];
+  });
   const results: PhotoRecognitionResult[] = [];
+  // A wider crop without morphological opening preserves thin handwritten
+  // strokes. Use it to repair low-confidence/clipped readings, never to fill a
+  // value from Sudoku's computed solution.
+  const combinedReadings = combineReadings(readings, wideReadings, strokeReadings);
   // Prefer full RGB colour separation. The legacy red/green-only metric can
   // merge blue player entries with grey clues even when the flattened board
   // has a unique solution. Retain it only as a fallback for older photo styles.
   for (const variant of ['printed', 'normal', 'conservative', 'shadow', 'legacy'] as const) {
-    for (const pass of [readings, wideReadings]) {
+    for (const pass of [combinedReadings, readings, wideReadings, strokeReadings]) {
       const readings = pass.map(reading => ({ ...reading }));
       const values = Array<Digit | null>(81).fill(null);
       const confidence = Array<number>(81).fill(100);
       const uncertain = new Set<number>();
       const placementCells: number[] = [];
+      const backgroundPlacements = backgroundPlacementCells(backgrounds, new Set(readings
+        .filter(reading => reading.value !== null && reading.confidence >= 85 && reading.image.componentHeight >= 40)
+        .map(reading => reading.image.cell)));
       const outliers = glyphOutliers(readings);
       let glyphStyle = variant === 'legacy' ? legacyGlyphStyle(readings) : dominantGlyphStyle(readings);
       if (glyphStyle && (variant === 'printed' || variant === 'conservative')) glyphStyle = {
-        ...glyphStyle, heightTolerance: Math.max(4, Math.round(glyphStyle.height * 0.09))
+        ...glyphStyle, heightTolerance: Math.max(4, Math.round(glyphStyle.height * (variant === 'printed' ? 0.07 : 0.09)))
       };
       if (glyphStyle && variant === 'shadow' && (glyphStyle.maximumInkLightness ?? 255) < 85) {
         glyphStyle = { ...glyphStyle, maximumInkLightness: null };
@@ -730,15 +771,18 @@ export async function recognizeSudokuPhoto(
         values[cell] = reading.value;
         confidence[cell] = reading.confidence;
         const mismatchedGlyph = glyphStyle !== null && !matchesGlyphStyle(reading, glyphStyle);
-        const fullSize = reading.image.componentHeight >= 30 &&
-          (glyphStyle === null || reading.image.componentHeight >= glyphStyle.height * 0.65);
-        const placement = fullSize && (mismatchedGlyph || outliers.has(cell));
+        const fullSize = isFullSizeDigit(reading.image, glyphStyle?.height);
+        // Small candidate notes are not uncertain full-size entries. In
+        // particular, do not promote them to givens on the correction screen
+        // merely because the original givens fail uniqueness validation.
+        if (!fullSize) { values[cell] = null; confidence[cell] = 100; continue; }
+        const placement = fullSize && (mismatchedGlyph || outliers.has(cell) || backgroundPlacements.has(cell));
         if (placement) placementCells.push(cell);
         // Tesseract is consistently cautious about a narrow printed 1 even when its style matches.
         const lowConfidence = reading.confidence < (variant === 'conservative' ? 85 : 72) &&
           !(reading.value === 1 && reading.confidence >= 25 && (variant !== 'conservative' ||
             reading.image.componentWidth < reading.image.componentHeight * 0.3));
-        if (!fullSize || reading.image.obscured) uncertain.add(cell);
+        if (reading.image.obscured) uncertain.add(cell);
         if (reading.value === null || lowConfidence) uncertain.add(cell);
       }
       onProgress({ phase: 'reading-digits', completed: cells.length, total: cells.length });
