@@ -16,6 +16,8 @@
     "check:docs": "node scripts/verify-doc-links.mjs",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:photos": "playwright test tests/e2e/034-photo-example-regressions --project=phone --workers=1",
+    "photos:review": "node scripts/generate-photo-review.mjs",
     "test:e2e:privacy": "playwright test tests/e2e/010-local-only-privacy",
     "test:e2e:offline": "playwright test tests/e2e/012-installed-offline --project=offline",
     "test:e2e:update-snapshots": "UPDATE_E2E_DOCS=1 playwright test --update-snapshots --workers=1",

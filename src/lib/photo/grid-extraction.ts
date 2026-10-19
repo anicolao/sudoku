@@ -22,6 +22,72 @@ interface ComponentCandidate {
   bottomLeft: Point;
 }
 
+/** Screenshots already have parallel, square cells. Require all eight interior
+ * lines in both directions, so UI panels and three-by-three keypads cannot win.
+ * The outer border may be missing at the edge of a screenshot. */
+export function findAlignedGrid(dark: Uint8Array, width: number, height: number): GridQuadrilateral | null {
+  const runs: Array<{ y: number; left: number; right: number }> = [];
+  for (let y = 0; y < height; y += 1) {
+    let start = -1;
+    let last = -1;
+    for (let x = 0; x <= width + 2; x += 1) {
+      if (x < width && dark[y * width + x]) {
+        if (start < 0) start = x;
+        last = x;
+      } else if (start >= 0 && x - last > 2) {
+        if (last - start > width * 0.3) runs.push({ y, left: start, right: last });
+        start = -1;
+      }
+    }
+  }
+  let best: { quad: GridQuadrilateral; score: number } | null = null;
+  const processed = new Set<string>();
+  for (const run of runs) {
+    const span = run.right - run.left;
+    const tolerance = Math.max(2, span * 0.006);
+    const matching = runs.filter((other) => Math.abs(other.left - run.left) <= tolerance &&
+      Math.abs(other.right - run.right) <= tolerance);
+    const key = matching.map((other) => `${other.y}:${other.left}`).join(',');
+    if (processed.has(key)) continue;
+    processed.add(key);
+    const rows: number[][] = [];
+    for (const other of matching) {
+      const group = rows.at(-1);
+      if (group && other.y - group.at(-1)! <= 2) group.push(other.y);
+      else rows.push([other.y]);
+    }
+    const centers = rows.map((group) => (group[0] + group.at(-1)!) / 2);
+    const edges = [...centers, centers[0] - span / 9, centers.at(-1)! + span / 9];
+    for (const top of edges) {
+      for (const bottom of edges) {
+        if (top < -2 || bottom > height + 1) continue;
+        if (Math.abs((bottom - top) / span - 1) > 0.035) continue;
+        if (!Array.from({ length: 8 }, (_, i) => top + (bottom - top) * (i + 1) / 9)
+          .every((expected) => centers.some((y) => Math.abs(y - expected) <= tolerance))) continue;
+        let strength = 0;
+        for (let i = 1; i < 9; i += 1) {
+          const x = Math.round(run.left + span * i / 9);
+          let ink = 0;
+          for (let y = Math.ceil(top); y <= Math.floor(bottom); y += 1) {
+            for (let dx = -Math.ceil(tolerance); dx <= Math.ceil(tolerance); dx += 1) {
+              if (x + dx >= 0 && x + dx < width && dark[y * width + x + dx]) { ink += 1; break; }
+            }
+          }
+          if (ink < (bottom - top) * 0.7) { strength = 0; break; }
+          strength += ink;
+        }
+        const score = strength * span;
+        if (score > 0 && (!best || score > best.score)) best = {
+          score,
+          quad: { topLeft: { x: run.left, y: top }, topRight: { x: run.right, y: top },
+            bottomLeft: { x: run.left, y: bottom }, bottomRight: { x: run.right, y: bottom } }
+        };
+      }
+    }
+  }
+  return best?.quad ?? null;
+}
+
 function quadrilateralArea(quad: GridQuadrilateral): number {
   const points = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft];
   let area = 0;
@@ -178,6 +244,12 @@ export function refineGridQuadrilateral(
   height: number,
   coarse: GridQuadrilateral
 ): GridQuadrilateral {
+  const alignedTolerance = Math.max(3, Math.min(width, height) * 0.006);
+  if (Math.abs(coarse.topLeft.y - coarse.topRight.y) <= alignedTolerance &&
+    Math.abs(distance(coarse.topLeft, coarse.topRight) / distance(coarse.topLeft, coarse.bottomLeft) - 1) < 0.035 &&
+    Math.abs(coarse.bottomLeft.y - coarse.bottomRight.y) <= alignedTolerance &&
+    Math.abs(coarse.topLeft.x - coarse.bottomLeft.x) <= alignedTolerance &&
+    Math.abs(coarse.topRight.x - coarse.bottomRight.x) <= alignedTolerance) return coarse;
   const horizontalDirection = {
     x: (coarse.topRight.x - coarse.topLeft.x) + (coarse.bottomRight.x - coarse.bottomLeft.x),
     y: (coarse.topRight.y - coarse.topLeft.y) + (coarse.bottomRight.y - coarse.bottomLeft.y)
@@ -242,6 +314,8 @@ function validGridShape(candidate: ComponentCandidate, width: number, height: nu
  */
 export function findGridQuadrilateral(dark: Uint8Array, width: number, height: number): GridQuadrilateral | null {
   if (dark.length !== width * height || width < 32 || height < 32) return null;
+  const aligned = findAlignedGrid(dark, width, height);
+  if (aligned) return aligned;
   const expanded = new Uint8Array(dark.length);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {

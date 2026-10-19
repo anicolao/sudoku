@@ -15,6 +15,38 @@ function recognition(values: Array<Digit | null>, uncertainCells: number[]): Pho
 }
 
 describe('photo review preparation', () => {
+  it('uses an independent recognition pass only if its confident board validates', async () => {
+    const first = recognition([5, ...Array(80).fill(null)], []);
+    const second = recognition([6, ...Array(80).fill(null)], []);
+    first.alternatives = [second];
+    const accepted = { fingerprint: 'second' } as SharedPuzzleValidation;
+    const validate = vi.fn().mockRejectedValueOnce(new Error('not unique')).mockResolvedValueOnce(accepted);
+    const review = await preparePhotoReview(first, validate);
+    expect(validate.mock.calls.map(call => call[0])).toEqual(['5' + '.'.repeat(80), '6' + '.'.repeat(80)]);
+    expect(review.values).toEqual(second.values);
+    expect(review.validation).toBe(accepted);
+    expect(review.uncertainCells).toEqual([]);
+  });
+
+  it('does not consult alternatives after the first pass validates', async () => {
+    const first = recognition([5, ...Array(80).fill(null)], []);
+    first.alternatives = [recognition([6, ...Array(80).fill(null)], [])];
+    const validate = vi.fn().mockResolvedValue({ fingerprint: 'first' });
+    expect((await preparePhotoReview(first, validate)).values).toEqual(first.values);
+    expect(validate).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains the original review when every thresholding pass fails', async () => {
+    const first = recognition([5, ...Array(80).fill(null)], [0]);
+    first.alternatives = [recognition([6, ...Array(80).fill(null)], [])];
+    const validate = vi.fn().mockRejectedValue(new Error('not unique'));
+    const review = await preparePhotoReview(first, validate);
+    expect(review.values).toEqual(first.values);
+    expect(review.uncertainCells).toEqual([0]);
+    expect(review.validation).toBeNull();
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
+
   it('drops uncertain readings and accepts the clean grid when it validates', async () => {
     const values = Array<Digit | null>(81).fill(null);
     values[0] = 5;
