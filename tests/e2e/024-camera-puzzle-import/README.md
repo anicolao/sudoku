@@ -1,6 +1,6 @@
 # Import a printed Sudoku with the camera
 
-A player can select or photograph a conventional grid, recognize its printed givens entirely on-device, correct the result, prove that it has one unique solution, and start it as a normal local puzzle.
+A player can photograph a grid, recognize original givens and distinct full-size player placements on-device, correct digits and roles, validate the original puzzle, and resume with that progress.
 
 ## The puzzle library offers private photo import beside generation
 
@@ -16,7 +16,7 @@ A player can select or photograph a conventional grid, recognize its printed giv
 
 **Verifications:**
 
-- [x] Every printed clue lands in its source cell and blank cells stay empty
+- [x] Every printed clue and player placement lands in its own layer; blank cells stay empty
 - [x] The clean review is already proven and remains unsaved
 
 ## The corrected grid is proven before import

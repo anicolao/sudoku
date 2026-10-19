@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Digit } from '../../src/lib/domain/types';
-import { preparePhotoReview } from '../../src/lib/photo/photo-review';
+import { photoPuzzlePayload, preparePhotoReview } from '../../src/lib/photo/photo-review';
 import type { PhotoRecognitionResult } from '../../src/lib/photo/photo-recognition';
 import type { SharedPuzzleValidation } from '../../src/lib/sharing/puzzle-link';
 
@@ -15,6 +15,16 @@ function recognition(values: Array<Digit | null>, uncertainCells: number[]): Pho
 }
 
 describe('photo review preparation', () => {
+  it('keeps player placements after the original givens in the shared payload', async () => {
+    const source = recognition([5, 8, ...Array(79).fill(null)], []);
+    source.placementCells = [1];
+    const validate = vi.fn().mockResolvedValue({ fingerprint: 'with-work' });
+    const review = await preparePhotoReview(source, validate);
+    expect(validate).toHaveBeenCalledWith('5' + '.'.repeat(80) + '_128');
+    expect(review.values).toEqual(source.values);
+    expect(review.placementCells).toEqual([1]);
+    expect(photoPuzzlePayload(review.values, review.placementCells)).toBe('5' + '.'.repeat(80) + '_128');
+  });
   it('uses an independent recognition pass only if its confident board validates', async () => {
     const first = recognition([5, ...Array(80).fill(null)], []);
     const second = recognition([6, ...Array(80).fill(null)], []);
@@ -59,6 +69,7 @@ describe('photo review preparation', () => {
     expect(validate).toHaveBeenCalledWith(`5${'.'.repeat(80)}`);
     expect(review).toEqual({
       values: [5, ...Array(80).fill(null)],
+      placementCells: [],
       uncertainCells: [],
       validation: accepted
     });

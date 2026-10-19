@@ -15,6 +15,8 @@ export interface PhotoRecognitionProgress {
 
 export interface PhotoRecognitionResult {
   values: Array<Digit | null>;
+  /** Full-size entries that differ visibly from the printed-clue style. */
+  placementCells?: number[];
   confidence: number[];
   uncertainCells: number[];
   detectedCellCount: number;
@@ -455,6 +457,7 @@ interface GlyphStyle {
   height: number;
   heightTolerance: number;
   maximumColorBias: number | null;
+  maximumRedGreenBias?: number | null;
   maximumInkLightness: number | null;
 }
 
@@ -516,12 +519,15 @@ function dominantGlyphStyle(readings: readonly CellReading[]): GlyphStyle | null
     8,
     30
   );
+  // Warm illumination can give both black clues and green work the same
+  // max-minus-min chroma. Red/green separation still distinguishes that ink.
+  const maximumRedGreenBias = separatedThreshold(heightMatches.map(legacyColorBias), 8, 30);
   const monochromeMatches = maximumColorBias === null
     ? heightMatches
     : heightMatches.filter((reading) => colorBias(reading) <= maximumColorBias);
   const lightnessThreshold = separatedThreshold(monochromeMatches.map(inkLightness), 16);
   const maximumInkLightness = lightnessThreshold;
-  return { height: bestHeight, heightTolerance, maximumColorBias, maximumInkLightness };
+  return { height: bestHeight, heightTolerance, maximumColorBias, maximumRedGreenBias, maximumInkLightness };
 }
 
 function legacyColorBias(reading: CellReading): number {
@@ -575,6 +581,7 @@ function legacyGlyphStyle(readings: readonly CellReading[]): GlyphStyle | null {
 function matchesGlyphStyle(reading: CellReading, style: GlyphStyle): boolean {
   if (Math.abs(reading.image.componentHeight - style.height) > style.heightTolerance) return false;
   if (style.maximumColorBias !== null && (style.legacy ? legacyColorBias(reading) : colorBias(reading)) > style.maximumColorBias) return false;
+  if (style.maximumRedGreenBias != null && legacyColorBias(reading) > style.maximumRedGreenBias) return false;
   if (style.maximumInkLightness !== null && (style.legacy ? legacyInkLightness(reading) : inkLightness(reading)) > style.maximumInkLightness) return false;
   return true;
 }
@@ -685,14 +692,16 @@ export async function recognizeSudokuPhoto(
   }
   const preview = previewDataUrl(warped.gray);
   const results: PhotoRecognitionResult[] = [];
-  // Prefer the tight printed-font cluster before admitting larger full-size
-  // work. Independently validated fallbacks handle handwriting and shadows.
-  for (const variant of ['legacy', 'printed', 'normal', 'conservative', 'shadow'] as const) {
+  // Prefer full RGB colour separation. The legacy red/green-only metric can
+  // merge blue player entries with grey clues even when the flattened board
+  // has a unique solution. Retain it only as a fallback for older photo styles.
+  for (const variant of ['printed', 'normal', 'conservative', 'shadow', 'legacy'] as const) {
     for (const pass of [readings, wideReadings]) {
       const readings = pass.map(reading => ({ ...reading }));
       const values = Array<Digit | null>(81).fill(null);
       const confidence = Array<number>(81).fill(100);
       const uncertain = new Set<number>();
+      const placementCells: number[] = [];
       const outliers = glyphOutliers(readings);
       let glyphStyle = variant === 'legacy' ? legacyGlyphStyle(readings) : dominantGlyphStyle(readings);
       if (glyphStyle && (variant === 'printed' || variant === 'conservative')) glyphStyle = {
@@ -721,16 +730,21 @@ export async function recognizeSudokuPhoto(
         values[cell] = reading.value;
         confidence[cell] = reading.confidence;
         const mismatchedGlyph = glyphStyle !== null && !matchesGlyphStyle(reading, glyphStyle);
+        const fullSize = reading.image.componentHeight >= 30 &&
+          (glyphStyle === null || reading.image.componentHeight >= glyphStyle.height * 0.65);
+        const placement = fullSize && (mismatchedGlyph || outliers.has(cell));
+        if (placement) placementCells.push(cell);
         // Tesseract is consistently cautious about a narrow printed 1 even when its style matches.
         const lowConfidence = reading.confidence < (variant === 'conservative' ? 85 : 72) &&
           !(reading.value === 1 && reading.confidence >= 25 && (variant !== 'conservative' ||
             reading.image.componentWidth < reading.image.componentHeight * 0.3));
-        if (reading.image.componentHeight < 30 || reading.image.obscured || outliers.has(cell)) uncertain.add(cell);
-        if (reading.value === null || lowConfidence || mismatchedGlyph) uncertain.add(cell);
+        if (!fullSize || reading.image.obscured) uncertain.add(cell);
+        if (reading.value === null || lowConfidence) uncertain.add(cell);
       }
       onProgress({ phase: 'reading-digits', completed: cells.length, total: cells.length });
       results.push({
         values,
+        placementCells,
         confidence,
         uncertainCells: [...uncertain],
         detectedCellCount: glyphStyle

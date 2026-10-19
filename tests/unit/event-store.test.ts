@@ -76,7 +76,7 @@ describe('event store', () => {
     }]);
   });
 
-  it('opens a validated camera puzzle without retaining photo data', () => {
+  it.each([false, true])('opens a validated camera puzzle with progress=%s without retaining photo data', (withProgress) => {
     const storage = new MemoryStorage();
     const generated = generateEasyPuzzle('camera-origin').puzzle;
     const fingerprint = 'a'.repeat(64);
@@ -89,11 +89,13 @@ describe('event store', () => {
       provenance: { kind: 'camera-photo' as const, recognizerVersion: 1 as const, fingerprint }
     };
     const store = new EventStore(storage);
+    const cell = puzzle.givens.indexOf('.');
+    const work = withProgress ? [{type:'value' as const, cell, value:Number(puzzle.solution[cell]) as Digit}] : [];
     const projection = store.importGame(
       puzzle,
       { occurredAt: new Date('2026-08-16T12:00:00.000Z'), id: 'camera-import-1' },
       store.getProjection().settings,
-      [],
+      work,
       undefined,
       undefined,
       'camera-photo'
@@ -101,6 +103,8 @@ describe('event store', () => {
 
     expect(projection.diagnostics).toEqual([]);
     expect(projection.games[projection.activeGameId ?? ''].puzzle).toEqual(puzzle);
+    expect(projection.games[projection.activeGameId ?? ''].values[cell]).toBe(withProgress ? work[0].value : null);
+    expect(new EventStore(storage).getProjection().games[projection.activeGameId ?? ''].values[cell]).toBe(withProgress ? work[0].value : null);
     expect(store.getDocument().events).toMatchObject([{
       type: 'game/imported',
       payload: {

@@ -1,0 +1,12 @@
+{
+  "default": {
+    "layers": ["givens", "placements"],
+    "outcome": "start"
+  },
+  "overrides": {
+    "21forward.webp": {
+      "layers": ["givens", "placements"],
+      "outcome": "review"
+    }
+  }
+}

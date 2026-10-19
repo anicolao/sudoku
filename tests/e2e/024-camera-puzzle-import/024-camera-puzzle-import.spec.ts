@@ -38,20 +38,21 @@ for (const photo of REAL_PHOTOS) {
     await page.getByLabel('Choose Sudoku photo').setInputFiles(photo.path);
 
     await expect(page.getByRole('heading', { name: 'Puzzle ready' })).toBeVisible({ timeout: 150_000 });
-    const recognized = await page.locator('[data-photo-cell]').allTextContents();
-    expect(recognized.map((value) => value || '.').join('')).toBe(photo.givens);
-    await expect(page.getByText(`${[...photo.givens].filter((value) => value !== '.').length} givens`, { exact: true })).toBeVisible();
+    const recognized = await page.locator('[data-photo-cell]').evaluateAll(cells => cells.map(cell =>
+      cell.getAttribute('data-photo-role') === 'placement' ? '.' : cell.textContent || '.').join(''));
+    expect(recognized).toBe(photo.givens);
+    await expect(page.getByText(new RegExp(`${[...photo.givens].filter((value) => value !== '.').length} givens ·`))).toBeVisible();
     await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
     await expect(page.getByText(/One unique solution/)).toBeVisible();
   });
 }
 
-test('a photographed printed grid is recognized, reviewed, validated, and imported', async ({ page }, testInfo) => {
+test('a photographed grid preserves givens and player placements through review and import', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Import a printed Sudoku with the camera',
-    'A player can select or photograph a conventional grid, recognize its printed givens entirely on-device, correct the result, prove that it has one unique solution, and start it as a normal local puzzle.'
+    'A player can photograph a grid, recognize original givens and distinct full-size player placements on-device, correct digits and roles, validate the original puzzle, and resume with that progress.'
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Puzzles' }).click();
@@ -98,6 +99,10 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
       if (given === '.') return;
       context.fillText(given, 100 + (cell % 9) * 100, 102 + Math.floor(cell / 9) * 100);
     });
+    context.fillStyle = '#245bc2';
+    for (const [cell, value] of [[2,4],[3,6],[5,8]]) {
+      context.fillText(String(value), 100 + (cell % 9) * 100, 102 + Math.floor(cell / 9) * 100);
+    }
     return canvas.toDataURL('image/png').split(',')[1];
   }, GIVENS);
   await page.getByLabel('Choose Sudoku photo').setInputFiles({
@@ -111,12 +116,15 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
   await steps.step('recognized-givens-reviewed', {
     description: 'The confident givens are checked and presented for acceptance',
     verifications: [
-      { spec: 'Every printed clue lands in its source cell and blank cells stay empty', check: async () => {
+      { spec: 'Every printed clue and player placement lands in its own layer; blank cells stay empty', check: async () => {
         const recognized = await page.locator('[data-photo-cell]').allTextContents();
-        expect(recognized.map((value) => value || '.').join('')).toBe(GIVENS);
+        const expected = [...GIVENS];
+        expected[2] = '4'; expected[3] = '6'; expected[5] = '8';
+        expect(recognized.map((value) => value || '.').join('')).toBe(expected.join(''));
+        expect(await page.locator('[data-photo-role="placement"]').evaluateAll(cells=>cells.map(cell=>Number(cell.getAttribute('data-photo-cell'))))).toEqual([2,3,5]);
       } },
       { spec: 'The clean review is already proven and remains unsaved', check: async () => {
-        await expect(page.getByText('30 givens', { exact: true })).toBeVisible();
+        await expect(page.getByText('30 givens · 3 placements', { exact: true })).toBeVisible();
         await expect(page.getByText(/needs? a closer look/)).toHaveCount(0);
         await expect(page.getByText(/One unique solution/)).toBeVisible();
         expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
@@ -129,6 +137,10 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
   await page.getByRole('button', { name: 'Check puzzle' }).click();
   await expect(page.getByRole('alert')).toContainText('duplicate');
   await page.getByRole('button', { name: '5', exact: true }).click();
+  await page.locator('[data-photo-cell="2"]').click();
+  await page.getByLabel('Selected digit type').selectOption('given');
+  await expect(page.getByText('31 givens · 2 placements', {exact:true})).toBeVisible();
+  await page.getByLabel('Selected digit type').selectOption('placement');
   await page.getByRole('button', { name: 'Check puzzle' }).click();
   await steps.step('photo-puzzle-validated', {
     description: 'The corrected grid is proven before import',
@@ -156,7 +168,8 @@ test('a photographed printed grid is recognized, reviewed, validated, and import
           type: 'game/imported',
           payload: {
             importKind: 'camera-photo',
-            puzzle: { givens: GIVENS, provenance: { kind: 'camera-photo', recognizerVersion: 1 } }
+            puzzle: { givens: GIVENS, provenance: { kind: 'camera-photo', recognizerVersion: 1 } },
+            work: [{type:'value',cell:2,value:4},{type:'value',cell:3,value:6},{type:'value',cell:5,value:8}]
           }
         });
         expect(JSON.stringify(events)).not.toContain('data:image');
