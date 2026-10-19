@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { photoReviewReport } from '../../../scripts/photo-review-report.mjs';
+import { photoExamplePassed, photoReviewReport } from '../../../scripts/photo-review-report.mjs';
 
 const directory = path.resolve('examples');
-const goldens: Array<{filename: string; givens: string; description?: string}> =
+const goldens: Array<{filename: string; givens: string; description?: string; requiresReview?: boolean}> =
   JSON.parse(readFileSync(path.join(directory, 'goldens.json'), 'utf8'));
 interface ImportResult {
   filename: string;
@@ -13,10 +13,11 @@ interface ImportResult {
   preview?: string;
   ready?: boolean;
   started?: boolean;
+  reviewRequired?: boolean;
   error?: string;
 }
 
-test('every example imports exactly its reviewed golden master', async ({ browser }, testInfo) => {
+test('every example recognizes its golden master and reaches its expected outcome', async ({ browser }, testInfo) => {
   test.skip(testInfo.project.name !== 'phone', 'Recognition is viewport-independent.');
   test.setTimeout(20 * 60_000);
   const files = readdirSync(directory).filter(name => /\.(jpe?g|png|webp)$/i.test(name)).sort();
@@ -43,7 +44,16 @@ test('every example imports exactly its reviewed golden master', async ({ browse
         result.values = (await page.locator('[data-photo-cell]').allTextContents()).map(value => value || '.').join('');
         result.preview = await page.locator('img[alt="Straightened grayscale Sudoku used for recognition"]').getAttribute('src') ?? undefined;
         result.ready = await page.getByRole('heading', { name: 'Puzzle ready', exact: true }).isVisible();
-        if (result.ready) {
+        if (golden.requiresReview) {
+          await expect(page.getByRole('heading', { name: 'Correct any digit', exact: true })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Start photographed puzzle' })).toHaveCount(0);
+          await page.getByRole('button', { name: 'Check puzzle', exact: true }).click();
+          await expect(page.getByRole('alert')).toContainText('does not have one unique solution', { timeout: 30_000 });
+          await expect(page.getByRole('button', { name: 'Start photographed puzzle' })).toHaveCount(0);
+          expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
+          result.reviewRequired = true;
+          result.started = false;
+        } else if (result.ready) {
           await page.getByRole('button', { name: 'Start photographed puzzle' }).click();
           await expect(page.getByRole('grid', { name: /Sudoku puzzle/ })).toBeVisible();
           const imported = await page.evaluate(() => {
@@ -71,7 +81,7 @@ test('every example imports exactly its reviewed golden master', async ({ browse
   }
   const failures = goldens.flatMap(golden => {
     const result = results.find(item => item.filename === golden.filename);
-    return result?.ready && result.started && result.values === golden.givens ? [] : [golden.filename];
+    return photoExamplePassed(golden, result) ? [] : [golden.filename];
   });
   expect(failures, 'See photo-import-review.html for originals, golden masters, crops, and cell differences').toEqual([]);
 });

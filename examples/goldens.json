@@ -126,8 +126,9 @@
   },
   {
     "filename": "21forward.webp",
+    "requiresReview": true,
     "givens": "7...85...5...4..........8.5.....92....286...9..........3749165.6157.89....465.1.7",
-    "description": "Top puzzle only. Includes the three large handwritten placements; pencil candidates are excluded. This transcription has multiple solutions: successful import remains blocked by the existing uniqueness requirement."
+    "description": "Top puzzle only. Includes the three large handwritten placements; pencil candidates are excluded. Expected outcome: exact recognition in the correction screen, with puzzle start blocked because these digits allow multiple solutions."
   },
   {
     "filename": "22handwritten.jpeg",
