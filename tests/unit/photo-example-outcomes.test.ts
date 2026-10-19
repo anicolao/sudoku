@@ -10,6 +10,35 @@ const policy: PhotoPolicy = {layers:['givens','placements'],outcome:'review'};
 const reviewed = {filename:master.filename,givens:master.givens!,placements:master.placements!,notes:{},ready:false,started:false,reviewRequired:true};
 
 describe('independent photo source and recognition policy', () => {
+  it('defers only the eight agreed handwriting cases without changing their masters', () => {
+    const policies = JSON.parse(readFileSync('examples/recognition-policy.json','utf8'));
+    const masters: PhotoMaster[] = JSON.parse(readFileSync('examples/goldens.json','utf8'));
+    expect(Object.keys(policies.skips).sort()).toEqual([
+      '06solved.webp','11sleep.jpeg','12paper.jpeg','14stuckagain.jpeg',
+      '15help.jpeg','17paper.jpeg','19impossible.jpeg','22handwritten.jpeg'
+    ]);
+    for (const [filename,reason] of Object.entries(policies.skips)) {
+      expect(typeof reason).toBe('string');
+      expect(String(reason).trim().length).toBeGreaterThan(0);
+      expect(masters.some(source=>source.filename===filename)).toBe(true);
+    }
+  });
+
+  it('reports deferred examples as skips, never as recognition passes', () => {
+    const reason = 'Deferred handwriting <review>';
+    const skipped = {...reviewed,skipped:reason};
+    expect(photoExamplePassed(master,skipped,policy)).toBe(false);
+    const html = photoReviewReport([master],[skipped],{default:policy,overrides:{},skips:{[master.filename]:reason}});
+    expect(html).toContain('data-status="skip"');
+    expect(html).toContain('— SKIP');
+    expect(html).toContain('Deferred handwriting &lt;review&gt;');
+    expect(html).toContain('1 recognition checks explicitly skipped');
+    expect(html).toContain('0/0 exact recognition and expected outcome checks passed');
+    expect(html).not.toContain('data-status="pass"');
+    expect(html).not.toContain('differing cells');
+    expect(html).toContain('Layered source data');
+    expect(photoReviewReport([master],[],{default:policy,overrides:{},skips:{[master.filename]:reason}})).toContain('— SKIP');
+  });
   it('keeps the non-unique top puzzle review-only without treating its work as givens', () => {
     const masters: PhotoMaster[] = JSON.parse(readFileSync('examples/goldens.json','utf8'));
     const source = masters.find(master=>master.filename === '21forward.webp')!;

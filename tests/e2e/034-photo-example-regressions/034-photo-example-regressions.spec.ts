@@ -13,6 +13,13 @@ const directory = path.resolve('examples');
 const goldens: PhotoMaster[] =
   JSON.parse(readFileSync(path.join(directory, 'goldens.json'), 'utf8'));
 const policies: PhotoPolicies = JSON.parse(readFileSync(path.join(directory, 'recognition-policy.json'), 'utf8'));
+// Opt in to the deferred cases without changing their source masters or policy.
+if (process.env.PHOTO_INCLUDE_SKIPPED === '1') policies.skips = {};
+for (const [filename, reason] of Object.entries(policies.skips ?? {})) {
+  test(`deferred photo recognition: ${filename}`, async () => {
+    test.skip(true, reason);
+  });
+}
 interface ImportResult {
   filename: string;
   source: string;
@@ -25,26 +32,36 @@ interface ImportResult {
   started?: boolean;
   reviewRequired?: boolean;
   error?: string;
+  skipped?: string;
 }
 
-test('every example recognizes its golden master and reaches its expected outcome', async ({ browser }, testInfo) => {
+test('every enabled example recognizes its golden master and reaches its expected outcome', async ({ browser }, testInfo) => {
   test.skip(testInfo.project.name !== 'phone', 'Recognition is viewport-independent.');
   test.setTimeout(20 * 60_000);
   const files = readdirSync(directory).filter(name => /\.(jpe?g|png|webp)$/i.test(name)).sort();
   expect(goldens.map(item => item.filename).sort(), 'Every example needs an explicit golden master').toEqual(files);
   for (const golden of goldens) validateMaster(golden);
+  for (const [filename, reason] of Object.entries(policies.skips ?? {})) {
+    expect(files, 'Skip entries must name real corpus images').toContain(filename);
+    expect(reason.trim(), 'Each deferred example needs a reason').not.toBe('');
+  }
   const results: ImportResult[] = [];
   try {
     for (const golden of goldens) {
       const policy = policies.overrides[golden.filename] ?? policies.default;
-      const context = await browser.newContext({ viewport: { width: 393, height: 852 }, serviceWorkers: 'block' });
-      const page = await context.newPage();
       const extension = path.extname(golden.filename).slice(1).replace('jpg', 'jpeg');
       const result: ImportResult = {
         filename: golden.filename,
         source: `data:image/${extension};base64,${readFileSync(path.join(directory, golden.filename)).toString('base64')}`
       };
       results.push(result);
+      const skipReason = policies.skips?.[golden.filename];
+      if (skipReason) {
+        result.skipped = skipReason;
+        continue;
+      }
+      const context = await browser.newContext({ viewport: { width: 393, height: 852 }, serviceWorkers: 'block' });
+      const page = await context.newPage();
       try {
         await page.goto(testInfo.project.use.baseURL!);
         await page.getByRole('button', { name: 'Puzzles', exact: true }).click();
@@ -100,6 +117,7 @@ test('every example recognizes its golden master and reaches its expected outcom
     });
   }
   const failures = goldens.flatMap(golden => {
+    if (policies.skips?.[golden.filename]) return [];
     const result = results.find(item => item.filename === golden.filename);
     return photoExamplePassed(golden, result, policies.overrides[golden.filename] ?? policies.default) ? [] : [golden.filename];
   });

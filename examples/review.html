@@ -1,9 +1,11 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Photo import regression review</title>
   <style>body{font:16px system-ui,sans-serif;color:#20242b;background:#f5f4f0;margin:0;padding:24px}h1{margin-top:0}article{background:white;border:1px solid #ccc;border-radius:10px;padding:20px;margin:24px 0}article[data-status=fail]{border:3px solid #b42318}article[data-status=pass]{border-left:6px solid #22843e}.comparison{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start}figure{margin:0;min-width:0}img,svg{display:block;width:100%;height:auto;max-height:650px;object-fit:contain}figcaption{margin-top:8px;font-weight:600}summary{cursor:pointer;margin:14px 0}pre{font:18px/1.5 monospace}a{color:#304c96}nav{display:flex;flex-wrap:wrap;gap:12px}label{display:block;margin:20px 0}</style>
   <h1>Photo import regression review</h1><p>38 examples; 38 visually transcribed, 12 with unresolved source details. Source masters retain givens, placements and notes independently of the recognition policy. Null layers are unknown, not empty. Neither OCR output nor a computed solution is source evidence.</p>
+  <p>8 recognition checks explicitly skipped; source masters retained.</p>
   <p>Transcriptions are proposed for visual review. Unreviewed sources cannot pass the suite.</p>
   <nav><a href="#02hs.jpeg">02hs.jpeg</a><a href="#03hpxw.png">03hpxw.png</a><a href="#04f1.webp">04f1.webp</a><a href="#05nextmove.jpeg">05nextmove.jpeg</a><a href="#06solved.webp">06solved.webp</a><a href="#06stuck.webp">06stuck.webp</a><a href="#07which.jpeg">07which.jpeg</a><a href="#07xyzwing.jpeg">07xyzwing.jpeg</a><a href="#08colors.png">08colors.png</a><a href="#08hardest.jpg">08hardest.jpg</a><a href="#08helpme.jpeg">08helpme.jpeg</a><a href="#09created.webp">09created.webp</a><a href="#09hardorig.jpg">09hardorig.jpg</a><a href="#10tech.jpeg">10tech.jpeg</a><a href="#11sleep.jpeg">11sleep.jpeg</a><a href="#12pairs.jpeg">12pairs.jpeg</a><a href="#12paper.jpeg">12paper.jpeg</a><a href="#12simpler.jpeg">12simpler.jpeg</a><a href="#13missing.jpeg">13missing.jpeg</a><a href="#13nostep.jpeg">13nostep.jpeg</a><a href="#14stuckagain.jpeg">14stuckagain.jpeg</a><a href="#14whyhere.jpeg">14whyhere.jpeg</a><a href="#15help.jpeg">15help.jpeg</a><a href="#15nohint.jpeg">15nohint.jpeg</a><a href="#15whatnext.jpeg">15whatnext.jpeg</a><a href="#17paper.jpeg">17paper.jpeg</a><a href="#18cantfinish.webp">18cantfinish.webp</a><a href="#19impossible.jpeg">19impossible.jpeg</a><a href="#19kite.png">19kite.png</a><a href="#20hidden.png">20hidden.png</a><a href="#21aic.webp">21aic.webp</a><a href="#21forward.webp">21forward.webp</a><a href="#22handwritten.jpeg">22handwritten.jpeg</a><a href="#22xchain.jpeg">22xchain.jpeg</a><a href="#23bug1.jpeg">23bug1.jpeg</a><a href="#23ywing.webp">23ywing.webp</a><a href="#24stuck.png">24stuck.png</a><a href="#25obvious.jpeg">25obvious.jpeg</a></nav><article id="02hs.jpeg" data-status="golden">
       <h2>02hs.jpeg</h2>
+
       <p>Main fully visible puzzle. Printed clues and seven large handwritten placements are separate. Faint or erased pencil marks are recorded as unresolved notes, not asserted blank. A partial neighbouring puzzle at the top is outside this master.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="02hs.jpeg"><img loading="lazy" src="02hs.jpeg" alt="Original 02hs.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -73,6 +75,7 @@
     </article>
 <article id="03hpxw.png" data-status="golden">
       <h2>03hpxw.png</h2>
+
       <p>Visually transcribed from the original image: neutral full-size digits are givens; blue or lighter-grey full-size digits are player placements. Small digits are notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="03hpxw.png"><img loading="lazy" src="03hpxw.png" alt="Original 03hpxw.png"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -153,6 +156,7 @@
     </article>
 <article id="04f1.webp" data-status="golden">
       <h2>04f1.webp</h2>
+
       <p>Visually transcribed from the original image: neutral full-size digits are givens; blue or lighter-grey full-size digits are player placements. Small digits are notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="04f1.webp"><img loading="lazy" src="04f1.webp" alt="Original 04f1.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -206,6 +210,7 @@
     </article>
 <article id="05nextmove.jpeg" data-status="golden">
       <h2>05nextmove.jpeg</h2>
+
       <p>Visually transcribed from the original image: neutral full-size digits are givens; blue or lighter-grey full-size digits are player placements. Small digits are notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="05nextmove.jpeg"><img loading="lazy" src="05nextmove.jpeg" alt="Original 05nextmove.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -260,8 +265,9 @@
   }
 }</pre></details>
     </article>
-<article id="06solved.webp" data-status="golden">
-      <h2>06solved.webp</h2>
+<article id="06solved.webp" data-status="skip">
+      <h2>06solved.webp — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: missing and misread pencil placements. Source transcription retained; this is not a passing recognition result.</p>
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="06solved.webp"><img loading="lazy" src="06solved.webp" alt="Original 06solved.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -325,6 +331,7 @@
     </article>
 <article id="06stuck.webp" data-status="golden">
       <h2>06stuck.webp</h2>
+
       <p>Visually transcribed from the original image: neutral full-size digits are givens; blue or lighter-grey full-size digits are player placements. Small digits are notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="06stuck.webp"><img loading="lazy" src="06stuck.webp" alt="Original 06stuck.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -377,6 +384,7 @@
     </article>
 <article id="07which.jpeg" data-status="golden">
       <h2>07which.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="07which.jpeg"><img loading="lazy" src="07which.jpeg" alt="Original 07which.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -411,6 +419,7 @@
     </article>
 <article id="07xyzwing.jpeg" data-status="golden">
       <h2>07xyzwing.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="07xyzwing.jpeg"><img loading="lazy" src="07xyzwing.jpeg" alt="Original 07xyzwing.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -447,6 +456,7 @@
     </article>
 <article id="08colors.png" data-status="golden">
       <h2>08colors.png</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="08colors.png"><img loading="lazy" src="08colors.png" alt="Original 08colors.png"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -511,6 +521,7 @@
     </article>
 <article id="08hardest.jpg" data-status="golden">
       <h2>08hardest.jpg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="08hardest.jpg"><img loading="lazy" src="08hardest.jpg" alt="Original 08hardest.jpg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -529,6 +540,7 @@
     </article>
 <article id="08helpme.jpeg" data-status="golden">
       <h2>08helpme.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="08helpme.jpeg"><img loading="lazy" src="08helpme.jpeg" alt="Original 08helpme.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -566,6 +578,7 @@
     </article>
 <article id="09created.webp" data-status="golden">
       <h2>09created.webp</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="09created.webp"><img loading="lazy" src="09created.webp" alt="Original 09created.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -584,6 +597,7 @@
     </article>
 <article id="09hardorig.jpg" data-status="golden">
       <h2>09hardorig.jpg</h2>
+
       <p>Byte-identical source to 08hardest.jpg; same independently transcribed layers.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="09hardorig.jpg"><img loading="lazy" src="09hardorig.jpg" alt="Original 09hardorig.jpg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -602,6 +616,7 @@
     </article>
 <article id="10tech.jpeg" data-status="golden">
       <h2>10tech.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="10tech.jpeg"><img loading="lazy" src="10tech.jpeg" alt="Original 10tech.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -680,8 +695,9 @@
   }
 }</pre></details>
     </article>
-<article id="11sleep.jpeg" data-status="golden">
-      <h2>11sleep.jpeg</h2>
+<article id="11sleep.jpeg" data-status="skip">
+      <h2>11sleep.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: blue-pen digits and original-role separation. Source transcription retained; this is not a passing recognition result.</p>
       <p>Top complete puzzle. Maroon printed clues and dark-blue handwritten placements are distinct. Dot/circle/cross shorthand is preserved as unresolved note marks rather than guessed candidate digits.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="11sleep.jpeg"><img loading="lazy" src="11sleep.jpeg" alt="Original 11sleep.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -719,6 +735,7 @@
     </article>
 <article id="12pairs.jpeg" data-status="golden">
       <h2>12pairs.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="12pairs.jpeg"><img loading="lazy" src="12pairs.jpeg" alt="Original 12pairs.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -762,8 +779,9 @@
   }
 }</pre></details>
     </article>
-<article id="12paper.jpeg" data-status="golden">
-      <h2>12paper.jpeg</h2>
+<article id="12paper.jpeg" data-status="skip">
+      <h2>12paper.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: incorrect full-size values and notes mistaken for entries. Source transcription retained; this is not a passing recognition result.</p>
       <p>All visible full-size digits and small candidate notes transcribed. The image does not reliably identify which full-size digits are original clues; these are retained as unclassified rather than made fixed.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="12paper.jpeg"><img loading="lazy" src="12paper.jpeg" alt="Original 12paper.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -824,6 +842,7 @@
     </article>
 <article id="12simpler.jpeg" data-status="golden">
       <h2>12simpler.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="12simpler.jpeg"><img loading="lazy" src="12simpler.jpeg" alt="Original 12simpler.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -892,6 +911,7 @@
     </article>
 <article id="13missing.jpeg" data-status="golden">
       <h2>13missing.jpeg</h2>
+
       <p>All visible full-size digits and small candidate notes transcribed. The image does not reliably identify which full-size digits are original clues; these are retained as unclassified rather than made fixed.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="13missing.jpeg"><img loading="lazy" src="13missing.jpeg" alt="Original 13missing.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -950,6 +970,7 @@
     </article>
 <article id="13nostep.jpeg" data-status="golden">
       <h2>13nostep.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="13nostep.jpeg"><img loading="lazy" src="13nostep.jpeg" alt="Original 13nostep.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1021,8 +1042,9 @@
   }
 }</pre></details>
     </article>
-<article id="14stuckagain.jpeg" data-status="golden">
-      <h2>14stuckagain.jpeg</h2>
+<article id="14stuckagain.jpeg" data-status="skip">
+      <h2>14stuckagain.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: faint pencil strokes and missing placements. Source transcription retained; this is not a passing recognition result.</p>
       <p>Read upright after rotating the original 90 degrees counterclockwise. Printed black digits are givens; large pencil digits are placements; small pencil digits are notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="14stuckagain.jpeg"><img loading="lazy" src="14stuckagain.jpeg" alt="Original 14stuckagain.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1075,6 +1097,7 @@
     </article>
 <article id="14whyhere.jpeg" data-status="golden">
       <h2>14whyhere.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="14whyhere.jpeg"><img loading="lazy" src="14whyhere.jpeg" alt="Original 14whyhere.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1095,8 +1118,9 @@
   }
 }</pre></details>
     </article>
-<article id="15help.jpeg" data-status="golden">
-      <h2>15help.jpeg</h2>
+<article id="15help.jpeg" data-status="skip">
+      <h2>15help.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: missing handwritten placements. Source transcription retained; this is not a passing recognition result.</p>
       <p>Printed black givens and four dark-blue handwritten placements. Faint mirrored show-through from the reverse page is not work on this puzzle; there are no legible candidate notes on the front.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="15help.jpeg"><img loading="lazy" src="15help.jpeg" alt="Original 15help.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1115,6 +1139,7 @@
     </article>
 <article id="15nohint.jpeg" data-status="golden">
       <h2>15nohint.jpeg</h2>
+
       <p>All visible full-size digits and small candidate notes transcribed. The image does not reliably identify which full-size digits are original clues; these are retained as unclassified rather than made fixed.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="15nohint.jpeg"><img loading="lazy" src="15nohint.jpeg" alt="Original 15nohint.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1165,6 +1190,7 @@
     </article>
 <article id="15whatnext.jpeg" data-status="golden">
       <h2>15whatnext.jpeg</h2>
+
       <p>All visible full-size digits and small candidate notes transcribed. The image does not reliably identify which full-size digits are original clues; these are retained as unclassified rather than made fixed.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="15whatnext.jpeg"><img loading="lazy" src="15whatnext.jpeg" alt="Original 15whatnext.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1218,8 +1244,9 @@
   }
 }</pre></details>
     </article>
-<article id="17paper.jpeg" data-status="golden">
-      <h2>17paper.jpeg</h2>
+<article id="17paper.jpeg" data-status="skip">
+      <h2>17paper.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: pink-pen placements and overlapping marks. Source transcription retained; this is not a passing recognition result.</p>
       <p>Printed black clues and large pink handwritten placements. Pink dot shorthand and erased pencil marks are recorded separately as unresolved notes, including remaining marks beside some placed digits.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="17paper.jpeg"><img loading="lazy" src="17paper.jpeg" alt="Original 17paper.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1276,6 +1303,7 @@
     </article>
 <article id="18cantfinish.webp" data-status="golden">
       <h2>18cantfinish.webp</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="18cantfinish.webp"><img loading="lazy" src="18cantfinish.webp" alt="Original 18cantfinish.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1327,8 +1355,9 @@
   }
 }</pre></details>
     </article>
-<article id="19impossible.jpeg" data-status="golden">
-      <h2>19impossible.jpeg</h2>
+<article id="19impossible.jpeg" data-status="skip">
+      <h2>19impossible.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: misread pen digits and original-role separation. Source transcription retained; this is not a passing recognition result.</p>
       <p>Printed brown clues and eleven dark-purple handwritten placements. Two small dots in r5c8 have no supplied candidate-notation legend.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="19impossible.jpeg"><img loading="lazy" src="19impossible.jpeg" alt="Original 19impossible.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1350,6 +1379,7 @@
     </article>
 <article id="19kite.png" data-status="golden">
       <h2>19kite.png</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="19kite.png"><img loading="lazy" src="19kite.png" alt="Original 19kite.png"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1418,6 +1448,7 @@
     </article>
 <article id="20hidden.png" data-status="golden">
       <h2>20hidden.png</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="20hidden.png"><img loading="lazy" src="20hidden.png" alt="Original 20hidden.png"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1481,6 +1512,7 @@
     </article>
 <article id="21aic.webp" data-status="golden">
       <h2>21aic.webp</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="21aic.webp"><img loading="lazy" src="21aic.webp" alt="Original 21aic.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1544,6 +1576,7 @@
     </article>
 <article id="21forward.webp" data-status="golden">
       <h2>21forward.webp</h2>
+
       <p>Fully visible top puzzle. Printed clues, three large pencil placements, and visible pencil candidates transcribed independently. The partial second puzzle below is outside this master.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition; review required; puzzle start blocked.</p>
       <div class="comparison"><figure><a href="21forward.webp"><img loading="lazy" src="21forward.webp" alt="Original 21forward.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1611,8 +1644,9 @@
   }
 }</pre></details>
     </article>
-<article id="22handwritten.jpeg" data-status="golden">
-      <h2>22handwritten.jpeg</h2>
+<article id="22handwritten.jpeg" data-status="skip">
+      <h2>22handwritten.jpeg — SKIP</h2>
+      <p>Recognition skipped: Deferred handwriting recognition: handwritten digits mixed with crossed-out notes. Source transcription retained; this is not a passing recognition result.</p>
       <p>Hand-drawn puzzle: full-size handwritten digits retained without guessing their original roles. Readable uncancelled small digits are recorded; obscured or struck-out candidates remain explicitly unresolved. Thick and thin handwriting alone is not proof of original givens.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="22handwritten.jpeg"><img loading="lazy" src="22handwritten.jpeg" alt="Original 22handwritten.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1698,6 +1732,7 @@
     </article>
 <article id="22xchain.jpeg" data-status="golden">
       <h2>22xchain.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="22xchain.jpeg"><img loading="lazy" src="22xchain.jpeg" alt="Original 22xchain.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1743,6 +1778,7 @@
     </article>
 <article id="23bug1.jpeg" data-status="golden">
       <h2>23bug1.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="23bug1.jpeg"><img loading="lazy" src="23bug1.jpeg" alt="Original 23bug1.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1781,6 +1817,7 @@
     </article>
 <article id="23ywing.webp" data-status="golden">
       <h2>23ywing.webp</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="23ywing.webp"><img loading="lazy" src="23ywing.webp" alt="Original 23ywing.webp"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1820,6 +1857,7 @@
     </article>
 <article id="24stuck.png" data-status="golden">
       <h2>24stuck.png</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="24stuck.png"><img loading="lazy" src="24stuck.png" alt="Original 24stuck.png"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
@@ -1876,6 +1914,7 @@
     </article>
 <article id="25obvious.jpeg" data-status="golden">
       <h2>25obvious.jpeg</h2>
+
       <p>Independently transcribed from the original: printed/neutral digits as givens; visually distinct full-size work as placements; small digits as notes.</p>
       <p>Source: transcribed. Validating: givens, placements; unclassified digits must match exactly, in either full-size layer. Expected outcome: exact recognition and successful puzzle start.</p>
       <div class="comparison"><figure><a href="25obvious.jpeg"><img loading="lazy" src="25obvious.jpeg" alt="Original 25obvious.jpeg"></a><figcaption>Original photo (open for full resolution)</figcaption></figure>
