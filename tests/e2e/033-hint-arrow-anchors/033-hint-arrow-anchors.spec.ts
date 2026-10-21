@@ -26,10 +26,9 @@ async function checkAnchors(page: Page) {
   })).toEqual([]);
 }
 
-test('visual arrows follow candidate boundaries through chains, colors, and resizing', async ({ page }, testInfo) => {
-  test.setTimeout(90_000);
-  const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Follow arrows between candidate shapes', 'As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board. A slow-loading validator stays in the checking state until validation can run, without consuming its computation budget.');
+test('slow validator startup does not consume the computation budget', async ({ page }) => {
+  // Keep the advanced clock in its own browser context: replaying clock state
+  // across navigation must not race real worker messages in the diagram test.
   await page.clock.install();
   let releaseWorker!: () => void;
   let workerRequested!: () => void;
@@ -40,20 +39,28 @@ test('visual arrows follow candidate boundaries through chains, colors, and resi
     await startupGate;
     await route.continue();
   }, { times: 1 });
+  await page.goto(`/?p=${encodeURIComponent(fixtures[0][1])}`);
+  await workerRequest;
+  // Reproduce the CI script-loading delay without sleeping or weakening
+  // the worker's computation limit. The real worker runs after release.
+  try {
+    await page.clock.fastForward(2_750);
+    await expect(page.getByRole('heading', { name: 'Checking shared puzzle…' })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
+  } finally {
+    releaseWorker();
+  }
+  await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open shared work', exact: true })).toBeEnabled();
+});
+
+test('visual arrows follow candidate boundaries through chains, colors, and resizing', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  const steps = new TestStepHelper(page, testInfo);
+  steps.setMetadata('Follow arrows between candidate shapes', 'As a solver, I can follow visual-hint arrows that start and end at the side boundaries of candidate boxes and ellipses, centered vertically, including after resizing the board. A slow-loading validator stays in the checking state until validation can run, without consuming its computation budget.');
   for (const [name, payload] of fixtures) {
     await page.goto(`/?p=${encodeURIComponent(payload)}`);
-    if (name.startsWith('xy-')) {
-      await workerRequest;
-      // Reproduce the CI script-loading delay without sleeping or weakening
-      // the worker's computation limit. The real worker runs after release.
-      try {
-        await page.clock.fastForward(2_750);
-        await expect(page.getByRole('heading', { name: 'Checking shared puzzle…' })).toBeVisible();
-        expect(await page.evaluate(() => localStorage.getItem('sudoku.event-store.v1'))).toBeNull();
-      } finally {
-        releaseWorker();
-      }
-    }
+    await expect(page.getByRole('heading', { name: 'Shared puzzle ready' })).toBeVisible();
     await page.getByRole('button', { name: /^(Open shared work|Abandon current and open shared puzzle)$/ }).click({ timeout: 20_000 });
     await page.getByRole('button', { name: 'Hint', exact: true }).click({ timeout: 20_000 });
     await page.getByRole('button', { name: /Visual hint/ }).click({ timeout: 20_000 });
