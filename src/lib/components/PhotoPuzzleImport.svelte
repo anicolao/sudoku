@@ -6,7 +6,7 @@
     type PhotoRecognitionPhase,
     type PhotoRecognitionProgress
   } from '$lib/photo/photo-recognition';
-  import { preparePhotoReview } from '$lib/photo/photo-review';
+  import { photoPuzzlePayload, preparePhotoReview } from '$lib/photo/photo-review';
   import type { SharedPuzzleValidation } from '$lib/sharing/puzzle-link';
   import { validateSharedPuzzleInWorker } from '$lib/sharing/puzzle-validation-service';
 
@@ -26,6 +26,7 @@
   let fileInput = $state<HTMLInputElement>();
   let stage = $state<Stage>('choose');
   let values = $state<Array<Digit | null>>(Array(81).fill(null));
+  let placementCells = $state<number[]>([]);
   let uncertainCells = $state<number[]>([]);
   let detectedCellCount = $state(0);
   let selectedCell = $state<number | null>(null);
@@ -34,7 +35,8 @@
   let error = $state('');
   let progress = $state<PhotoRecognitionProgress>({ phase: 'preparing', completed: 0, total: 1 });
 
-  const clueCount = $derived(values.filter((value) => value !== null).length);
+  const clueCount = $derived(values.filter((value, cell) => value !== null && !placementCells.includes(cell)).length);
+  const placementCount = $derived(values.filter((value, cell) => value !== null && placementCells.includes(cell)).length);
   const progressPercent = $derived.by(() => {
     if (progress.phase === 'preparing') return 5;
     if (progress.phase === 'finding-grid') return 16;
@@ -49,11 +51,11 @@
     if (phase === 'finding-grid') return 'Finding and straightening the grid…';
     if (phase === 'loading-reader') return 'Loading the on-device digit reader…';
     if (phase === 'checking-puzzle') return 'Checking the confident givens…';
-    return `Reading printed digits ${progress.completed} of ${progress.total}…`;
+    return `Reading digits ${progress.completed} of ${progress.total}…`;
   }
 
-  function validatePhotoPuzzle(givens: string): Promise<SharedPuzzleValidation> {
-    return validateSharedPuzzleInWorker(givens, { timeoutMs: PHOTO_VALIDATION_TIMEOUT_MS });
+  function validatePhotoPuzzle(payload: string): Promise<SharedPuzzleValidation> {
+    return validateSharedPuzzleInWorker(payload, { timeoutMs: PHOTO_VALIDATION_TIMEOUT_MS });
   }
 
   async function choosePhoto(event: Event): Promise<void> {
@@ -68,6 +70,7 @@
       progress = { phase: 'checking-puzzle', completed: 0, total: 1 };
       const review = await preparePhotoReview(result, validatePhotoPuzzle);
       values = review.values;
+      placementCells = review.placementCells;
       uncertainCells = review.uncertainCells;
       validation = review.validation;
       detectedCellCount = result.detectedCellCount;
@@ -91,6 +94,14 @@
     values[selectedCell] = value;
     values = [...values];
     uncertainCells = uncertainCells.filter((cell) => cell !== selectedCell);
+    validation = null;
+    error = '';
+  }
+
+  function setRole(placement: boolean): void {
+    if (selectedCell === null) return;
+    placementCells = placementCells.filter(cell => cell !== selectedCell);
+    if (placement) placementCells = [...placementCells, selectedCell];
     validation = null;
     error = '';
   }
@@ -124,8 +135,7 @@
     validation = null;
     error = '';
     try {
-      const givens = values.map((value) => value ?? '.').join('');
-      validation = await validatePhotoPuzzle(givens);
+      validation = await validatePhotoPuzzle(photoPuzzlePayload(values, placementCells));
       stage = 'review';
     } catch (validationError) {
       error = validationError instanceof Error ? validationError.message : 'This puzzle could not be validated.';
@@ -136,6 +146,7 @@
   function startAgain(): void {
     stage = 'choose';
     values = Array(81).fill(null);
+    placementCells = [];
     uncertainCells = [];
     detectedCellCount = 0;
     selectedCell = null;
@@ -176,17 +187,19 @@
   {:else}
     <div class="review-workspace">
       <div class="review-board-wrap">
-        <div class="photo-grid" aria-label="Recognized Sudoku givens">
+        <div class="photo-grid" aria-label="Recognized Sudoku givens and placements">
           {#each values as value, cell}
             <button
               type="button"
               data-photo-cell={cell}
+              data-photo-role={placementCells.includes(cell) ? 'placement' : 'given'}
               data-e2e-board-cell
               class:selected={selectedCell === cell}
               class:uncertain={uncertainCells.includes(cell)}
+              class:placement={placementCells.includes(cell)}
               class:box-right={(cell + 1) % 3 === 0 && (cell + 1) % 9 !== 0}
               class:box-bottom={Math.floor(cell / 9) % 3 === 2 && cell < 72}
-              aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}, ${value ? `given ${value}` : 'empty'}${uncertainCells.includes(cell) ? ', check recognition' : ''}`}
+              aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}, ${value ? `${placementCells.includes(cell) ? 'placement' : 'given'} ${value}` : 'empty'}${uncertainCells.includes(cell) ? ', check recognition' : ''}`}
               aria-pressed={selectedCell === cell}
               tabindex={selectedCell === cell || (selectedCell === null && cell === 0) ? 0 : -1}
               onclick={() => editCell(cell)}
@@ -194,7 +207,7 @@
             >{value ?? ''}</button>
           {/each}
         </div>
-        <p><strong>{clueCount} givens</strong>{#if uncertainCells.length} · <span>{uncertainCells.length} {uncertainCells.length === 1 ? 'cell needs' : 'cells need'} a closer look</span>{/if}</p>
+        <p><strong>{clueCount} givens · {placementCount} placements</strong>{#if uncertainCells.length} · <span>{uncertainCells.length} {uncertainCells.length === 1 ? 'cell needs' : 'cells need'} a closer look</span>{/if}</p>
       </div>
 
       <aside class="review-controls">
@@ -207,6 +220,12 @@
             <p>Compare the grid with the photo. Amber cells were difficult to read.</p>
           {/if}
         </div>
+        <label class="entry-role">Selected digit
+          <select aria-label="Selected digit type" disabled={selectedCell === null} value={selectedCell !== null && placementCells.includes(selectedCell) ? 'placement' : 'given'} onchange={event => setRole(event.currentTarget.value === 'placement')}>
+            <option value="given">Original given</option>
+            <option value="placement">Player placement</option>
+          </select>
+        </label>
         <div class="photo-number-pad" aria-label="Given digit pad">
           {#each [1, 2, 3, 4, 5, 6, 7, 8, 9] as digit}
             <button type="button" onclick={() => setDigit(digit as Digit)} disabled={selectedCell === null}>{digit}</button>
@@ -258,6 +277,9 @@
   .review-board-wrap > p span { color: #8a5818; }
   .photo-grid { width: min(100%, 600px); aspect-ratio: 1; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); border: 3px solid #343840; background: #fff; }
   .photo-grid button { min-width: 0; padding: 0; border: 0; border-right: 1px solid #c8c7c2; border-bottom: 1px solid #c8c7c2; border-radius: 0; color: #20242b; background: #fffdf8; font-size: clamp(1rem, 4vw, 2rem); font-weight: 700; }
+  .photo-grid button.placement { color: #245bc2; font-weight: 400; }
+  .entry-role { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
+  .entry-role select { min-height: 36px; min-width: 0; flex: 1; }
   .photo-grid button:nth-child(9n) { border-right: 0; }
   .photo-grid button:nth-child(n+73) { border-bottom: 0; }
   .photo-grid button.box-right { border-right: 3px solid #343840; }
@@ -285,9 +307,9 @@
     .photo-import { gap: 9px; }
     header .eyebrow { display: none; }
     header h1 { font-size: 1.45rem; }
-    .review-workspace { grid-template-columns: 1fr; gap: 7px; }
-    .photo-grid { width: min(100%, 390px, 43svh); }
-    .review-board-wrap { gap: 3px; }
+    .review-workspace { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; align-items: stretch; gap: 7px; }
+    .photo-grid { width: auto; height: 100%; max-width: 100%; max-height: min(390px, 43svh, calc(100vw - 36px)); }
+    .review-board-wrap { min-height: 0; grid-template-rows: minmax(0, 1fr) auto; gap: 3px; }
     .review-controls { gap: 6px; padding: 9px; }
     .review-controls h2 { font-size: 1.15rem; }
     .review-controls > div:first-child > p:not(.eyebrow, .validation-success) { display: none; }

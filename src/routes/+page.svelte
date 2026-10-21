@@ -629,7 +629,7 @@
       puzzle,
       metadata(false),
       projection.settings,
-      [],
+      validation.work,
       undefined,
       undefined,
       'camera-photo'

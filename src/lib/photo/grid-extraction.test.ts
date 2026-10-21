@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { findGridQuadrilateral, perspectiveCoefficients, projectPoint } from './grid-extraction';
+import { findAlignedGrid, findGridQuadrilateral, perspectiveCoefficients, projectPoint } from './grid-extraction';
 
 describe('photo grid extraction', () => {
+  it.each([true, false])('preserves all nine screenshot rows and columns (outer border: %s)', (border) => {
+    const width = 240, height = 300;
+    const dark = new Uint8Array(width * height);
+    for (let line = border ? 0 : 1; line <= (border ? 9 : 8); line++) {
+      for (let offset = 0; offset <= 180; offset++) {
+        dark[(40 + line * 20) * width + 20 + offset] = 1;
+        dark[(40 + offset) * width + 20 + line * 20] = 1;
+      }
+    }
+    expect(findAlignedGrid(dark, width, height)).toEqual({
+      topLeft: { x: 20, y: 40 }, topRight: { x: 200, y: 40 },
+      bottomLeft: { x: 20, y: 220 }, bottomRight: { x: 200, y: 220 }
+    });
+  });
+
+  it('does not mistake a three-by-three keypad for an aligned Sudoku grid', () => {
+    const width = 240, height = 300;
+    const dark = new Uint8Array(width * height);
+    for (let line = 0; line <= 3; line++) for (let offset = 0; offset <= 180; offset++) {
+      dark[(40 + line * 60) * width + 20 + offset] = 1;
+      dark[(40 + offset) * width + 20 + line * 60] = 1;
+    }
+    expect(findAlignedGrid(dark, width, height)).toBeNull();
+  });
+
   it('finds the connected Sudoku lattice among unrelated marks', () => {
     const width = 240;
     const height = 220;

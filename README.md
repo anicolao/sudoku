@@ -149,6 +149,10 @@ same-origin application assets. The selected image stays in memory only long
 enough to find, straighten, and read the grid. Only the user-reviewed 81-cell
 givens and their derived puzzle definition enter local History.
 
+The [photo regression corpus](examples/README.md) includes a side-by-side
+[golden-master review](examples/review.html). Run `npm run test:e2e:photos`
+to generate a portable report with the actual extracted grids and cell differences.
+
 Local History is not a backup. Clearing browser data, private-browsing teardown,
 storage eviction, or loss of the device removes it. The application makes no
 ordinary runtime request except same-origin `GET` requests for its static shell

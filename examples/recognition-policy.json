@@ -1,0 +1,29 @@
+{
+  "default": {
+    "layers": ["givens", "placements"],
+    "outcome": "start"
+  },
+  "skips": {
+    "06solved.webp": "Deferred handwriting recognition: missing and misread pencil placements.",
+    "11sleep.jpeg": "Deferred handwriting recognition: blue-pen digits and original-role separation.",
+    "12paper.jpeg": "Deferred handwriting recognition: incorrect full-size values and notes mistaken for entries.",
+    "14stuckagain.jpeg": "Deferred handwriting recognition: faint pencil strokes and missing placements.",
+    "15help.jpeg": "Deferred handwriting recognition: missing handwritten placements.",
+    "17paper.jpeg": "Deferred handwriting recognition: pink-pen placements and overlapping marks.",
+    "19impossible.jpeg": "Deferred handwriting recognition: misread pen digits and original-role separation.",
+    "22handwritten.jpeg": "Deferred handwriting recognition: handwritten digits mixed with crossed-out notes."
+  },
+  "overrides": {
+    "14whyhere.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "25obvious.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "12paper.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "13missing.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "15nohint.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "15whatnext.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "22handwritten.jpeg": {"layers":["givens","placements"],"outcome":"start","unclassifiedRoles":"either"},
+    "21forward.webp": {
+      "layers": ["givens", "placements"],
+      "outcome": "review"
+    }
+  }
+}
